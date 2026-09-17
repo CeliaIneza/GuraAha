@@ -1,4 +1,5 @@
 import express from 'express';
+import blockerRoutes from './routes/blocker.routes'
 
 const app = express();
 
@@ -9,5 +10,7 @@ app.get('/health', (_req, res) => {
     status: 'ok',
   });
 });
+
+app.use('/api/blockers', blockerRoutes);
 
 export default app;
