@@ -1,5 +1,7 @@
 import { db } from "../config/database";
 
+type QueryExecutor = { query: typeof db.query };
+
 export interface CreateBlockerProfileInput {
   userId: string;
   nationalId: string;
@@ -7,24 +9,27 @@ export interface CreateBlockerProfileInput {
   agreementDocumentPath?: string;
 }
 
+const BLOCKER_PROFILE_COLUMNS = `
+  id,
+  user_id,
+  national_id,
+  operating_location_id,
+  verification_code,
+  status,
+  agreement_document_path,
+  rejection_reason,
+  reviewed_by,
+  reviewed_at,
+  approved_at,
+  created_at,
+  updated_at
+`;
+
 export class BlockerRepository {
-  async findByUserId(userId: string) {
+  async findByUserId(userId: string, executor: QueryExecutor = db) {
     const result = await db.query(
       `
-            SELECT
-                id,
-                user_id,
-                national_id,
-                operating_location_id,
-                verification_code,
-                status,
-                agreement_document_path,
-                rejection_reason,
-                reviewed_by,
-                reviewed_at,
-                approved_at,
-                created_at,
-                updated_at
+            SELECT ${BLOCKER_PROFILE_COLUMNS}
             FROM blocker_profiles
             WHERE user_id = $1
             `,
@@ -34,7 +39,7 @@ export class BlockerRepository {
     return result.rows[0] ?? null;
   }
 
-  async create(input: CreateBlockerProfileInput) {
+  async create(input: CreateBlockerProfileInput, executor: QueryExecutor = db) {
     const result = await db.query(
       `
             INSERT INTO blocker_profiles (
@@ -42,21 +47,8 @@ export class BlockerRepository {
                 national_id,
                 operating_location_id,
                 agreement_document_path
-            ) VALUES ($1, $2, $3, $4, $5)
-            RETURNING 
-                id,
-                user_id,
-                national_id,
-                operating_location_id,
-                verification_code,
-                status,
-                agreement_document_path,
-                rejection_reason,
-                reviewed_by,
-                reviewed_at,
-                approved_at,
-                created_at,
-                updated_at
+            ) VALUES ($1, $2, $3, $4)
+            RETURNING ${BLOCKER_PROFILE_COLUMNS}
             `,
       [
         input.userId,
@@ -68,23 +60,10 @@ export class BlockerRepository {
     return result.rows[0];
   }
 
-  async findById(id: string) {
+  async findById(id: string, executor: QueryExecutor = db) {
     const result = await db.query(
       `
-            SELECT
-                id,
-                user_id,
-                national_id,
-                operating_location_id,
-                verification_code,
-                status,
-                agreement_document_path,
-                rejection_reason,
-                reviewed_by,
-                reviewed_at,
-                approved_at,
-                created_at,
-                updated_at
+            SELECT ${BLOCKER_PROFILE_COLUMNS}
             FROM blocker_profiles
             WHERE id = $1
             `,
@@ -93,7 +72,7 @@ export class BlockerRepository {
     return result.rows[0] ?? null;
   }
 
-  async findPending() {
+  async findPending(executor: QueryExecutor = db) {
     const result = await db.query(
       `
             SELECT
@@ -121,73 +100,53 @@ export class BlockerRepository {
     return result.rows;
   }
 
-  async updateApproval(
+  async approve(
     blockerId: string,
     reviewedBy: string,
-    verificationCode: string,
+    executor: QueryExecutor = db,
   ) {
     const result = await db.query(
       `
             UPDATE blocker_profiles
             SET
                 status = 'APPROVED',
-                verification_code = $1,
-                reviewed_by = $2,
+                reviewed_by = $1,
                 reviewed_at = NOW(),
                 approved_at = NOW(),
                 rejection_reason = NULL,
                 updated_at = NOW()
-            WHERE id = $3
+            WHERE id = $2
               AND status = 'PENDING'
-            RETURNING
-                id,
-                user_id,
-                national_id,
-                operating_location_id,
-                verification_code,
-                status,
-                agreement_document_path,
-                rejection_reason,
-                reviewed_by,
-                reviewed_at,
-                approved_at,
-                created_at,
-                updated_at
+            RETURNING ${BLOCKER_PROFILE_COLUMNS}
             `,
-      [verificationCode, reviewedBy, blockerId],
+      [reviewedBy, blockerId],
     );
 
     return result.rows[0] ?? null;
   }
 
-  async reject(blockerId: string, reviewedBy: string, rejectionReason: string) {
+  async reject(
+    blockerId: string,
+    reviewedBy: string,
+    rejectionReason: string,
+    executor: QueryExecutor = db,
+  ) {
     const result = await db.query(
       `
-     UPDATE blocker_profiles
-     SET
-     status = 'REJECTED',
-     rejection_reason = $1,
-     reviewed_by = $2,
-     reviewed_at = NOW(),
-     updated_at = NOW()
-     WHERE id = $3
-     AND status = 'PENDING'
-     RETURNING
-     id,
-     user_id,
-     national_id,
-     operating_location_id,
-     verification_code,
-     status,
-     agreement_document_path,
-     rejection_reason,
-     reviewed_by,
-     reviewed_at,
-     approved_at,
-     created_at,
-     updated_at  
+            UPDATE blocker_profiles
+            SET
+              status = 'REJECTED',
+              rejection_reason = $1,
+              reviewed_by = $2,
+              reviewed_at = NOW(),
+              updated_at = NOW()
+            WHERE id = $3
+            AND status = 'PENDING'
+            RETURNING ${BLOCKER_PROFILE_COLUMNS}
       `,
-      [rejectionReason, reviewedBy, blockerId]
+      [rejectionReason, reviewedBy, blockerId],
     );
+
+    return result.rows[0] ?? null;
   }
 }
