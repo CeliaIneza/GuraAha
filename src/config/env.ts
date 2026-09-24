@@ -10,7 +10,11 @@ const envSchema = z.object({
 
     DATABASE_URL: z.string().min(1),
 
-    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters')
+    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+
+    JWT_EXPIRES_IN: z.string().min(1),
+
+    ADMIN_SETUP_SECRET: z.string().min(3)
 });
 
 const parsed = envSchema.safeParse(process.env);

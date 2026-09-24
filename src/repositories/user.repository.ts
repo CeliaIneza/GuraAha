@@ -74,12 +74,11 @@ export class UserRepository {
         INNER JOIN roles r ON r.id = u.role_id
         WHERE u.phone = $1
       `,
-      [phone]
+      [phone],
     );
 
     return result.rows[0] ?? null;
   }
-
 
   async findByEmail(email: string, executor: QueryExecutor = db) {
     const result = await executor.query(
@@ -102,12 +101,11 @@ export class UserRepository {
         INNER JOIN roles r ON r.id = u.role_id
         WHERE u.email = $1
       `,
-      [email]
+      [email],
     );
 
     return result.rows[0] ?? null;
   }
-
 
   async findRoleByName(roleName: string, executor: QueryExecutor = db) {
     const result = await db.query(
@@ -119,7 +117,6 @@ export class UserRepository {
     );
     return result.rows[0]?.id ?? null;
   }
-
 
   async create(input: CreateUserInput, executor: QueryExecutor = db) {
     const result = await executor.query(
@@ -140,8 +137,8 @@ export class UserRepository {
         input.email ?? null,
         input.passwordHash,
         input.firstName,
-        input.lastName
-      ]
+        input.lastName,
+      ],
     );
 
     return result.rows[0];
@@ -153,13 +150,13 @@ export class UserRepository {
     executor: QueryExecutor = db,
   ) {
     const result = await executor.query(
-        `
+      `
             UPDATE users
             SET role_id = $1, updated_at = NOW()
             WHERE id = $2
             RETURNING id, role_id
         `,
-        [roleId, userId]
+      [roleId, userId],
     );
 
     return result.rows[0] ?? null;
