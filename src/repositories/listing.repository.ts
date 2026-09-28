@@ -25,7 +25,7 @@ export interface CreateListingInput {
 export interface ListingFilters {
     villageId?: string;
     type?: string;
-    limit: string;
+    limit: number;
     offset: number;
 }
 
