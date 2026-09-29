@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --green: #007A66;
+  --green-dark: #00614F;
+  --ink: #0F2C26;
+  --ink-soft: #43584c;
+  --earth: #9C7C3C;
+  --bg: #ffffff;
+  --bg-soft: #F2F7F5;
+  --line: #DCE7E1;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-custom {
+  animation: spin 1s linear infinite;
+}
+
+/* Custom scrollbars and styling tweaks */
+body {
+  margin: 0;
+  font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
