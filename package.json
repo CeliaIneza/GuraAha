@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "nodemon dist/server.ts",
     "migrate": "tsx src/migrate.ts",
-    "seedlocations": "tsx src/scripts/seed-locations.ts"
+    "seedlocations": "tsx src/scripts/seed-locations.ts",
+    "generateopenapi": "tsx src/scripts/generate-openapi.ts"
   },
   "repository": {
     "type": "git",
