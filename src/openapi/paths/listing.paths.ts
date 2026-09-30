@@ -12,7 +12,6 @@ import {
 import {
     createListingSchema,
     rejectListingSchema,
-    addListingPhotoSchema,
 } from '../../validators/listing.validator';
 
 const listingQuerySchema = z.object({
@@ -106,23 +105,28 @@ registry.registerPath({
     },
 });
 
+const addPhotoMultipartSchema = z.object({
+    photo: z.string().openapi({ type: 'string', format: 'binary' }),
+    sortOrder: z.coerce.number().int().min(0).optional(),
+});
+
 registry.registerPath({
     method: 'post',
     path: '/listings/{id}/photos',
     tags: ['Listings'],
     security: bearerAuthSecurity,
-    description: 'filePath assumes a file has already been uploaded elsewhere — this endpoint only records the path.',
+    description: 'multipart/form-data upload — field name "photo". Allowed types: JPEG, PNG, WebP. Max 5MB.',
     request: {
         params: idParamSchema,
-        body: { content: { 'application/json': { schema: addListingPhotoSchema } } },
+        body: { content: { 'multipart/form-data': { schema: addPhotoMultipartSchema } } },
     },
     responses: {
         201: {
-            description: 'Photo record created',
+            description: 'Photo uploaded and recorded',
             content: { 'application/json': { schema: dataResponseSchema() } },
         },
         400: {
-            description: 'Listing not found, or caller does not own it',
+            description: 'No file provided, wrong file type, file too large, listing not found, or caller does not own it',
             content: { 'application/json': { schema: errorResponseSchema } },
         },
         401: unauthorizedResponse,

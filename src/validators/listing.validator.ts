@@ -32,7 +32,6 @@ export const rejectListingSchema = z.object({
 export type RejectListingInput = z.infer<typeof rejectListingSchema>;
 
 export const addListingPhotoSchema = z.object({
-    filePath: z.string().min(1),
     sortOrder: z.number().int().min(0).optional(),
 });
 

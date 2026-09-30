@@ -16,6 +16,7 @@ import {
     rejectListingSchema,
     addListingPhotoSchema,
 } from '../validators/listing.validator.js';
+import { createImageUploader } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -23,6 +24,8 @@ const listingRepository = new ListingRepository();
 const listingPhotoRepository = new ListingPhotoRepository();
 const blockerRepository = new BlockerRepository();
 const locationRepository = new LocationRepository();
+
+const listingPhotoUploader = createImageUploader('listings');
 
 const listingService = new ListingService(
     listingRepository,

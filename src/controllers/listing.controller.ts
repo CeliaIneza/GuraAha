@@ -16,6 +16,11 @@ export class ListingController {
 
   getById = async (req: Request, res: Response) => {
     try {
+      const listing = await this.listingService.getById(
+        req.params.id,
+        req.user,
+      );
+      return res.status(200).json({ data: listing });
     } catch (error) {
       return res.status(404).json({
         message: error instanceof Error ? error.message : "Listing not found",
@@ -39,6 +44,8 @@ export class ListingController {
 
   getPending = async (_req: Request, res: Response) => {
     try {
+      const listings = await this.listingService.getPendingForAdmin();
+      return res.status(200).json({ data: listings });
     } catch (error) {
       return res.status(500).json({
         message:
@@ -51,6 +58,14 @@ export class ListingController {
 
   getApproved = async (req: Request, res: Response) => {
     try {
+      const { villageId, type, page, pageSize } = req.query;
+      const listings = await this.listingService.getApproved({
+        villageId: typeof villageId === "string" ? villageId : undefined,
+        type: typeof type === "string" ? type : undefined,
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      });
+      return res.status(200).json({ data: listings });
     } catch (error) {
       return res.status(500).json({
         message:

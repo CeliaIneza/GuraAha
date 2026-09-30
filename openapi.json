@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "/"
+      "url": "http://localhost:3000/api/v1"
     }
   ],
   "components": {
@@ -1280,7 +1280,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "filePath assumes a file has already been uploaded elsewhere — this endpoint only records the path.",
+        "description": "multipart/form-data upload — field name \"photo\". Allowed types: JPEG, PNG, WebP. Max 5MB.",
         "parameters": [
           {
             "schema": {
@@ -1294,21 +1294,22 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "filePath": {
+                  "photo": {
                     "type": "string",
-                    "minLength": 1
+                    "format": "binary"
                   },
                   "sortOrder": {
                     "type": "integer",
+                    "nullable": true,
                     "minimum": 0
                   }
                 },
                 "required": [
-                  "filePath"
+                  "photo"
                 ]
               }
             }
@@ -1316,7 +1317,7 @@
         },
         "responses": {
           "201": {
-            "description": "Photo record created",
+            "description": "Photo uploaded and recorded",
             "content": {
               "application/json": {
                 "schema": {
@@ -1334,7 +1335,7 @@
             }
           },
           "400": {
-            "description": "Listing not found, or caller does not own it",
+            "description": "No file provided, wrong file type, file too large, listing not found, or caller does not own it",
             "content": {
               "application/json": {
                 "schema": {
