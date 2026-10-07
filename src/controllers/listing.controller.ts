@@ -6,6 +6,11 @@ export class ListingController {
 
   create = async (req: Request, res: Response) => {
     try {
+      const listing = await this.listingService.create(req.user.id, req.body);
+      return res.status(201).json({
+        message: "Listing submitted successfully",
+        data: listing,
+      });
     } catch (error) {
       return res.status(400).json({
         message:
