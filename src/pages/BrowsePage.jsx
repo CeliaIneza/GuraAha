@@ -152,7 +152,7 @@ export const BrowsePage = () => {
             <h2 className="text-2xl font-bold text-brand-ink">
               Browse listings{' '}
               <span className="text-sm font-medium text-brand-ink-soft">
-                — {filteredListings.length} results
+               {filteredListings.length} results
               </span>
             </h2>
           </div>

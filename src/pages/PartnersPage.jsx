@@ -18,7 +18,7 @@ export const PartnersPage = () => {
         <div>
           <h2 className="text-3xl font-bold text-brand-ink mb-2">Certified partners directory</h2>
           <p className="text-brand-ink-soft text-base">
-            Licensed surveyors, notaries and engineers — filtered by your district
+            Licensed surveyors, notaries and engineers filtered by your district
           </p>
         </div>
 

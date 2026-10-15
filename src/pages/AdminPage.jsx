@@ -40,11 +40,11 @@ export const AdminPage = () => {
 
   const handleApproveListing = (id) => {
     approveListing(id);
-    showToast('✅ Property listing approved — now published live on public site!');
+    showToast('✅ Property listing approved now published live on public site!');
   };
 
   const handleRejectListing = (id) => {
-    const reason = prompt('Rejection reason (sent to blocker):', 'Photos unclear — please re-upload clear images');
+    const reason = prompt('Rejection reason (sent to blocker):', 'Photos unclear please re-upload clear images');
     if (reason) {
       rejectListing(id, reason);
       showToast(`❌ Listing rejected. Blocker notified: "${reason}"`);
@@ -109,7 +109,7 @@ export const AdminPage = () => {
 
         {/* OVERVIEW SECTION */}
         <section id="overview">
-          <h2 className="text-2xl font-bold text-brand-ink mb-4">Overview — this month</h2>
+          <h2 className="text-2xl font-bold text-brand-ink mb-4">Overview this month</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white border border-brand-line rounded-xl p-5 shadow-sm">
               <b className="text-3xl font-extrabold text-brand-ink block mb-0.5">1,248</b>

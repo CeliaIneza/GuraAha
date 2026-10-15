@@ -11,9 +11,6 @@ export const Header = () => {
 
   return (
     <>
-      <div className="bg-amber-100 text-amber-800 text-xs sm:text-sm py-1.5 px-4 text-center font-medium border-b border-amber-200">
-        🔧 Clickable prototype — all data is simulated. Built to demonstrate GuraAha's functionality before development.
-      </div>
       <header className="sticky top-0 z-50 bg-white border-b border-brand-line shadow-sm px-4 sm:px-8 py-3 flex items-center justify-between gap-4 flex-wrap">
         <Link to="/" className="flex items-center gap-2.5 text-brand-ink no-underline group">
           <svg className="h-10 sm:h-12 w-auto transition-transform group-hover:scale-105" viewBox="60 0 400 460" xmlns="http://www.w3.org/2000/svg">

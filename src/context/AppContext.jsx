@@ -133,7 +133,7 @@ export const AppProvider = ({ children }) => {
     };
     setListingQueue((prev) => [
       ...prev,
-      { id: `lq_${newId}`, property: `${newListing.title} — ${newListing.dist}`, blocker: 'Habimana J. (K7X2PM)', doc: 'upi_cert.pdf' }
+      { id: `lq_${newId}`, property: `${newListing.title} - ${newListing.dist}`, blocker: 'Habimana J. (K7X2PM)', doc: 'upi_cert.pdf' }
     ]);
     return newListing;
   };

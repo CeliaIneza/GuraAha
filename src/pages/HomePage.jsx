@@ -188,7 +188,7 @@ export const HomePage = () => {
             <div>
               <h3 className="text-xl font-bold text-white mb-1">Monthly GuraAha Lotto</h3>
               <p className="text-sm opacity-90 leading-relaxed">
-                Every contact unlock = one free entry. This month's prize: <b className="text-brand-gold">250,000 RWF</b> — drawn live on the 30th.
+                Every contact unlock = one free entry. This month's prize: <b className="text-brand-gold">250,000 RWF</b> drawn live on the 30th.
               </p>
             </div>
           </div>
@@ -199,7 +199,7 @@ export const HomePage = () => {
             <div>
               <h3 className="text-lg font-bold text-[#8B6F2E] mb-1">No smartphone? No problem.</h3>
               <p className="text-sm text-brand-ink-soft leading-relaxed">
-                District representatives and nearby blockers assist buyers and sellers without smartphones — by phone call or in person. GuraAha works for everyone.
+                District representatives and nearby blockers assist buyers and sellers without smartphones by phone call or in person. GuraAha works for everyone.
               </p>
             </div>
           </div>

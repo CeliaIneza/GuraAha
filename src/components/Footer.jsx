@@ -8,7 +8,7 @@ export const Footer = () => {
     <footer className="bg-brand-bg-soft border-t border-brand-line py-8 mt-16 text-sm text-brand-ink-soft">
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
         <div>
-          <span className="font-semibold text-brand-ink">© 2026 GuraAha</span> — Land &amp; homes across Rwanda
+          <span className="font-semibold text-brand-ink">© 2026 GuraAha</span> Land &amp; homes across Rwanda
         </div>
         <div className="flex items-center gap-3">
           <span>Prototype v2</span>

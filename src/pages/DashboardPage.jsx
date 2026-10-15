@@ -137,7 +137,7 @@ export const DashboardPage = () => {
               <div className="bg-white border-2 border-brand-green rounded-xl p-5 shadow-sm">
                 <b className="text-2xl font-bold text-brand-green-dark block mb-0.5">Active</b>
                 <span className="text-xs text-brand-ink-soft">
-                  Blocker Pro · Monthly — renews in 22 days
+                  Blocker Pro · Monthly renews in 22 days
                 </span>
               </div>
             </div>
@@ -219,8 +219,8 @@ export const DashboardPage = () => {
                   >
                     <option value="plot">Plot</option>
                     <option value="land">Land</option>
-                    <option value="house">House — finished</option>
-                    <option value="house-under">House — under construction</option>
+                    <option value="house">House finished</option>
+                    <option value="house-under">House under construction</option>
                   </select>
                 </div>
               </div>

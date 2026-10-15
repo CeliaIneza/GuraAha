@@ -121,7 +121,7 @@ export const initialListings = [
   },
   {
     id: 5,
-    title: "Commercial corner plot — CBD edge",
+    title: "Commercial corner plot - CBD edge",
     type: "plot",
     price: 145000000,
     size: "1,200 m²",
@@ -138,7 +138,7 @@ export const initialListings = [
     ic: "🏢",
     vip: false,
     status: "approved",
-    desc: "Corner plot zoned commercial at the CBD edge — suitable for mixed-use development."
+    desc: "Corner plot zoned commercial at the CBD edge suitable for mixed-use development."
   },
   {
     id: 6,
@@ -159,11 +159,11 @@ export const initialListings = [
     ic: "🧱",
     vip: false,
     status: "approved",
-    desc: "Roofed structure on titled land near Huye campus — finish it your way. Price reflects remaining works."
+    desc: "Roofed structure on titled land near Huye campus - finish it your way. Price reflects remaining works."
   },
   {
     id: 7,
-    title: "Auction opportunity — warehouse plot",
+    title: "Auction opportunity - warehouse plot",
     type: "plot",
     price: 88000000,
     size: "2,400 m²",
@@ -180,7 +180,7 @@ export const initialListings = [
     ic: "🏗️",
     vip: false,
     status: "approved",
-    desc: "Below-market industrial plot from a judicial auction (Cyamunara) — documentation verified."
+    desc: "Below-market industrial plot from a judicial auction (Cyamunara) documentation verified."
   },
   {
     id: 8,
@@ -211,8 +211,8 @@ export const initialBlockerQueue = [
 ];
 
 export const initialListingQueue = [
-  { id: 'lq1', property: 'Farm land 2 ha — Musanze', blocker: 'Habimana J. (K7X2PM)', doc: 'title_scan.pdf' },
-  { id: 'lq2', property: 'Commercial plot — Nyarugenge', blocker: 'Uwera A. (M3Q8RT)', doc: 'upi_cert.pdf' }
+  { id: 'lq1', property: 'Farm land 2 ha Musanze', blocker: 'Habimana J. (K7X2PM)', doc: 'title_scan.pdf' },
+  { id: 'lq2', property: 'Commercial plot Nyarugenge', blocker: 'Uwera A. (M3Q8RT)', doc: 'upi_cert.pdf' }
 ];
 
 export const certifiedPartners = [
@@ -230,7 +230,7 @@ export const i18n = {
     nav_partners: "Partners",
     nav_blocker: "Become a Blocker",
     hero_title: "Find land. Find home. Guraaha!",
-    hero_sub: "Verified plots, land and houses across every province, district and sector of Rwanda — posted by approved local agents.",
+    hero_sub: "Verified plots, land and houses across every province, district and sector of Rwanda posted by approved local agents.",
     search: "Search",
     st1: "Listings",
     st2: "Verified blockers",
@@ -240,9 +240,9 @@ export const i18n = {
     h1t: "Search by location",
     h1p: "Drill down Province → District → Sector → Cell → Village to find land where you want it.",
     h2t: "View full details",
-    h2p: "Photos, size, UPI number, price and the neighbourhood's investment highlights — all free.",
+    h2p: "Photos, size, UPI number, price and the neighbourhood's investment highlights all free.",
     h3t: "Unlock contact via MoMo",
-    h3p: "Pay 100 RWF for the agent's number or 200 RWF for the owner's — instantly by mobile money.",
+    h3p: "Pay 100 RWF for the agent's number or 200 RWF for the owner's instantly by mobile money.",
     h4t: "Meet & buy safely",
     h4p: "Every agent is identity-verified with a unique code. Certified surveyors & notaries in our directory."
   },
@@ -253,7 +253,7 @@ export const i18n = {
     nav_partners: "Abafatanyabikorwa",
     nav_blocker: "Ba Umukommissiyoneri",
     hero_title: "Shaka ubutaka. Shaka inzu. Guraaha!",
-    hero_sub: "Ubutaka n'amazu byemejwe mu ntara zose, uturere n'imirenge y'u Rwanda — bitangazwa n'abakommissiyoneri bemewe.",
+    hero_sub: "Ubutaka n'amazu byemejwe mu ntara zose, uturere n'imirenge y'u Rwanda bitangazwa n'abakommissiyoneri bemewe.",
     search: "Shakisha",
     st1: "Amatangazo",
     st2: "Abakommissiyoneri bemewe",
@@ -263,9 +263,9 @@ export const i18n = {
     h1t: "Shakisha aho biherereye",
     h1p: "Reba Intara → Akarere → Umurenge → Akagari → Umudugudu ushake ubutaka aho ubyifuza.",
     h2t: "Reba amakuru yose",
-    h2p: "Amafoto, ingano, nimero ya UPI, igiciro n'amahirwe y'ishoramari — byose ku buntu.",
+    h2p: "Amafoto, ingano, nimero ya UPI, igiciro n'amahirwe y'ishoramari byose ku buntu.",
     h3t: "Fungura nimero ukoresheje MoMo",
-    h3p: "Ishyura 100 RWF ubone nimero y'umukommissiyoneri cyane 200 RWF ubone iy'nyirabyo — kuri MoMo.",
+    h3p: "Ishyura 100 RWF ubone nimero y'umukommissiyoneri cyane 200 RWF ubone iy'nyirabyo kuri MoMo.",
     h4t: "Huza kandi ugure utekanye",
     h4p: "Buri mukommissiyoneri ari ku rutonde ku kode yihariye. Aba-noteri n'abapima ubutaka bemewe."
   },
@@ -276,7 +276,7 @@ export const i18n = {
     nav_partners: "Partenaires",
     nav_blocker: "Devenir agent",
     hero_title: "Trouvez un terrain. Trouvez une maison. Guraaha!",
-    hero_sub: "Parcelles, terrains et maisons vérifiés dans chaque province, district et secteur du Rwanda — publiés par des agents agréés.",
+    hero_sub: "Parcelles, terrains et maisons vérifiés dans chaque province, district et secteur du Rwanda publiés par des agents agréés.",
     search: "Rechercher",
     st1: "Annonces",
     st2: "Agents vérifiés",
@@ -286,7 +286,7 @@ export const i18n = {
     h1t: "Recherche par lieu",
     h1p: "Parcourez Province → District → Secteur → Cellule → Village pour trouver des biens.",
     h2t: "Voir tous les détails",
-    h2p: "Photos, superficie, numéro UPI, prix et points forts du quartier — gratuitement.",
+    h2p: "Photos, superficie, numéro UPI, prix et points forts du quartier gratuitement.",
     h3t: "Débloquer le contact via MoMo",
     h3p: "Payez 100 RWF pour le numéro de l'agent ou 200 RWF pour celui du propriétaire par MoMo.",
     h4t: "Rencontrez et achetez en confiance",

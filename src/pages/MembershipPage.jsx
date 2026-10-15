@@ -23,7 +23,7 @@ export const MembershipPage = () => {
       <div className="text-center max-w-2xl mx-auto mb-10">
         <h2 className="text-3xl font-bold text-brand-ink mb-3">Membership plans</h2>
         <p className="text-brand-ink-soft text-base leading-relaxed">
-          Pay by the week or by the month — whatever fits your cash flow. All payments by MTN MoMo or Airtel Money.
+          Pay by the week or by the month whatever fits your cash flow. All payments by MTN MoMo or Airtel Money.
         </p>
 
         {/* TOGGLE BUTTONS */}
@@ -141,7 +141,7 @@ export const MembershipPage = () => {
       </div>
 
       <div className="mt-10 p-4 bg-brand-bg-soft rounded-xl border border-brand-line text-xs text-brand-ink-soft max-w-4xl mx-auto text-center">
-        All plan prices live in the admin settings table — weekly and monthly rates are editable without code, so the business can test pricing freely.
+        All plan prices live in the admin settings table weekly and monthly rates are editable without code, so the business can test pricing freely.
       </div>
     </div>
   );
