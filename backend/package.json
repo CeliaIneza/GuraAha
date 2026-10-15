@@ -1,0 +1,55 @@
+{
+  "name": "guraaha",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "migrate": "tsx src/migrate.ts",
+    "seedlocations": "tsx src/scripts/seed-locations.ts",
+    "generateopenapi": "tsx src/scripts/generate-openapi.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CeliaIneza/GuraAha.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CeliaIneza/GuraAha/issues"
+  },
+  "homepage": "https://github.com/CeliaIneza/GuraAha#readme",
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/multer": "^2.3.0",
+    "@types/swagger-ui-express": "^4.1.8",
+    "argon2": "^0.45.1",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
+    "pg": "^8.23.0",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.0",
+    "@types/pg": "^8.23.1",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "argon2@0.45.1": true,
+    "bcrypt@6.0.0": true,
+    "esbuild@0.28.2": true
+  }
+}
