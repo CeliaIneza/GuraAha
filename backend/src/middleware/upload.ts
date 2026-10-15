@@ -3,8 +3,6 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import multer, { MulterError } from "multer";
 import { Request, Response, NextFunction, RequestHandler } from "express";
-import { _file } from "zod/v4/core";
-
 export const UPLOAD_ROOT = path.resolve(__dirname, "../../uploads");
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;

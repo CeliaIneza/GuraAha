@@ -115,9 +115,12 @@ export class BlockerService {
         try {
             await client.query('BEGIN');
 
+            const verificationCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+
             const updatedProfile = await this.blockerRepository.approve(
                 blockerId,
                 adminId,
+                verificationCode,
                 client
             );
 

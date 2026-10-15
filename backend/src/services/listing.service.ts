@@ -46,7 +46,7 @@ export class ListingService {
             }
         }
 
-        return this.listingRepository.create({
+        const created = await this.listingRepository.create({
             blockerId: blockerProfile.id,
             villageId: input.villageId,
             type: input.type,
@@ -61,14 +61,19 @@ export class ListingService {
             sizeUnit: input.sizeUnit,
             upiNumber: input.upiNumber,
             ownerName: input.ownerName,
-            ownerPhone: input.ownerName,
+            ownerPhone: input.ownerPhone,
             ownershipDocumentPath: input.ownershipDocumentPath
         });
+
+        return this.presentListing(
+            await this.listingRepository.findByIdWithContext(created.id),
+            { includeSensitive: true }
+        );
     }
 
 
     async getById(listingId: string, requestingUser?: RequestingUser) {
-        const listing = await this.listingRepository.findByIdWithOwner(listingId);
+        const listing = await this.listingRepository.findByIdWithContext(listingId);
 
         if(!listing) {
             throw new Error('Listing not found');
@@ -82,7 +87,7 @@ export class ListingService {
             throw new Error('Listing not found');
         }
 
-        return listing;
+        return this.presentListing(listing, { includeSensitive: Boolean(isOwner || isAdmin) });
     }
 
 
@@ -93,25 +98,38 @@ export class ListingService {
             throw new Error('No blocker profile found for this user');
         }
 
-        return this.listingRepository.findByBlockerId(blockerProfile.id);
+        const listings = await this.listingRepository.findByBlockerId(blockerProfile.id);
+        return listings.map((listing) => this.presentListing(listing, { includeSensitive: true }));
     }
 
 
     async getPendingForAdmin() {
-        return this.listingRepository.findPending();
+        const listings = await this.listingRepository.findPending();
+        return listings.map((listing) => this.presentListing(listing, { includeSensitive: true }));
     }
 
 
-    async getApproved(filters: { villageId?: string; type?: string; page?: number; pageSize?: number }) {
+    async getApproved(filters: {
+        locationId?: string;
+        villageId?: string;
+        type?: string;
+        maxPriceRwf?: number;
+        page?: number;
+        pageSize?: number;
+    }) {
         const pageSize = Math.min(Math.max(filters.pageSize ?? 20, 1), 100);
         const page = Math.max(filters.page ?? 1, 1);
 
-        return this.listingRepository.findApproved({
+        const listings = await this.listingRepository.findApproved({
+            locationId: filters.locationId,
             villageId: filters.villageId,
             type: filters.type,
+            maxPriceRwf: filters.maxPriceRwf,
             limit: pageSize,
             offset: (page - 1) * pageSize,
         });
+
+        return listings.map((listing) => this.presentListing(listing, { includeSensitive: false }));
     }
 
 
@@ -126,7 +144,11 @@ export class ListingService {
             throw new Error('Only pending listings can be approved');
         }
 
-        return this.listingRepository.approve(listingId, adminId);
+        await this.listingRepository.approve(listingId, adminId);
+        return this.presentListing(
+            await this.listingRepository.findByIdWithContext(listingId),
+            { includeSensitive: true }
+        );
     }
 
 
@@ -141,7 +163,11 @@ export class ListingService {
       throw new Error('Only pending listings can be rejected');
     }
  
-    return this.listingRepository.reject(listingId, adminId, rejectionReason);
+    await this.listingRepository.reject(listingId, adminId, rejectionReason);
+    return this.presentListing(
+      await this.listingRepository.findByIdWithContext(listingId),
+      { includeSensitive: true }
+    );
   }
  
   async addPhoto(listingId: string, userId: string, filePath: string, sortOrder?: number) {
@@ -159,7 +185,14 @@ export class ListingService {
   }
  
   async getPhotos(listingId: string) {
-    return this.listingPhotoRepository.findByListingId(listingId);
+    const photos = await this.listingPhotoRepository.findByListingId(listingId);
+    return photos.map((photo) => ({
+      id: photo.id,
+      listingId: photo.listing_id,
+      filePath: photo.file_path,
+      sortOrder: photo.sort_order,
+      createdAt: photo.created_at,
+    }));
   }
  
   async removePhoto(photoId: string, userId: string) {
@@ -176,5 +209,57 @@ export class ListingService {
     }
  
     return this.listingPhotoRepository.deleteById(photoId);
+  }
+
+  private presentListing(
+    listing: Record<string, unknown> | null,
+    options: { includeSensitive: boolean }
+  ) {
+    if (!listing) {
+      return listing;
+    }
+
+    const presented: Record<string, unknown> = {
+      id: listing.id,
+      blockerId: listing.blocker_id,
+      villageId: listing.village_id,
+      type: listing.type,
+      titleRw: listing.title_rw,
+      titleEn: listing.title_en,
+      titleFr: listing.title_fr,
+      descriptionRw: listing.description_rw,
+      descriptionEn: listing.description_en,
+      descriptionFr: listing.description_fr,
+      priceRwf: listing.price_rwf === null ? null : Number(listing.price_rwf),
+      sizeValue: listing.size_value === null ? null : Number(listing.size_value),
+      sizeUnit: listing.size_unit,
+      upiNumber: listing.upi_number,
+      status: listing.status,
+      rejectionReason: listing.rejection_reason,
+      createdAt: listing.created_at,
+      updatedAt: listing.updated_at,
+      coverPhotoPath: listing.cover_photo_path ?? null,
+      location: {
+        villageId: listing.village_id,
+        village: listing.village_name,
+        cell: listing.cell_name,
+        sector: listing.sector_name,
+        district: listing.district_name,
+        province: listing.province_name,
+      },
+      blocker: {
+        firstName: listing.blocker_first_name,
+        lastName: listing.blocker_last_name,
+        verificationCode: listing.blocker_code ?? null,
+      },
+    };
+
+    if (options.includeSensitive) {
+      presented.ownerName = listing.owner_name ?? null;
+      presented.ownerPhone = listing.owner_phone ?? null;
+      presented.ownershipDocumentPath = listing.ownership_document_path ?? null;
+    }
+
+    return presented;
   }
 }

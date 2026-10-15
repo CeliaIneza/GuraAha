@@ -13,7 +13,7 @@ export class BlockerController {
         try {
             const application =
                 await this.blockerService.apply(
-                    req.user.id,
+                    req.user!.id,
                     req.body
                 );
 
@@ -39,7 +39,7 @@ export class BlockerController {
         try {
             const application =
                 await this.blockerService.getApplicationByUserId(
-                    req.user.id
+                    req.user!.id
                 );
 
             return res.status(200).json({
@@ -84,7 +84,7 @@ export class BlockerController {
             const result =
                 await this.blockerService.approve(
                     req.params.id as string,
-                    req.user.id
+                    req.user!.id
                 );
 
             return res.status(200).json({
@@ -110,7 +110,7 @@ export class BlockerController {
             const result =
                 await this.blockerService.reject(
                     req.params.id as string,
-                    req.user.id,
+                    req.user!.id,
                     req.body.rejectionReason
                 );
 

@@ -23,7 +23,7 @@ export const MembershipPage = () => {
       <div className="text-center max-w-2xl mx-auto mb-10">
         <h2 className="text-3xl font-bold text-brand-ink mb-3">Membership plans</h2>
         <p className="text-brand-ink-soft text-base leading-relaxed">
-          Pay by the week or by the month whatever fits your cash flow. All payments by MTN MoMo or Airtel Money.
+          Pay by the week or by the month whatever fits your cash flow. Checkout is not live yet — payments are being built separately.
         </p>
 
         {/* TOGGLE BUTTONS */}

@@ -52,6 +52,17 @@ export class AuthController {
     }
   };
 
+  me = async (req: Request, res: Response) => {
+    try {
+      const result = await this.authService.me(req.user!.id);
+      return res.status(200).json({ data: result });
+    } catch (error) {
+      return res.status(401).json({
+        message: error instanceof Error ? error.message : "Not authenticated",
+      });
+    }
+  };
+
   logout = async (req: Request, res: Response) => {
     try {
       if (req.body.refreshToken) {

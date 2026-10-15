@@ -26,3 +26,22 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
         return res.status(401).json({ message: 'Invalid or expired token' });
     }
 }
+
+export function authenticateOptional(req: Request, res: Response, next: NextFunction) {
+    const header = req.headers.authorization;
+
+    if (!header || !header.startsWith('Bearer ')) {
+        return next();
+    }
+
+    const token = header.slice('Bearer '.length);
+
+    try {
+        const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
+        req.user = { id: payload.sub, role: payload.role };
+    } catch {
+        // Public routes still succeed without a valid token.
+    }
+
+    return next();
+}

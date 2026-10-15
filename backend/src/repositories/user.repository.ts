@@ -127,8 +127,9 @@ export class UserRepository {
             email,
             password_hash,
             first_name,
-            last_name
-        ) VALUES ($1, $2, $3, $4, $5, $6)
+            last_name,
+            phone_verified_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         RETURNING ${USER_COLUMNS_NO_HASH}
       `,
       [

@@ -1,322 +1,314 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { LayoutDashboard, PlusCircle, CreditCard, BarChart3, ArrowLeft, CheckCircle, Clock, AlertTriangle, Building2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { listingsApi } from '../api/listings';
+import { blockersApi } from '../api/blockers';
+import { LocationCascade } from '../components/LocationCascade';
+import { formatStatus, listingLocationLine, listingTitle } from '../utils/listing';
+import { LayoutDashboard, PlusCircle, ArrowLeft, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 
 export const DashboardPage = () => {
-  const { listings, addListing } = useApp();
+  const { user, syncRole } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('listings');
+  const [myListings, setMyListings] = useState([]);
+  const [application, setApplication] = useState(null);
+  const [error, setError] = useState('');
+  const [submittedMsg, setSubmittedMsg] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('listings'); // 'listings' | 'add'
+  const [form, setForm] = useState({
+    titleEn: '',
+    titleRw: '',
+    titleFr: '',
+    descriptionEn: '',
+    descriptionRw: '',
+    descriptionFr: '',
+    type: 'land',
+    priceRwf: '',
+    sizeValue: '',
+    sizeUnit: 'sqm',
+    villageId: '',
+    upiNumber: '',
+    ownerName: '',
+    ownerPhone: '',
+    photos: [],
+  });
 
-  // Add Listing Form state
-  const [title, setTitle] = useState('');
-  const [type, setType] = useState('plot');
-  const [price, setPrice] = useState('');
-  const [size, setSize] = useState('');
-  const [prov, setProv] = useState('Kigali City');
-  const [dist, setDist] = useState('Gasabo');
-  const [sect, setSect] = useState('Remera');
-  const [cell, setCell] = useState('Rukiri I');
-  const [vill, setVill] = useState('Amajyambere');
-  const [upi, setUpi] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [ownerPhone, setOwnerPhone] = useState('');
-  const [submittedMsg, setSubmittedMsg] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const appRes = await blockersApi.me().catch(() => ({ data: null }));
+        if (cancelled) return;
+        setApplication(appRes.data);
+        if (user.role === 'USER' && appRes.data?.status === 'APPROVED') {
+          await syncRole();
+          return;
+        }
+        if (user.role === 'BLOCKER') {
+          const { data } = await listingsApi.getMine();
+          if (!cancelled) setMyListings(data || []);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user.role, syncRole]);
 
-  const handleAddSubmit = (e) => {
+  const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    addListing({
-      title: title || 'Residential plot in Kigali',
-      type,
-      price: parseInt(price, 10) || 18500000,
-      size: size || '600 m²',
-      upi: upi || '1/02/09/04/999',
-      prov,
-      dist,
-      sect,
-      cell,
-      vill,
-      blocker: 'Habimana J. · K7X2PM',
-      desc: 'Beautiful property located in a high-growth residential corridor with full infrastructure access.'
-    });
-    setSubmittedMsg(true);
-    setTimeout(() => {
-      setSubmittedMsg(false);
+    setError('');
+    setSaving(true);
+    try {
+      const { data } = await listingsApi.create({
+        villageId: form.villageId,
+        type: form.type,
+        titleEn: form.titleEn || undefined,
+        titleRw: form.titleRw || undefined,
+        titleFr: form.titleFr || undefined,
+        descriptionEn: form.descriptionEn || undefined,
+        descriptionRw: form.descriptionRw || undefined,
+        descriptionFr: form.descriptionFr || undefined,
+        priceRwf: Number(form.priceRwf),
+        sizeValue: Number(form.sizeValue),
+        sizeUnit: form.sizeUnit,
+        upiNumber: form.upiNumber || undefined,
+        ownerName: form.ownerName || undefined,
+        ownerPhone: form.ownerPhone || undefined,
+      });
+
+      const files = Array.from(form.photos || []);
+      await Promise.all(files.map((file, index) => listingsApi.addPhoto(data.id, file, index)));
+
+      const { data: mine } = await listingsApi.getMine();
+      setMyListings(mine || []);
+      setSubmittedMsg('Listing submitted for admin approval.');
       setActiveTab('listings');
-    }, 2500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const myListings = listings.filter(l => l.blocker.includes('Habimana'));
+  if (user.role !== 'BLOCKER') {
+    return (
+      <div className="max-w-xl mx-auto px-6 py-16 text-center">
+        <h2 className="text-2xl font-bold mb-3">Blocker dashboard</h2>
+        <p className="text-brand-ink-soft mb-6">
+          {application?.status === 'PENDING'
+            ? 'Your blocker application is waiting for admin review.'
+            : application?.status === 'REJECTED'
+              ? 'Your application was rejected. Contact support or apply again if allowed.'
+              : 'You need an approved blocker profile before you can post listings.'}
+        </p>
+        <button onClick={() => navigate('/become-blocker')} className="py-2.5 px-6 bg-brand-green text-white rounded-xl font-semibold">
+          Become a blocker
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafcfa] flex flex-col md:flex-row">
-      {/* DASHBOARD SIDEBAR */}
       <aside className="w-full md:w-64 bg-[#0F2C26] text-[#CFE0D9] p-6 flex flex-col justify-between flex-shrink-0">
         <div>
           <div className="pb-5 border-b border-[#1E4038] mb-6">
-            <b className="text-white block text-base font-bold">Habimana Jean</b>
-            <span className="text-xs text-[#8FAF9F] flex items-center gap-1 mt-0.5">
-              Blocker · Code: <strong className="text-white">K7X2PM</strong> ✅
+            <b className="text-white block text-base font-bold">{user.firstName} {user.lastName}</b>
+            <span className="text-xs text-[#8FAF9F] mt-0.5 block">
+              Blocker · {application?.verification_code || application?.verificationCode || 'Approved'}
             </span>
           </div>
-
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab('listings')}
-              className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-left ${
-                activeTab === 'listings' ? 'bg-[#007A66] text-white font-semibold shadow-sm' : 'hover:bg-[#1A3D35] text-[#CFE0D9]'
+              className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-left ${
+                activeTab === 'listings' ? 'bg-[#007A66] text-white' : 'hover:bg-[#1A3D35]'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4" />
-              My listings
+              <LayoutDashboard className="w-4 h-4" /> My listings
             </button>
             <button
               onClick={() => setActiveTab('add')}
-              className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-left ${
-                activeTab === 'add' ? 'bg-[#007A66] text-white font-semibold shadow-sm' : 'hover:bg-[#1A3D35] text-[#CFE0D9]'
+              className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-left ${
+                activeTab === 'add' ? 'bg-[#007A66] text-white' : 'hover:bg-[#1A3D35]'
               }`}
             >
-              <PlusCircle className="w-4 h-4" />
-              Add listing
-            </button>
-            <button
-              onClick={() => navigate('/membership')}
-              className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium hover:bg-[#1A3D35] text-[#CFE0D9] text-left transition-colors"
-            >
-              <CreditCard className="w-4 h-4" />
-              Subscription
-            </button>
-            <button
-              onClick={() => alert('Leads feature: 23 contacts unlocked this month.')}
-              className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium hover:bg-[#1A3D35] text-[#CFE0D9] text-left transition-colors"
-            >
-              <BarChart3 className="w-4 h-4" />
-              My unlocks &amp; leads
+              <PlusCircle className="w-4 h-4" /> Add listing
             </button>
           </nav>
         </div>
-
-        <button
-          onClick={() => navigate('/')}
-          className="mt-8 flex items-center gap-2 text-xs font-semibold text-[#8FAF9F] hover:text-white transition-colors"
-        >
+        <button onClick={() => navigate('/')} className="mt-8 flex items-center gap-2 text-xs font-semibold text-[#8FAF9F] hover:text-white">
           <ArrowLeft className="w-4 h-4" /> Back to public site
         </button>
       </aside>
 
-      {/* DASHBOARD MAIN MAIN CONTENT */}
       <main className="flex-1 p-6 sm:p-10 overflow-y-auto">
+        {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 text-sm">{error}</div>}
+        {submittedMsg && <div className="mb-4 p-3 rounded-xl bg-emerald-50 text-emerald-800 text-sm">{submittedMsg}</div>}
+
         {activeTab === 'listings' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-brand-ink">My listings dashboard</h2>
-              <button
-                onClick={() => setActiveTab('add')}
-                className="py-2.5 px-4 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl text-sm transition-colors flex items-center gap-2 shadow-sm"
-              >
-                <PlusCircle className="w-4 h-4" />
-                Add New Property
+              <h2 className="text-2xl font-bold text-brand-ink">My listings</h2>
+              <button onClick={() => setActiveTab('add')} className="py-2.5 px-4 bg-brand-green text-white font-semibold rounded-xl text-sm flex items-center gap-2">
+                <PlusCircle className="w-4 h-4" /> Add New Property
               </button>
             </div>
 
-            {/* KPIS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white border border-brand-line rounded-xl p-5 shadow-sm">
-                <b className="text-2xl font-bold text-brand-ink block mb-0.5">{myListings.length}</b>
-                <span className="text-xs text-brand-ink-soft">Active listings</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              <div className="bg-white border border-brand-line rounded-xl p-5">
+                <b className="text-2xl font-bold block">{myListings.length}</b>
+                <span className="text-xs text-brand-ink-soft">Your listings</span>
               </div>
-              <div className="bg-white border border-brand-line rounded-xl p-5 shadow-sm">
-                <b className="text-2xl font-bold text-brand-ink block mb-0.5">134</b>
-                <span className="text-xs text-brand-ink-soft">Views this month</span>
-              </div>
-              <div className="bg-white border border-brand-line rounded-xl p-5 shadow-sm">
-                <b className="text-2xl font-bold text-brand-ink block mb-0.5">23</b>
-                <span className="text-xs text-brand-ink-soft">Contact unlocks earned</span>
-              </div>
-              <div className="bg-white border-2 border-brand-green rounded-xl p-5 shadow-sm">
-                <b className="text-2xl font-bold text-brand-green-dark block mb-0.5">Active</b>
-                <span className="text-xs text-brand-ink-soft">
-                  Blocker Pro · Monthly renews in 22 days
-                </span>
+              <div className="bg-white border border-brand-line rounded-xl p-5">
+                <b className="text-2xl font-bold block">{myListings.filter((l) => l.status === 'APPROVED').length}</b>
+                <span className="text-xs text-brand-ink-soft">Live on the site</span>
               </div>
             </div>
 
-            {/* TABLE */}
-            <div className="bg-white border border-brand-line rounded-xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-brand-bg-soft border-b border-brand-line text-xs font-semibold text-brand-ink-soft">
-                    <tr>
-                      <th className="py-3 px-4">Property</th>
-                      <th className="py-3 px-4">Location</th>
-                      <th className="py-3 px-4">Price (RWF)</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Unlocks</th>
+            <div className="bg-white border border-brand-line rounded-xl overflow-hidden">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-brand-bg-soft border-b border-brand-line text-xs font-semibold text-brand-ink-soft">
+                  <tr>
+                    <th className="py-3 px-4">Property</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Price (RWF)</th>
+                    <th className="py-3 px-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-brand-line">
+                  {myListings.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-3 px-4 font-semibold">{listingTitle(item)}</td>
+                      <td className="py-3 px-4 text-brand-ink-soft">{listingLocationLine(item)}</td>
+                      <td className="py-3 px-4 font-bold text-brand-green-dark">{Number(item.priceRwf || 0).toLocaleString()}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          item.status === 'APPROVED' ? 'bg-[#E4F1EC] text-brand-green-dark'
+                            : item.status === 'PENDING' ? 'bg-amber-100 text-amber-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {item.status === 'APPROVED' && <CheckCircle className="w-3 h-3" />}
+                          {item.status === 'PENDING' && <Clock className="w-3 h-3" />}
+                          {item.status === 'REJECTED' && <AlertTriangle className="w-3 h-3" />}
+                          {formatStatus(item.status)}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-brand-line text-brand-ink">
-                    {myListings.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="py-3 px-4 font-semibold">{item.title}</td>
-                        <td className="py-3 px-4 text-brand-ink-soft">{item.sect}, {item.dist}</td>
-                        <td className="py-3 px-4 font-bold text-brand-green-dark">{item.price.toLocaleString()}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                            item.status === 'approved'
-                              ? 'bg-[#E4F1EC] text-brand-green-dark'
-                              : item.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {item.status === 'approved' && <CheckCircle className="w-3 h-3" />}
-                            {item.status === 'pending' && <Clock className="w-3 h-3" />}
-                            {item.status === 'rejected' && <AlertTriangle className="w-3 h-3" />}
-                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold">9</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                  {myListings.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-brand-ink-soft">No listings yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
         {activeTab === 'add' && (
           <div className="max-w-3xl">
-            <h2 className="text-2xl font-bold text-brand-ink mb-6">Add listing (all fields)</h2>
-
-            {submittedMsg && (
-              <div className="mb-6 p-4 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-xl text-sm font-semibold flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-emerald-600" />
-                Listing saved as PENDING and submitted to the Admin approval queue!
+            <h2 className="text-2xl font-bold text-brand-ink mb-6">Add listing</h2>
+            <form onSubmit={handleAddSubmit} className="bg-white border border-brand-line rounded-xl p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Title (EN)</label>
+                  <input value={form.titleEn} onChange={update('titleEn')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Title (RW)</label>
+                  <input value={form.titleRw} onChange={update('titleRw')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Title (FR)</label>
+                  <input value={form.titleFr} onChange={update('titleFr')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
+                </div>
               </div>
-            )}
+              <p className="text-xs text-brand-ink-soft">At least one title language is required.</p>
 
-            <form onSubmit={handleAddSubmit} className="bg-white border border-brand-line rounded-xl p-6 shadow-sm space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Description (EN)</label>
+                <textarea value={form.descriptionEn} onChange={update('descriptionEn')} rows={3} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Title (RW / EN / FR)</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ubutaka bwiza i Remera…"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Description (RW)</label>
+                  <textarea value={form.descriptionRw} onChange={update('descriptionRw')} rows={3} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Description (FR)</label>
+                  <textarea value={form.descriptionFr} onChange={update('descriptionFr')} rows={3} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
+                </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Type</label>
-                  <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green bg-white"
-                  >
-                    <option value="plot">Plot</option>
+                  <select value={form.type} onChange={update('type')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm bg-white">
                     <option value="land">Land</option>
-                    <option value="house">House finished</option>
-                    <option value="house-under">House under construction</option>
+                    <option value="house">House</option>
                   </select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Price (RWF)</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="18500000"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Size (m²)</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="600 m²"
-                    value={size}
-                    onChange={(e) => setSize(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
+                  <input type="number" required value={form.priceRwf} onChange={update('priceRwf')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Village &amp; Location</label>
-                  <input
-                    type="text"
-                    placeholder="Rukiri I, Remera, Gasabo"
-                    value={`${vill}, ${sect}, ${dist}`}
-                    onChange={(e) => setVill(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Size</label>
+                  <input type="number" required value={form.sizeValue} onChange={update('sizeValue')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">UPI Number</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="1/02/09/04/432"
-                    value={upi}
-                    onChange={(e) => setUpi(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Size unit</label>
+                  <input value={form.sizeUnit} onChange={update('sizeUnit')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Photos (min 3)</label>
-                  <input type="file" multiple className="w-full text-xs text-brand-ink-soft file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-bg-soft file:text-brand-ink hover:file:bg-brand-line" />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink-soft mb-2">Village (required)</label>
+                <LocationCascade required deepest="village" onChange={({ locationId }) => setForm((prev) => ({ ...prev, villageId: locationId }))} />
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Ownership proof (admins only)</label>
-                  <input type="file" className="w-full text-xs text-brand-ink-soft file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-bg-soft file:text-brand-ink hover:file:bg-brand-line" />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink-soft mb-1">UPI Number</label>
+                <input value={form.upiNumber} onChange={update('upiNumber')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Photos</label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={(e) => setForm((prev) => ({ ...prev, photos: e.target.files }))}
+                  className="w-full text-xs"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-brand-line pt-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Owner name (hidden)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mukamana Alice"
-                    value={ownerName}
-                    onChange={(e) => setOwnerName(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
+                  <input value={form.ownerName} onChange={update('ownerName')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Owner phone (hidden · 200 RWF unlock)</label>
-                  <input
-                    type="text"
-                    placeholder="+250 722 xxx xxx"
-                    value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                    className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  />
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">Owner phone (hidden)</label>
+                  <input value={form.ownerPhone} onChange={update('ownerPhone')} className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm" />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl transition-colors text-sm shadow-md mt-4"
-              >
-                Submit for admin approval
+              <button type="submit" disabled={saving} className="w-full py-3 bg-brand-green text-white font-semibold rounded-xl disabled:opacity-60">
+                {saving ? 'Submitting…' : 'Submit for admin approval'}
               </button>
             </form>
           </div>

@@ -11,7 +11,7 @@ export const Footer = () => {
           <span className="font-semibold text-brand-ink">© 2026 GuraAha</span> Land &amp; homes across Rwanda
         </div>
         <div className="flex items-center gap-3">
-          <span>Prototype v2</span>
+          <span>GuraAha</span>
           <span>•</span>
           <div className="flex gap-2">
             <button

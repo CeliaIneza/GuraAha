@@ -7,16 +7,15 @@ import { LocationRepository } from '../repositories/location.repository.js';
 import { ListingService } from '../services/listing.service.js';
 import { ListingController } from '../controllers/listing.controller.js';
 
-import { authenticate } from '../middleware/authenticate.js';
+import { authenticate, authenticateOptional } from '../middleware/authenticate.js';
 import { requireRole, requireFreshRole } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 
 import {
     createListingSchema,
     rejectListingSchema,
-    addListingPhotoSchema,
 } from '../validators/listing.validator.js';
-import { createImageUploader } from '../middleware/upload.js';
+import { createImageUploader, handleUploadErrors } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -36,19 +35,7 @@ const listingService = new ListingService(
 
 const listingController = new ListingController(listingService);
 
-// PUBLIC
 router.get('/', listingController.getApproved);
-router.get('/:id/photos', listingController.getPhotos);
-router.get('/:id', listingController.getById);
-
-// BLOCKER
-router.post(
-    '/',
-    authenticate,
-    requireRole('BLOCKER'),
-    validate(createListingSchema),
-    listingController.create
-);
 
 router.get(
     '/me/mine',
@@ -57,11 +44,29 @@ router.get(
     listingController.getMine
 );
 
+router.get(
+    '/admin/pending',
+    authenticate,
+    requireRole('ADMIN'),
+    listingController.getPending
+);
+
+router.post(
+    '/',
+    authenticate,
+    requireRole('BLOCKER'),
+    validate(createListingSchema),
+    listingController.create
+);
+
+router.get('/:id/photos', listingController.getPhotos);
+router.get('/:id', authenticateOptional, listingController.getById);
+
 router.post(
     '/:id/photos',
     authenticate,
     requireRole('BLOCKER'),
-    validate(addListingPhotoSchema),
+    handleUploadErrors(listingPhotoUploader.single('photo')),
     listingController.addPhoto
 );
 
@@ -70,14 +75,6 @@ router.delete(
     authenticate,
     requireRole('BLOCKER'),
     listingController.removePhoto
-);
-
-// ADMIN
-router.get(
-    '/admin/pending',
-    authenticate,
-    requireRole('ADMIN'),
-    listingController.getPending
 );
 
 router.patch(

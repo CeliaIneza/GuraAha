@@ -65,4 +65,12 @@ export class AuthService {
         const tokens = await this.tokenService.issuePair(user.id, user.role);
         return { ... tokens, user: toAuthUserView(user, user.role) };
     }
+
+    async me(userId: string) {
+        const user = await this.userRepository.findById(userId);
+        if (!user || user.status !== 'ACTIVE') {
+            throw new Error('Account is no longer active');
+        }
+        return toAuthUserView(user, user.role);
+    }
 }

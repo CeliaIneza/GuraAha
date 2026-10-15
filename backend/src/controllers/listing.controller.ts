@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import { ListingService } from "../services/listing.service";
+import { toPublicUploadPath } from "../utils/uploadpath.util";
 
 export class ListingController {
   constructor(private readonly listingService: ListingService) {}
 
   create = async (req: Request, res: Response) => {
     try {
-      const listing = await this.listingService.create(req.user.id, req.body);
+      const listing = await this.listingService.create(req.user!.id, req.body);
       return res.status(201).json({
         message: "Listing submitted successfully",
         data: listing,
@@ -35,7 +36,7 @@ export class ListingController {
 
   getMine = async (req: Request, res: Response) => {
     try {
-      const listings = await this.listingService.getMine(req.user.id);
+      const listings = await this.listingService.getMine(req.user!.id);
       return res.status(200).json({ data: listings });
     } catch (error) {
       return res.status(400).json({
@@ -63,10 +64,12 @@ export class ListingController {
 
   getApproved = async (req: Request, res: Response) => {
     try {
-      const { villageId, type, page, pageSize } = req.query;
+      const { villageId, locationId, type, maxPriceRwf, page, pageSize } = req.query;
       const listings = await this.listingService.getApproved({
         villageId: typeof villageId === "string" ? villageId : undefined,
+        locationId: typeof locationId === "string" ? locationId : undefined,
         type: typeof type === "string" ? type : undefined,
+        maxPriceRwf: maxPriceRwf ? Number(maxPriceRwf) : undefined,
         page: page ? Number(page) : undefined,
         pageSize: pageSize ? Number(pageSize) : undefined,
       });
@@ -85,7 +88,7 @@ export class ListingController {
     try {
       const listing = await this.listingService.approve(
         req.params.id as string,
-        req.user.id,
+        req.user!.id,
       );
 
       return res.status(200).json({
@@ -104,7 +107,7 @@ export class ListingController {
     try {
       const listing = await this.listingService.reject(
         req.params.id as string,
-        req.user.id,
+        req.user!.id,
         req.body.rejectionReason,
       );
       return res.status(200).json({
@@ -121,11 +124,15 @@ export class ListingController {
 
   addPhoto = async (req: Request, res: Response) => {
     try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Photo file is required" });
+      }
+
       const photo = await this.listingService.addPhoto(
         req.params.id as string,
-        req.user.id,
-        req.body.filePath,
-        req.body.sortOrder,
+        req.user!.id,
+        toPublicUploadPath("listings", req.file.filename),
+        req.body.sortOrder ? Number(req.body.sortOrder) : undefined,
       );
       return res.status(201).json({ message: "Photo added", data: photo });
     } catch (error) {
@@ -149,7 +156,7 @@ export class ListingController {
 
   removePhoto = async (req: Request, res: Response) => {
     try {
-      await this.listingService.removePhoto(req.params.photoId as string, req.user.id);
+      await this.listingService.removePhoto(req.params.photoId as string, req.user!.id);
       return res.status(200).json({ message: "Photo removed" });
     } catch (error) {
       return res.status(400).json({
