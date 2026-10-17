@@ -1,4 +1,4 @@
-import { BlockerRepository } from './../repositories/blocker.repository';
+import { BlockerRepository } from '../repositories/blocker.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { ApplyForBlockerInput, RejectBlockerInput } from '../validators/blocker.validator';
 import crypto from 'node:crypto';
