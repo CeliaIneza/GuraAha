@@ -77,7 +77,7 @@ registry.registerPath({
     },
     responses: {
         200: {
-            description: 'Logged out (idempotent — succeeds even for an already-invalid token)',
+            description: 'Logged out (idempotent - succeeds even for an already-invalid token)',
             content: { 'application/json': { schema: messageOnlyResponseSchema } },
         },
     },

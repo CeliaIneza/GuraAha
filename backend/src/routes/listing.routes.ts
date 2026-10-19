@@ -1,21 +1,22 @@
 import { Router } from 'express';
 
-import { ListingRepository } from '../repositories/listing.repository.js';
-import { ListingPhotoRepository } from '../repositories/listingphoto.repository.js';
-import { BlockerRepository } from '../repositories/blocker.repository.js';
-import { LocationRepository } from '../repositories/location.repository.js';
-import { ListingService } from '../services/listing.service.js';
-import { ListingController } from '../controllers/listing.controller.js';
+import { ListingRepository } from '../repositories/listing.repository';
+import { ListingPhotoRepository } from '../repositories/listingphoto.repository';
+import { BlockerRepository } from '../repositories/blocker.repository';
+import { LocationRepository } from '../repositories/location.repository';
+import { ListingService } from '../services/listing.service';
+import { ListingController } from '../controllers/listing.controller';
 
-import { authenticate, authenticateOptional } from '../middleware/authenticate.js';
-import { requireRole, requireFreshRole } from '../middleware/authorize.js';
-import { validate } from '../middleware/validate.js';
+import { authenticate, authenticateOptional } from '../middleware/authenticate';
+import { requireRole, requireFreshRole } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
+import { requireActiveSubscription } from '../middleware/requireActiveSubscription';
 
 import {
     createListingSchema,
     rejectListingSchema,
-} from '../validators/listing.validator.js';
-import { createImageUploader, handleUploadErrors } from '../middleware/upload.js';
+} from '../validators/listing.validator';
+import { createImageUploader, handleUploadErrors } from '../middleware/upload';
 
 const router = Router();
 
@@ -54,6 +55,7 @@ router.get(
 router.post(
     '/',
     authenticate,
+    requireActiveSubscription,
     requireRole('BLOCKER'),
     validate(createListingSchema),
     listingController.create
@@ -90,6 +92,13 @@ router.patch(
     requireFreshRole('ADMIN'),
     validate(rejectListingSchema),
     listingController.reject
+);
+
+router.patch(
+    '/:id/revise',
+    authenticate,
+    requireRole('ADMIN'),
+    listingController.revise
 );
 
 export default router;

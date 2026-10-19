@@ -40,7 +40,7 @@ registry.registerPath({
     path: '/listings/{id}',
     tags: ['Listings'],
     description:
-        'Public for APPROVED listings only. A PENDING/REJECTED listing returns 404 to anyone except its owning blocker or an admin — deliberately indistinguishable from "does not exist".',
+        'Public for APPROVED listings only. A PENDING/REJECTED listing returns 404 to anyone except its owning blocker or an admin - deliberately indistinguishable from "does not exist".',
     request: { params: idParamSchema },
     responses: {
         200: {
@@ -115,7 +115,7 @@ registry.registerPath({
     path: '/listings/{id}/photos',
     tags: ['Listings'],
     security: bearerAuthSecurity,
-    description: 'multipart/form-data upload — field name "photo". Allowed types: JPEG, PNG, WebP. Max 5MB.',
+    description: 'multipart/form-data upload - field name "photo". Allowed types: JPEG, PNG, WebP. Max 5MB.',
     request: {
         params: idParamSchema,
         body: { content: { 'multipart/form-data': { schema: addPhotoMultipartSchema } } },

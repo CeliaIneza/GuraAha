@@ -13,6 +13,7 @@ export const applyForBlockerSchema = z.object({
     .trim()
     .min(1, "Agreement document path can not be empty")
     .optional(),
+  contactEmail: z.string().email().optional(),
 });
 
 export const rejectBlockerSchema = z.object({

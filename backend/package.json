@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "migrate": "tsx src/migrate.ts",
     "seedlocations": "tsx src/scripts/seed-locations.ts",
+    "seedsettings": "tsx src/scripts/seed-settings.ts",
     "generateopenapi": "tsx src/scripts/generate-openapi.ts"
   },
   "repository": {
@@ -27,6 +28,7 @@
     "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@types/bcrypt": "^6.0.0",
     "@types/multer": "^2.3.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/swagger-ui-express": "^4.1.8",
     "argon2": "^0.45.1",
     "bcrypt": "^6.0.0",
@@ -34,6 +36,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.4.0",
+    "nodemailer": "^10.1.1",
     "pg": "^8.23.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.6.5"

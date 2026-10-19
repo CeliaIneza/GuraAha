@@ -27,4 +27,5 @@ export const listingsApi = {
   approve: (id) => api(`/listings/${id}/approve`, { method: 'PATCH', auth: true }),
   reject: (id, rejectionReason) =>
     api(`/listings/${id}/reject`, { method: 'PATCH', body: { rejectionReason }, auth: true }),
+  removePhoto: (photoId) => api(`/listings/photos/${photoId}`, { method: 'DELETE', auth: true }),
 };

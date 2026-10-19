@@ -1,8 +1,55 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, UserCheck, LogIn } from 'lucide-react';
+
+const LANGS = [
+  { code: 'rw', flag: '🇷🇼', label: 'Kinyarwanda', short: 'RW' },
+  { code: 'en', flag: '🇬🇧', label: 'English', short: 'EN' },
+  { code: 'fr', flag: '🇫🇷', label: 'Français', short: 'FR' },
+];
+
+const LangSwitcher = ({ lang, setLang }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const current = LANGS.find((l) => l.code === lang) || LANGS[1];
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 border-2 border-gray-200 rounded-xl text-sm font-semibold text-brand-ink bg-white hover:border-brand-green transition-colors"
+        aria-label="Select language"
+      >
+        <span className="text-base leading-none">{current.flag}</span>
+        <span className="hidden sm:inline">{current.short}</span>
+        <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 bg-white border-2 border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden min-w-[160px]">
+          {LANGS.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => { setLang(l.code); setOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-left transition-colors ${lang === l.code ? 'bg-brand-green/10 text-brand-green font-semibold' : 'text-brand-ink hover:bg-gray-50'}`}
+            >
+              <span className="text-base">{l.flag}</span>
+              <span>{l.label}</span>
+              {lang === l.code && <span className="ml-auto text-brand-green text-xs">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Header = () => {
   const { lang, setLang, t } = useApp();
@@ -59,20 +106,12 @@ export const Header = () => {
       </nav>
 
       <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
-        <select
-          value={lang}
-          onChange={(e) => setLang(e.target.value)}
-          className="px-2.5 py-1.5 border border-brand-line rounded-lg text-sm text-brand-ink bg-white focus:outline-none focus:border-brand-green"
-        >
-          <option value="rw">🇷🇼 Kinyarwanda</option>
-          <option value="en">🇬🇧 English</option>
-          <option value="fr">🇫🇷 Français</option>
-        </select>
+        <LangSwitcher lang={lang} setLang={setLang} />
 
         {user?.role === 'BLOCKER' && (
           <Link
             to="/dashboard"
-            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 border-1.5 border-brand-line rounded-xl text-sm font-semibold text-brand-ink hover:border-brand-green hover:text-brand-green transition-all bg-white"
+            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 border-2 border-brand-line rounded-xl text-sm font-semibold text-brand-ink hover:border-brand-green hover:text-brand-green transition-all bg-white"
           >
             <UserCheck className="w-4 h-4 text-brand-green" />
             Dashboard

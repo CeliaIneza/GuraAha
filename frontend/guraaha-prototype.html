@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GuraAha — Prototype</title>
+<title>GuraAha - Prototype</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -158,7 +158,7 @@ td{padding:11px 14px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<div class="proto-bar">🔧 Clickable prototype — all data is simulated. Built to demonstrate GuraAha's functionality before development.</div>
+<div class="proto-bar">🔧 Clickable prototype - all data is simulated. Built to demonstrate GuraAha's functionality before development.</div>
 
 <header>
   <div class="logo" onclick="go('home')">
@@ -185,7 +185,7 @@ td{padding:11px 14px;border-top:1px solid var(--line)}
 <section class="page active" id="page-home">
   <div class="hero"><div class="wrap">
     <h1 data-i="hero_title">Find land. Find home. Guraaha!</h1>
-    <p data-i="hero_sub">Verified plots, land and houses across every province, district and sector of Rwanda — posted by approved local agents.</p>
+    <p data-i="hero_sub">Verified plots, land and houses across every province, district and sector of Rwanda - posted by approved local agents.</p>
     <div class="search-card">
       <select id="s-prov" onchange="cascade('s')"><option value="">Province</option></select>
       <select id="s-dist"><option value="">District</option></select>
@@ -357,9 +357,9 @@ td{padding:11px 14px;border-top:1px solid var(--line)}
       <table>
         <tr><th>Property</th><th>Location</th><th>Price</th><th>Status</th><th>Unlocks</th></tr>
         <tr><td>Residential plot 600 m²</td><td>Remera, Gasabo</td><td>18,500,000</td><td><span class="badge b-approved">Approved</span></td><td>9</td></tr>
-        <tr><td>Farm land 2 ha</td><td>Muhoza, Musanze</td><td>9,200,000</td><td><span class="badge b-pending">Pending review</span></td><td>—</td></tr>
+        <tr><td>Farm land 2 ha</td><td>Muhoza, Musanze</td><td>9,200,000</td><td><span class="badge b-pending">Pending review</span></td><td>-</td></tr>
         <tr><td>4-bedroom house</td><td>Kimironko, Gasabo</td><td>62,000,000</td><td><span class="badge b-approved">Approved</span></td><td>14</td></tr>
-        <tr><td>Plot near lake 800 m²</td><td>Gisenyi, Rubavu</td><td>14,000,000</td><td><span class="badge b-rejected">Rejected photos unclear</span></td><td>—</td></tr>
+        <tr><td>Plot near lake 800 m²</td><td>Gisenyi, Rubavu</td><td>14,000,000</td><td><span class="badge b-rejected">Rejected photos unclear</span></td><td>-</td></tr>
       </table>
       <h2 style="margin-top:30px">Add listing (all fields)</h2>
       <div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px">
@@ -471,7 +471,7 @@ document.getElementById('featured').innerHTML=listings.filter(l=>!l.vip).slice(0
 function renderBrowse(){const p=document.getElementById('f-prov').value,d=document.getElementById('f-dist').value,t=document.getElementById('f-type').value,mx=parseInt(document.getElementById('f-price').value||0);
  const r=listings.filter(l=>!l.vip&&(!p||l.prov===p)&&(!d||l.dist===d)&&(!t||l.type===t)&&(!mx||l.price<=mx));
  document.getElementById('browse-grid').innerHTML=r.map(card).join('')||'<p style="color:var(--ink-soft)">No listings match these filters yet.</p>';
- document.getElementById('count').textContent='— '+r.length+' results';}
+ document.getElementById('count').textContent='- '+r.length+' results';}
 renderBrowse();
 // ---------- Detail ----------
 let current=null;const unlocked={};

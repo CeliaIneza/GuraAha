@@ -176,7 +176,7 @@ seedLocations()
     process.exitCode = 1;
   })
   .finally(() => {
-    // Standalone script — close the pool so the process actually exits.
+    // Standalone script - close the pool so the process actually exits.
     // Don't reuse this pattern if this file is ever imported into the
     // long-running server instead of run standalone.
     void db.end();

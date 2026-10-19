@@ -71,7 +71,7 @@ registry.registerPath({
     request: { params: idParamSchema },
     responses: {
         200: {
-            description: 'Approved — the applicant is promoted from USER to BLOCKER in the same transaction',
+            description: 'Approved - the applicant is promoted from USER to BLOCKER in the same transaction',
             content: { 'application/json': { schema: dataResponseSchema() } },
         },
         400: {

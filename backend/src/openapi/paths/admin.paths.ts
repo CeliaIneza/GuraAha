@@ -8,7 +8,7 @@ registry.registerPath({
   path: "/admin/setup",
   tags: ["Admin"],
   description:
-    "Gated by the ADMIN_SETUP_SECRET header, not a role check — there is no admin yet to gate the first one, and this stays secret-gated permanently by design",
+    "Gated by the ADMIN_SETUP_SECRET header, not a role check - there is no admin yet to gate the first one, and this stays secret-gated permanently by design",
   request: {
     headers: z.object({
       "x-admin-setup-secret": z
