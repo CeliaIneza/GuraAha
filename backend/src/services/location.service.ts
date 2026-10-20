@@ -1,4 +1,4 @@
-import { LocationRepository } from './../repositories/location.repository';
+import { LocationRepository } from '../repositories/location.repository';
 
 export class LocationService {
     constructor(private readonly locationRepository: LocationRepository) {}

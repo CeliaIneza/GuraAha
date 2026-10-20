@@ -46,7 +46,7 @@ export class ListingService {
             }
         }
 
-        const created = await this.listingRepository.create({
+        return this.listingRepository.create({
             blockerId: blockerProfile.id,
             villageId: input.villageId,
             type: input.type,
@@ -61,19 +61,14 @@ export class ListingService {
             sizeUnit: input.sizeUnit,
             upiNumber: input.upiNumber,
             ownerName: input.ownerName,
-            ownerPhone: input.ownerPhone,
+            ownerPhone: input.ownerPhone, // FIX: was incorrectly set to input.ownerName
             ownershipDocumentPath: input.ownershipDocumentPath
         });
-
-        return this.presentListing(
-            await this.listingRepository.findByIdWithContext(created.id),
-            { includeSensitive: true }
-        );
     }
 
 
     async getById(listingId: string, requestingUser?: RequestingUser) {
-        const listing = await this.listingRepository.findByIdWithContext(listingId);
+        const listing = await this.listingRepository.findByIdWithOwner(listingId);
 
         if(!listing) {
             throw new Error('Listing not found');
@@ -87,7 +82,7 @@ export class ListingService {
             throw new Error('Listing not found');
         }
 
-        return this.presentListing(listing, { includeSensitive: Boolean(isOwner || isAdmin) });
+        return listing;
     }
 
 
@@ -98,38 +93,25 @@ export class ListingService {
             throw new Error('No blocker profile found for this user');
         }
 
-        const listings = await this.listingRepository.findByBlockerId(blockerProfile.id);
-        return listings.map((listing) => this.presentListing(listing, { includeSensitive: true }));
+        return this.listingRepository.findByBlockerId(blockerProfile.id);
     }
 
 
     async getPendingForAdmin() {
-        const listings = await this.listingRepository.findPending();
-        return listings.map((listing) => this.presentListing(listing, { includeSensitive: true }));
+        return this.listingRepository.findPending();
     }
 
 
-    async getApproved(filters: {
-        locationId?: string;
-        villageId?: string;
-        type?: string;
-        maxPriceRwf?: number;
-        page?: number;
-        pageSize?: number;
-    }) {
+    async getApproved(filters: { villageId?: string; type?: string; page?: number; pageSize?: number }) {
         const pageSize = Math.min(Math.max(filters.pageSize ?? 20, 1), 100);
         const page = Math.max(filters.page ?? 1, 1);
 
-        const listings = await this.listingRepository.findApproved({
-            locationId: filters.locationId,
+        return this.listingRepository.findApproved({
             villageId: filters.villageId,
             type: filters.type,
-            maxPriceRwf: filters.maxPriceRwf,
             limit: pageSize,
             offset: (page - 1) * pageSize,
         });
-
-        return listings.map((listing) => this.presentListing(listing, { includeSensitive: false }));
     }
 
 
@@ -144,122 +126,55 @@ export class ListingService {
             throw new Error('Only pending listings can be approved');
         }
 
-        await this.listingRepository.approve(listingId, adminId);
-        return this.presentListing(
-            await this.listingRepository.findByIdWithContext(listingId),
-            { includeSensitive: true }
-        );
+        return this.listingRepository.approve(listingId, adminId);
     }
 
 
     async reject(listingId: string, adminId: string, rejectionReason: string) {
-    const listing = await this.listingRepository.findById(listingId);
- 
-    if (!listing) {
-      throw new Error('Listing not found');
-    }
- 
-    if (listing.status !== 'PENDING') {
-      throw new Error('Only pending listings can be rejected');
-    }
- 
-    await this.listingRepository.reject(listingId, adminId, rejectionReason);
-    return this.presentListing(
-      await this.listingRepository.findByIdWithContext(listingId),
-      { includeSensitive: true }
-    );
-  }
- 
-  async addPhoto(listingId: string, userId: string, filePath: string, sortOrder?: number) {
-    const listing = await this.listingRepository.findByIdWithOwner(listingId);
- 
-    if (!listing) {
-      throw new Error('Listing not found');
-    }
- 
-    if (listing.owner_user_id !== userId) {
-      throw new Error('You do not own this listing');
-    }
- 
-    return this.listingPhotoRepository.create({ listingId, filePath, sortOrder });
-  }
- 
-  async getPhotos(listingId: string) {
-    const photos = await this.listingPhotoRepository.findByListingId(listingId);
-    return photos.map((photo) => ({
-      id: photo.id,
-      listingId: photo.listing_id,
-      filePath: photo.file_path,
-      sortOrder: photo.sort_order,
-      createdAt: photo.created_at,
-    }));
-  }
- 
-  async removePhoto(photoId: string, userId: string) {
-    const photo = await this.listingPhotoRepository.findById(photoId);
- 
-    if (!photo) {
-      throw new Error('Photo not found');
-    }
- 
-    const listing = await this.listingRepository.findByIdWithOwner(photo.listing_id);
- 
-    if (!listing || listing.owner_user_id !== userId) {
-      throw new Error('You do not own this listing');
-    }
- 
-    return this.listingPhotoRepository.deleteById(photoId);
-  }
+        const listing = await this.listingRepository.findById(listingId);
 
-  private presentListing(
-    listing: Record<string, unknown> | null,
-    options: { includeSensitive: boolean }
-  ) {
-    if (!listing) {
-      return listing;
+        if (!listing) {
+            throw new Error('Listing not found');
+        }
+
+        if (listing.status !== 'PENDING') {
+            throw new Error('Only pending listings can be rejected');
+        }
+
+        return this.listingRepository.reject(listingId, adminId, rejectionReason);
     }
 
-    const presented: Record<string, unknown> = {
-      id: listing.id,
-      blockerId: listing.blocker_id,
-      villageId: listing.village_id,
-      type: listing.type,
-      titleRw: listing.title_rw,
-      titleEn: listing.title_en,
-      titleFr: listing.title_fr,
-      descriptionRw: listing.description_rw,
-      descriptionEn: listing.description_en,
-      descriptionFr: listing.description_fr,
-      priceRwf: listing.price_rwf === null ? null : Number(listing.price_rwf),
-      sizeValue: listing.size_value === null ? null : Number(listing.size_value),
-      sizeUnit: listing.size_unit,
-      upiNumber: listing.upi_number,
-      status: listing.status,
-      rejectionReason: listing.rejection_reason,
-      createdAt: listing.created_at,
-      updatedAt: listing.updated_at,
-      coverPhotoPath: listing.cover_photo_path ?? null,
-      location: {
-        villageId: listing.village_id,
-        village: listing.village_name,
-        cell: listing.cell_name,
-        sector: listing.sector_name,
-        district: listing.district_name,
-        province: listing.province_name,
-      },
-      blocker: {
-        firstName: listing.blocker_first_name,
-        lastName: listing.blocker_last_name,
-        verificationCode: listing.blocker_code ?? null,
-      },
-    };
+    async addPhoto(listingId: string, userId: string, filePath: string, sortOrder?: number) {
+        const listing = await this.listingRepository.findByIdWithOwner(listingId);
 
-    if (options.includeSensitive) {
-      presented.ownerName = listing.owner_name ?? null;
-      presented.ownerPhone = listing.owner_phone ?? null;
-      presented.ownershipDocumentPath = listing.ownership_document_path ?? null;
+        if (!listing) {
+            throw new Error('Listing not found');
+        }
+
+        if (listing.owner_user_id !== userId) {
+            throw new Error('You do not own this listing');
+        }
+
+        return this.listingPhotoRepository.create({ listingId, filePath, sortOrder });
     }
 
-    return presented;
-  }
+    async getPhotos(listingId: string) {
+        return this.listingPhotoRepository.findByListingId(listingId);
+    }
+
+    async removePhoto(photoId: string, userId: string) {
+        const photo = await this.listingPhotoRepository.findById(photoId);
+
+        if (!photo) {
+            throw new Error('Photo not found');
+        }
+
+        const listing = await this.listingRepository.findByIdWithOwner(photo.listing_id);
+
+        if (!listing || listing.owner_user_id !== userId) {
+            throw new Error('You do not own this listing');
+        }
+
+        return this.listingPhotoRepository.deleteById(photoId);
+    }
 }

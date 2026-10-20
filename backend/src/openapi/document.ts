@@ -17,7 +17,7 @@ export function generateOpenApiDocument() {
             title: 'Guraaha API',
             version: '1.0.0',
             description:
-                'Generated from the same Zod schemas used for request validation - not hand-written. Regenerates automatically as those schemas change.',
+                'Generated from the same Zod schemas used for request validation — not hand-written. Regenerates automatically as those schemas change.',
         },
         servers: [{ url: `http://localhost:${env.PORT ?? 3000}/api/v1` }],
     });

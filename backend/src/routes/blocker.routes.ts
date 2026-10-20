@@ -1,28 +1,37 @@
 import { Router } from 'express';
 
-import { BlockerRepository } from '../repositories/blocker.repository';
-import { UserRepository } from '../repositories/user.repository';
-import { BlockerService } from '../services/blocker.service';
-import { BlockerController } from '../controllers/blocker.controller';
+import { BlockerRepository } from '../repositories/blocker.repository.js';
+import { UserRepository } from '../repositories/user.repository.js';
+import { BlockerService } from '../services/blocker.service.js';
+import { BlockerController } from '../controllers/blocker.controller.js';
 
-import { authenticate } from '../middleware/authenticate';
-import { requireRole } from '../middleware/authorize';
-import { validate } from '../middleware/validate';
+import { authenticate } from '../middleware/authenticate.js';
+import { requireRole } from '../middleware/authorize.js';
+import { validate } from '../middleware/validate.js';
 
 import {
     applyForBlockerSchema,
     rejectBlockerSchema,
-} from '../validators/blocker.validator';
+} from '../validators/blocker.validator.js';
 
 const router = Router();
 
-const blockerRepository = new BlockerRepository();
-const userRepository = new UserRepository();
-const blockerService = new BlockerService(
-    blockerRepository,
-    userRepository
-);
-const blockerController = new BlockerController(blockerService);
+const blockerRepository =
+    new BlockerRepository();
+
+const userRepository =
+    new UserRepository();
+
+const blockerService =
+    new BlockerService(
+        blockerRepository,
+        userRepository
+    );
+
+const blockerController =
+    new BlockerController(
+        blockerService
+    );
 
 // USER
 router.post(
@@ -61,13 +70,6 @@ router.patch(
     requireRole('ADMIN'),
     validate(rejectBlockerSchema),
     blockerController.reject
-);
-
-router.patch(
-    '/applications/:id/revise',
-    authenticate,
-    requireRole('ADMIN'),
-    blockerController.revise
 );
 
 export default router;

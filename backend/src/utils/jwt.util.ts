@@ -24,7 +24,7 @@ export function signAuthToken(userId: string, role: string): string {
     return jwt.sign(
         { sub: userId, role },
         env.JWT_SECRET,
-        { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] }
+        { expiresIn: env.JWT_EXPIRES_IN ?? '15min' }
     );
 }
 

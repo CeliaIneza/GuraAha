@@ -23,64 +23,11 @@ export interface CreateListingInput {
 
 
 export interface ListingFilters {
-    locationId?: string;
     villageId?: string;
     type?: string;
-    maxPriceRwf?: number;
     limit: number;
     offset: number;
 }
-
-const LISTING_CONTEXT_SELECT = `
-  l.id,
-  l.blocker_id,
-  l.village_id,
-  l.type,
-  l.title_rw,
-  l.title_en,
-  l.title_fr,
-  l.description_rw,
-  l.description_en,
-  l.description_fr,
-  l.price_rwf,
-  l.size_value,
-  l.size_unit,
-  l.upi_number,
-  l.owner_name,
-  l.owner_phone,
-  l.ownership_document_path,
-  l.status,
-  l.rejection_reason,
-  l.created_at,
-  l.updated_at,
-  bp.user_id AS owner_user_id,
-  bp.verification_code AS blocker_code,
-  u.first_name AS blocker_first_name,
-  u.last_name AS blocker_last_name,
-  village.name AS village_name,
-  cell.name AS cell_name,
-  sector.name AS sector_name,
-  district.name AS district_name,
-  province.name AS province_name,
-  (
-    SELECT lp.file_path
-    FROM listing_photos lp
-    WHERE lp.listing_id = l.id
-    ORDER BY lp.sort_order ASC, lp.created_at ASC
-    LIMIT 1
-  ) AS cover_photo_path
-`;
-
-const LISTING_CONTEXT_JOINS = `
-  FROM listings l
-  INNER JOIN blocker_profiles bp ON bp.id = l.blocker_id
-  INNER JOIN users u ON u.id = bp.user_id
-  INNER JOIN locations village ON village.id = l.village_id
-  LEFT JOIN locations cell ON cell.id = village.parent_id
-  LEFT JOIN locations sector ON sector.id = cell.parent_id
-  LEFT JOIN locations district ON district.id = sector.parent_id
-  LEFT JOIN locations province ON province.id = district.parent_id
-`;
 
 const LISTING_COLUMNS = `
   id,
@@ -197,25 +144,13 @@ export class ListingRepository {
     return result.rows[0] ?? null;
   }
  
-  async findByIdWithContext(id: string, executor: QueryExecutor = db) {
-    const result = await executor.query(
-      `
-      SELECT ${LISTING_CONTEXT_SELECT}
-      ${LISTING_CONTEXT_JOINS}
-      WHERE l.id = $1
-      `,
-      [id]
-    );
-    return result.rows[0] ?? null;
-  }
-
   async findByBlockerId(blockerId: string, executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT ${LISTING_CONTEXT_SELECT}
-      ${LISTING_CONTEXT_JOINS}
-      WHERE l.blocker_id = $1
-      ORDER BY l.created_at DESC
+      SELECT ${LISTING_COLUMNS}
+      FROM listings
+      WHERE blocker_id = $1
+      ORDER BY created_at DESC
       `,
       [blockerId]
     );
@@ -225,41 +160,27 @@ export class ListingRepository {
   async findPending(executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT ${LISTING_CONTEXT_SELECT}
-      ${LISTING_CONTEXT_JOINS}
-      WHERE l.status = 'PENDING'
-      ORDER BY l.created_at ASC
+      SELECT ${LISTING_COLUMNS}
+      FROM listings
+      WHERE status = 'PENDING'
+      ORDER BY created_at ASC
       `
     );
     return result.rows;
   }
  
   async findApproved(filters: ListingFilters, executor: QueryExecutor = db) {
-    const conditions: string[] = [`l.status = 'APPROVED'`];
+    const conditions: string[] = [`status = 'APPROVED'`];
     const values: unknown[] = [];
  
-    const locationFilter = filters.locationId || filters.villageId;
-    if (locationFilter) {
-      values.push(locationFilter);
-      conditions.push(`l.village_id IN (
-        WITH RECURSIVE loc_tree AS (
-          SELECT id FROM locations WHERE id = $${values.length}
-          UNION ALL
-          SELECT loc.id FROM locations loc
-          INNER JOIN loc_tree t ON loc.parent_id = t.id
-        )
-        SELECT id FROM loc_tree
-      )`);
+    if (filters.villageId) {
+      values.push(filters.villageId);
+      conditions.push(`village_id = $${values.length}`);
     }
  
     if (filters.type) {
       values.push(filters.type);
-      conditions.push(`l.type = $${values.length}`);
-    }
-
-    if (filters.maxPriceRwf) {
-      values.push(filters.maxPriceRwf);
-      conditions.push(`l.price_rwf <= $${values.length}`);
+      conditions.push(`type = $${values.length}`);
     }
  
     values.push(filters.limit);
@@ -269,10 +190,10 @@ export class ListingRepository {
  
     const result = await executor.query(
       `
-      SELECT ${LISTING_CONTEXT_SELECT}
-      ${LISTING_CONTEXT_JOINS}
+      SELECT ${LISTING_COLUMNS}
+      FROM listings
       WHERE ${conditions.join(' AND ')}
-      ORDER BY l.created_at DESC
+      ORDER BY created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
       `,
       values

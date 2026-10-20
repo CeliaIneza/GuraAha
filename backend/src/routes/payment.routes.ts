@@ -1,27 +1,25 @@
 import { Router } from 'express';
+
 import { PaymentRepository } from '../repositories/payment.repository';
-import { UnlockRepository } from '../repositories/unlock.repository';
-import { ListingRepository } from '../repositories/listing.repository';
+import { IntouchPayProvider } from '../provider/intouchpay.provider';
 import { PaymentService } from '../services/payment.service';
 import { PaymentController } from '../controllers/payment.controller';
+
 import { authenticate } from '../middleware/authenticate';
 
 const router = Router();
 
 const paymentRepository = new PaymentRepository();
-const unlockRepository = new UnlockRepository();
-const listingRepository = new ListingRepository();
-
-const paymentService = new PaymentService(
-  paymentRepository,
-  unlockRepository,
-  listingRepository
-);
-
+const intouchPayProvider = new IntouchPayProvider();
+const paymentService = new PaymentService(paymentRepository, intouchPayProvider);
 const paymentController = new PaymentController(paymentService);
 
-router.post('/unlocks/initiate', authenticate, paymentController.initiateUnlock);
-router.post('/unlocks/confirm', authenticate, paymentController.confirmUnlock);
-router.get('/unlocks/me', authenticate, paymentController.getMyUnlocks);
+// Deliberately NO `authenticate` here — IntouchPay calls this directly as a
+// server-to-server webhook, with no access token of ours. We will restrict access by using the ip address of intouch's server.
+
+router.post('/webhook/intouchpay', paymentController.webhook);
+
+router.get('/mine', authenticate, paymentController.getMine);
+router.get('/:id', authenticate, paymentController.getById);
 
 export default router;

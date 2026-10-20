@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createListingSchema = z
     .object({
         villageId: z.string().uuid(),
-        type: z.enum(['land', 'house']),
+        type: z.string().min(1).max(30),
         titleRw: z.string().max(255).optional(),
         titleEn: z.string().max(255).optional(),
         titleFr: z.string().max(255).optional(),

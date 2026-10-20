@@ -3,7 +3,7 @@
   "info": {
     "title": "Guraaha API",
     "version": "1.0.0",
-    "description": "Generated from the same Zod schemas used for request validation - not hand-written. Regenerates automatically as those schemas change."
+    "description": "Generated from the same Zod schemas used for request validation — not hand-written. Regenerates automatically as those schemas change."
   },
   "servers": [
     {
@@ -247,7 +247,7 @@
         },
         "responses": {
           "200": {
-            "description": "Logged out (idempotent - succeeds even for an already-invalid token)",
+            "description": "Logged out (idempotent — succeeds even for an already-invalid token)",
             "content": {
               "application/json": {
                 "schema": {
@@ -272,7 +272,7 @@
         "tags": [
           "Admin"
         ],
-        "description": "Gated by the ADMIN_SETUP_SECRET header, not a role check - there is no admin yet to gate the first one, and this stays secret-gated permanently by design",
+        "description": "Gated by the ADMIN_SETUP_SECRET header, not a role check — there is no admin yet to gate the first one, and this stays secret-gated permanently by design",
         "parameters": [
           {
             "schema": {
@@ -658,7 +658,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Approved - the applicant is promoted from USER to BLOCKER in the same transaction",
+            "description": "Approved — the applicant is promoted from USER to BLOCKER in the same transaction",
             "content": {
               "application/json": {
                 "schema": {
@@ -854,7 +854,7 @@
         "tags": [
           "Locations"
         ],
-        "description": "Root level of the administrative hierarchy. Public - no auth required.",
+        "description": "Root level of the administrative hierarchy. Public — no auth required.",
         "responses": {
           "200": {
             "description": "The 5 provinces",
@@ -882,7 +882,7 @@
         "tags": [
           "Locations"
         ],
-        "description": "Direct children of a location (province→districts, district→sectors, etc.). Stop calling this once the selected row's `level` is VILLAGE. Public - no auth required.",
+        "description": "Direct children of a location (province→districts, district→sectors, etc.). Stop calling this once the selected row's `level` is VILLAGE. Public — no auth required.",
         "parameters": [
           {
             "schema": {
@@ -914,7 +914,7 @@
             }
           },
           "404": {
-            "description": "Location not found, or it is already a VILLAGE (no children) - not distinguishable by status code alone, see message",
+            "description": "Location not found, or it is already a VILLAGE (no children) — not distinguishable by status code alone, see message",
             "content": {
               "application/json": {
                 "schema": {
@@ -1176,7 +1176,7 @@
         "tags": [
           "Listings"
         ],
-        "description": "Public for APPROVED listings only. A PENDING/REJECTED listing returns 404 to anyone except its owning blocker or an admin - deliberately indistinguishable from \"does not exist\".",
+        "description": "Public for APPROVED listings only. A PENDING/REJECTED listing returns 404 to anyone except its owning blocker or an admin — deliberately indistinguishable from \"does not exist\".",
         "parameters": [
           {
             "schema": {
@@ -1280,7 +1280,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "multipart/form-data upload - field name \"photo\". Allowed types: JPEG, PNG, WebP. Max 5MB.",
+        "description": "multipart/form-data upload — field name \"photo\". Allowed types: JPEG, PNG, WebP. Max 5MB.",
         "parameters": [
           {
             "schema": {

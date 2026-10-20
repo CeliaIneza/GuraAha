@@ -27,7 +27,7 @@ const BLOCKER_PROFILE_COLUMNS = `
 
 export class BlockerRepository {
   async findByUserId(userId: string, executor: QueryExecutor = db) {
-    const result = await executor.query(
+    const result = await db.query(
       `
             SELECT ${BLOCKER_PROFILE_COLUMNS}
             FROM blocker_profiles
@@ -40,7 +40,7 @@ export class BlockerRepository {
   }
 
   async create(input: CreateBlockerProfileInput, executor: QueryExecutor = db) {
-    const result = await executor.query(
+    const result = await db.query(
       `
             INSERT INTO blocker_profiles (
                 user_id,
@@ -61,7 +61,7 @@ export class BlockerRepository {
   }
 
   async findById(id: string, executor: QueryExecutor = db) {
-    const result = await executor.query(
+    const result = await db.query(
       `
             SELECT ${BLOCKER_PROFILE_COLUMNS}
             FROM blocker_profiles
@@ -73,7 +73,7 @@ export class BlockerRepository {
   }
 
   async findPending(executor: QueryExecutor = db) {
-    const result = await executor.query(
+    const result = await db.query(
       `
             SELECT
                 bp.id,
@@ -90,15 +90,11 @@ export class BlockerRepository {
                 bp.created_at,
                 bp.updated_at,
                 u.phone,
-                u.email,
-                u.first_name,
-                u.last_name,
-                loc.name AS operating_location_name
+                u.email
             FROM blocker_profiles bp
             INNER JOIN users u ON u.id = bp.user_id
-            LEFT JOIN locations loc ON loc.id = bp.operating_location_id
             WHERE bp.status = 'PENDING'
-            ORDER BY bp.created_at ASC
+            ORDER BY created_at ASC
             `,
     );
     return result.rows;
@@ -107,10 +103,9 @@ export class BlockerRepository {
   async approve(
     blockerId: string,
     reviewedBy: string,
-    verificationCode: string,
     executor: QueryExecutor = db,
   ) {
-    const result = await executor.query(
+    const result = await db.query(
       `
             UPDATE blocker_profiles
             SET
@@ -119,13 +114,12 @@ export class BlockerRepository {
                 reviewed_at = NOW(),
                 approved_at = NOW(),
                 rejection_reason = NULL,
-                verification_code = COALESCE(verification_code, $3),
                 updated_at = NOW()
             WHERE id = $2
               AND status = 'PENDING'
             RETURNING ${BLOCKER_PROFILE_COLUMNS}
             `,
-      [reviewedBy, blockerId, verificationCode],
+      [reviewedBy, blockerId],
     );
 
     return result.rows[0] ?? null;
@@ -137,7 +131,7 @@ export class BlockerRepository {
     rejectionReason: string,
     executor: QueryExecutor = db,
   ) {
-    const result = await executor.query(
+    const result = await db.query(
       `
             UPDATE blocker_profiles
             SET

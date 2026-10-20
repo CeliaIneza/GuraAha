@@ -17,10 +17,12 @@ export const DetailPage = () => {
   const [active, setActive] = useState('');
   const [error, setError] = useState('');
 
-  const [unlocks, setUnlocks] = useState({ BLOCKER: null, OWNER: null });
-  const [unlocksLoading, setUnlocksLoading] = useState(false);
+  // Revealed contacts from the backend — shape: { blockerPhone, ownerPhone, ownerName }
+  const [revealedContacts, setRevealedContacts] = useState(null);
+  const [contactsLoading, setContactsLoading] = useState(false);
   const [copiedType, setCopiedType] = useState(null);
 
+  // Load listing details + photos
   useEffect(() => {
     const load = async () => {
       try {
@@ -42,45 +44,35 @@ export const DetailPage = () => {
     load();
   }, [id]);
 
+  // Load revealed contacts — re-runs when user logs in or after a successful unlock
   useEffect(() => {
     if (!user || !id) {
-      setUnlocks({ BLOCKER: null, OWNER: null });
-      setUnlocksLoading(false);
+      setRevealedContacts(null);
+      setContactsLoading(false);
       return;
     }
 
     let isMounted = true;
-    const loadUnlocks = async () => {
-      setUnlocksLoading(true);
+    const loadContacts = async () => {
+      setContactsLoading(true);
       try {
-        const res = await paymentsApi.getMyUnlocks(id);
+        const res = await paymentsApi.getRevealedContact(id);
         if (isMounted) {
-          const next = { BLOCKER: null, OWNER: null };
-          const list = Array.isArray(res?.data) ? res.data : [];
-          list.forEach((u) => {
-            const type = (u.type || u.unlock_type || u.unlocked_type || '').toUpperCase();
-            const contact = u.contact || {
-              phone: u.phone || u.contact_phone || u.contactPhone,
-              name: u.name || u.contact_name || u.contactName,
-            };
-            if (type === 'BLOCKER' && contact.phone) next.BLOCKER = contact;
-            if (type === 'OWNER' && contact.phone) next.OWNER = contact;
-          });
-          setUnlocks(next);
+          // res.data shape: { blockerPhone?, ownerPhone?, ownerName? }
+          setRevealedContacts(res?.data || {});
         }
       } catch (err) {
-        console.warn('Failed to load contact unlocks:', err);
-      } finally {
+        // 404 means no unlocks yet — that's fine
         if (isMounted) {
-          setUnlocksLoading(false);
+          setRevealedContacts({});
         }
+      } finally {
+        if (isMounted) setContactsLoading(false);
       }
     };
 
-    loadUnlocks();
-    return () => {
-      isMounted = false;
-    };
+    loadContacts();
+    return () => { isMounted = false; };
   }, [id, user, unlockTimestamp]);
 
   const handleCopyContact = (phone, type) => {
@@ -108,6 +100,12 @@ export const DetailPage = () => {
   const title = listingTitle(listing, lang);
   const loc = listing.location || {};
   const crumbs = ['Rwanda', loc.province, loc.district, loc.sector, loc.cell, loc.village].filter(Boolean);
+
+  // Owner info visibility — only show owner unlock if owner phone was provided
+  const hasOwnerInfo = Boolean(
+    listing.ownerPhone || listing.owner_phone ||
+    (revealedContacts && revealedContacts.ownerPhone)
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-6 sm:px-10 py-8 min-h-screen">
@@ -157,7 +155,7 @@ export const DetailPage = () => {
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">UPI / Parcel No.</span>
-              <b className="text-base text-brand-ink">{listing.upiNumber || '-'}</b>
+              <b className="text-base text-brand-ink">{listing.upiNumber || listing.upi_number || '-'}</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Type</span>
@@ -180,107 +178,50 @@ export const DetailPage = () => {
         <div className="md:col-span-2">
           <div className="sticky top-24 bg-white border-[1.5px] border-brand-line rounded-card p-6 shadow-md">
             <div className="text-3xl font-bold text-brand-green-dark mb-6">
-              {Number(listing.priceRwf || 0).toLocaleString('en-US')} RWF
+              {Number(listing.priceRwf || listing.price_rwf || 0).toLocaleString('en-US')} RWF
             </div>
 
-            {['blocker', 'owner'].map((kind) => {
-              const unlockKey = kind === 'blocker' ? 'BLOCKER' : 'OWNER';
-              const unlockedContact = unlocks[unlockKey];
-
-              // Owner contact: only show if listing actually has an owner phone stored
-              const hasOwnerInfo = Boolean(listing.ownerPhone || listing.owner_phone);
-              if (kind === 'owner' && !hasOwnerInfo) {
-                return (
-                  <div key={kind} className="mb-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center">
-                    <p className="text-xs font-semibold text-gray-400 mb-1">Owner contact</p>
-                    <p className="text-sm text-gray-400">Not provided for this listing</p>
-                  </div>
-                );
-              }
-
-              if (unlocksLoading) {
-                return (
-                  <div
-                    key={kind}
-                    className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4 flex items-center justify-center gap-2 text-sm text-brand-ink-soft"
-                  >
-                    <Loader2 className="w-4 h-4 animate-spin text-brand-green" />
-                    <span>Checking unlock status...</span>
-                  </div>
-                );
-              }
-
-              if (unlockedContact) {
-                return (
-                  <div key={kind} className="mb-4 bg-[#E4F1EC] border border-[#007A66]/30 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-brand-green-dark mb-2 flex items-center gap-1">
-                      <Unlock className="w-3.5 h-3.5" />
-                      {kind === 'blocker' ? 'Agent contact (unlocked)' : 'Owner contact (unlocked)'}
-                    </p>
-                    {unlockedContact.name && (
-                      <p className="font-bold text-brand-ink mb-1">{unlockedContact.name}</p>
-                    )}
-                    <p className="text-xl font-bold text-brand-green-dark">{unlockedContact.phone}</p>
-                    <button
-                      onClick={() => handleCopyContact(unlockedContact.phone, unlockKey)}
-                      className="mt-2 text-xs text-brand-green font-semibold hover:underline flex items-center gap-1"
-                    >
-                      {copiedType === unlockKey ? 'Copied!' : 'Copy number'}
-                    </button>
-                  </div>
-                );
-              }
-
-              if (!user) {
-                return (
-                  <div
-                    key={kind}
-                    className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4 text-center"
-                  >
-                    <p className="text-sm text-brand-ink-soft mb-2">
-                      {kind === 'blocker' ? 'Agent contact' : 'Owner contact'}
-                    </p>
-                    <Link to="/login" className="text-sm font-semibold text-brand-green hover:underline">
-                      Log in to unlock
-                    </Link>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={kind} className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4">
-                  <h4 className="font-bold text-sm text-brand-ink flex items-center gap-2 mb-1">
-                    <Lock className="w-4 h-4 text-brand-green" />
-                    {kind === 'blocker' ? 'Blocker (agent) contact' : 'Owner contact'}
-                  </h4>
-                  <p className="text-xs text-brand-ink-soft mb-3">
-                    {kind === 'blocker'
-                      ? 'Talk to the verified local agent managing this property.'
-                      : 'Deal directly with the property owner.'}
-                  </p>
-                  <button
-                    onClick={() =>
-                      openMoMo({
-                        kind,
-                        listingId: listing.id,
-                        amount: kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee,
-                        title,
-                      })
-                    }
-                    className={`w-full py-2.5 text-white font-semibold rounded-xl text-sm ${
-                      kind === 'blocker'
-                        ? 'bg-brand-green hover:bg-brand-green-dark'
-                        : 'bg-brand-earth hover:bg-amber-800'
-                    }`}
-                  >
-                    Unlock for {kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee} RWF
-                  </button>
-                </div>
-              );
+            {/* ── Blocker contact panel ── */}
+            {renderContactPanel({
+              kind: 'blocker',
+              contactsLoading,
+              revealedPhone: revealedContacts?.blockerPhone,
+              revealedName: null,
+              hasInfo: true, // blocker contact always exists
+              user,
+              listing,
+              settings,
+              openMoMo,
+              title,
+              copiedType,
+              handleCopyContact,
             })}
 
+            {/* ── Owner contact panel ── */}
+            {hasOwnerInfo
+              ? renderContactPanel({
+                  kind: 'owner',
+                  contactsLoading,
+                  revealedPhone: revealedContacts?.ownerPhone,
+                  revealedName: revealedContacts?.ownerName,
+                  hasInfo: true,
+                  user,
+                  listing,
+                  settings,
+                  openMoMo,
+                  title,
+                  copiedType,
+                  handleCopyContact,
+                })
+              : (
+                <div className="mb-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center">
+                  <p className="text-xs font-semibold text-gray-400 mb-1">Owner contact</p>
+                  <p className="text-sm text-gray-400">Not provided for this listing</p>
+                </div>
+              )}
+
             <div className="text-xs text-brand-ink-soft bg-brand-bg-soft p-3 rounded-lg border border-brand-line leading-relaxed">
-              Instant unlock via MTN Mobile Money. Verified direct contact revealed immediately upon payment.
+              Instant unlock via MTN Mobile Money. Verified direct contact revealed after payment confirmation.
             </div>
           </div>
         </div>
@@ -288,3 +229,103 @@ export const DetailPage = () => {
     </div>
   );
 };
+
+// Helper to render a contact panel — keeps JSX DRY
+function renderContactPanel({
+  kind,
+  contactsLoading,
+  revealedPhone,
+  revealedName,
+  hasInfo,
+  user,
+  listing,
+  settings,
+  openMoMo,
+  title,
+  copiedType,
+  handleCopyContact,
+}) {
+  const label = kind === 'blocker' ? 'BLOCKER' : 'OWNER';
+
+  if (contactsLoading) {
+    return (
+      <div
+        key={kind}
+        className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4 flex items-center justify-center gap-2 text-sm text-brand-ink-soft"
+      >
+        <Loader2 className="w-4 h-4 animate-spin text-brand-green" />
+        <span>Checking unlock status...</span>
+      </div>
+    );
+  }
+
+  // Already unlocked — show the contact
+  if (revealedPhone) {
+    return (
+      <div key={kind} className="mb-4 bg-[#E4F1EC] border border-[#007A66]/30 rounded-xl p-4">
+        <p className="text-xs font-semibold text-brand-green-dark mb-2 flex items-center gap-1">
+          <Unlock className="w-3.5 h-3.5" />
+          {kind === 'blocker' ? 'Agent contact (unlocked)' : 'Owner contact (unlocked)'}
+        </p>
+        {revealedName && <p className="font-bold text-brand-ink mb-1">{revealedName}</p>}
+        <p className="text-xl font-bold text-brand-green-dark">{revealedPhone}</p>
+        <button
+          onClick={() => handleCopyContact(revealedPhone, label)}
+          className="mt-2 text-xs text-brand-green font-semibold hover:underline flex items-center gap-1"
+        >
+          {copiedType === label ? 'Copied!' : 'Copy number'}
+        </button>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!user) {
+    return (
+      <div
+        key={kind}
+        className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4 text-center"
+      >
+        <p className="text-sm text-brand-ink-soft mb-2">
+          {kind === 'blocker' ? 'Agent contact' : 'Owner contact'}
+        </p>
+        <Link to="/login" className="text-sm font-semibold text-brand-green hover:underline">
+          Log in to unlock
+        </Link>
+      </div>
+    );
+  }
+
+  // Locked — show unlock button
+  const amount = kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee;
+  return (
+    <div key={kind} className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4">
+      <h4 className="font-bold text-sm text-brand-ink flex items-center gap-2 mb-1">
+        <Lock className="w-4 h-4 text-brand-green" />
+        {kind === 'blocker' ? 'Blocker (agent) contact' : 'Owner contact'}
+      </h4>
+      <p className="text-xs text-brand-ink-soft mb-3">
+        {kind === 'blocker'
+          ? 'Talk to the verified local agent managing this property.'
+          : 'Deal directly with the property owner.'}
+      </p>
+      <button
+        onClick={() =>
+          openMoMo({
+            kind,
+            listingId: listing.id,
+            amount,
+            title,
+          })
+        }
+        className={`w-full py-2.5 text-white font-semibold rounded-xl text-sm ${
+          kind === 'blocker'
+            ? 'bg-brand-green hover:bg-brand-green-dark'
+            : 'bg-brand-earth hover:bg-amber-800'
+        }`}
+      >
+        Unlock for {amount} RWF
+      </button>
+    </div>
+  );
+}

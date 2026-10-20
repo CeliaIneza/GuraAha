@@ -1,22 +1,21 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 
-import { ListingRepository } from '../repositories/listing.repository';
-import { ListingPhotoRepository } from '../repositories/listingphoto.repository';
-import { BlockerRepository } from '../repositories/blocker.repository';
-import { LocationRepository } from '../repositories/location.repository';
-import { ListingService } from '../services/listing.service';
-import { ListingController } from '../controllers/listing.controller';
+import { ListingRepository } from '../repositories/listing.repository.js';
+import { ListingPhotoRepository } from '../repositories/listingphoto.repository.js';
+import { BlockerRepository } from '../repositories/blocker.repository.js';
+import { LocationRepository } from '../repositories/location.repository.js';
+import { ListingService } from '../services/listing.service.js';
+import { ListingController } from '../controllers/listing.controller.js';
 
-import { authenticate, authenticateOptional } from '../middleware/authenticate';
-import { requireRole, requireFreshRole } from '../middleware/authorize';
-import { validate } from '../middleware/validate';
-import { requireActiveSubscription } from '../middleware/requireActiveSubscription';
+import { authenticate } from '../middleware/authenticate.js';
+import { requireRole, requireFreshRole } from '../middleware/authorize.js';
+import { validate } from '../middleware/validate.js';
 
 import {
     createListingSchema,
     rejectListingSchema,
-} from '../validators/listing.validator';
-import { createImageUploader, handleUploadErrors } from '../middleware/upload';
+} from '../validators/listing.validator.js';
+import { createImageUploader, handleUploadErrors } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -36,7 +35,19 @@ const listingService = new ListingService(
 
 const listingController = new ListingController(listingService);
 
+// PUBLIC
 router.get('/', listingController.getApproved);
+router.get('/:id/photos', listingController.getPhotos);
+router.get('/:id', listingController.getById);
+
+// BLOCKER
+router.post(
+    '/',
+    authenticate,
+    requireRole('BLOCKER'),
+    validate(createListingSchema),
+    listingController.create
+);
 
 router.get(
     '/me/mine',
@@ -45,30 +56,26 @@ router.get(
     listingController.getMine
 );
 
-router.get(
-    '/admin/pending',
-    authenticate,
-    requireRole('ADMIN'),
-    listingController.getPending
-);
-
-router.post(
-    '/',
-    authenticate,
-    requireActiveSubscription,
-    requireRole('BLOCKER'),
-    validate(createListingSchema),
-    listingController.create
-);
-
-router.get('/:id/photos', listingController.getPhotos);
-router.get('/:id', authenticateOptional, listingController.getById);
-
+// Photo upload: use multer middleware so req.file is populated,
+// then inject filePath into req.body before the controller runs.
 router.post(
     '/:id/photos',
     authenticate,
     requireRole('BLOCKER'),
     handleUploadErrors(listingPhotoUploader.single('photo')),
+    (req: Request, _res: Response, next: NextFunction) => {
+        if (req.file) {
+            // Store the relative path (relative to UPLOAD_ROOT) so the DB
+            // value can be served via /uploads/<path>.
+            const relativePath = `listings/${req.file.filename}`;
+            req.body.filePath = relativePath;
+        }
+        // sortOrder may come in as a string from FormData — coerce to number
+        if (req.body.sortOrder !== undefined) {
+            req.body.sortOrder = Number(req.body.sortOrder);
+        }
+        next();
+    },
     listingController.addPhoto
 );
 
@@ -77,6 +84,14 @@ router.delete(
     authenticate,
     requireRole('BLOCKER'),
     listingController.removePhoto
+);
+
+// ADMIN
+router.get(
+    '/admin/pending',
+    authenticate,
+    requireRole('ADMIN'),
+    listingController.getPending
 );
 
 router.patch(
@@ -92,13 +107,6 @@ router.patch(
     requireFreshRole('ADMIN'),
     validate(rejectListingSchema),
     listingController.reject
-);
-
-router.patch(
-    '/:id/revise',
-    authenticate,
-    requireRole('ADMIN'),
-    listingController.revise
 );
 
 export default router;

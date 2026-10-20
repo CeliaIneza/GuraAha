@@ -1,4 +1,4 @@
-import { BlockerRepository } from './../repositories/blocker.repository';
+import { BlockerRepository } from '../repositories/blocker.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { ApplyForBlockerInput, RejectBlockerInput } from '../validators/blocker.validator';
 import crypto from 'node:crypto';
@@ -115,12 +115,9 @@ export class BlockerService {
         try {
             await client.query('BEGIN');
 
-            const verificationCode = crypto.randomBytes(3).toString('hex').toUpperCase();
-
             const updatedProfile = await this.blockerRepository.approve(
                 blockerId,
                 adminId,
-                verificationCode,
                 client
             );
 

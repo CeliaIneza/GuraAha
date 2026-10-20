@@ -1,73 +1,45 @@
 import { Request, Response } from 'express';
 import { PaymentService } from '../services/payment.service';
+import { buildIntouchPayCallbackAck } from '../provider/intouchpay.provider';
 
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+    constructor(private readonly paymentService: PaymentService) {}
 
-  initiateUnlock = async (req: Request, res: Response) => {
-    try {
-      const userId = req.user!.id;
-      const { listingId, type, momoPhone, amountRwf } = req.body;
+    webhook = async (req: Request, res: Response) => {
+        try {
+            const payment = await this.paymentService.handleWebhook(req.body, req.headers as Record<string, string | string[] | undefined>);
+            return res.status(200).json(buildIntouchPayCallbackAck(payment.id));
+        } catch (error) {
+            console.error('IntouchPay webhook handling failed:', error);
+            return res.status(200).json(buildIntouchPayCallbackAck('unknown'));
+        }
+    };
 
-      if (!listingId || !type || !momoPhone) {
-        return res.status(400).json({
-          message: 'listingId, type, and momoPhone are required',
-        });
-      }
+    getMine = async (req: Request, res: Response) => {
+        try {
+            const payments = await this.paymentService.getMine(req.user.id);
+            return res.status(200).json({ data: payments });
+        } catch (error) {
+            return res.status(400).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve payments',
+            });
+        }
+    };
 
-      if (type !== 'BLOCKER' && type !== 'OWNER') {
-        return res.status(400).json({
-          message: 'type must be either BLOCKER or OWNER',
-        });
-      }
+    getById = async (req: Request, res: Response) => {
+        try {
+            const payment = await this.paymentService.getById(req.params.id);
 
-      const result = await this.paymentService.initiateUnlock(userId, {
-        listingId,
-        type,
-        momoPhone,
-        amountRwf: typeof amountRwf === 'number' ? amountRwf : undefined,
-      });
+            if (payment.user_id !== req.user.id && req.user.role !== 'ADMIN') {
+                // don't confirm to a stranger that a given payment id exists.
+                return res.status(404).json({ message: 'Payment not found' });
+            }
 
-      return res.status(200).json({ data: result });
-    } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Failed to initiate unlock',
-      });
-    }
-  };
-
-  confirmUnlock = async (req: Request, res: Response) => {
-    try {
-      const userId = req.user!.id;
-      const { paymentId } = req.body;
-
-      if (!paymentId) {
-        return res.status(400).json({
-          message: 'paymentId is required',
-        });
-      }
-
-      const result = await this.paymentService.confirmUnlock(paymentId, userId);
-      return res.status(200).json({ data: result });
-    } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Failed to confirm unlock',
-      });
-    }
-  };
-
-  getMyUnlocks = async (req: Request, res: Response) => {
-    try {
-      const userId = req.user!.id;
-      const listingId =
-        typeof req.query.listingId === 'string' ? req.query.listingId : undefined;
-
-      const result = await this.paymentService.getMyUnlocks(userId, listingId);
-      return res.status(200).json({ data: result });
-    } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Failed to retrieve unlocks',
-      });
-    }
-  };
+            return res.status(200).json({ data: payment });
+        } catch (error) {
+            return res.status(404).json({
+                message: error instanceof Error ? error.message : 'Payment not found',
+            });
+        }
+    };
 }

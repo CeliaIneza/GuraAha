@@ -18,7 +18,7 @@ export class LocationController {
 
     getChildren = async (req: Request, res: Response) => {
         try {
-            const children = await this.locationService.getChildren(req.params.id as string);
+            const children = await this.locationService.getChildren(req.params.id);
             return res.status(200).json({ data: children });
         } catch (error) {
             return res.status(404).json({

@@ -15,11 +15,12 @@ const envSchema = z.object({
     JWT_EXPIRES_IN: z.string().min(1),
 
     ADMIN_SETUP_SECRET: z.string().min(3),
-    EMAIL_HOST: z.string().optional().default(''),
-    EMAIL_PORT: z.coerce.number().int().positive().optional().default(587),
-    EMAIL_USER: z.string().optional().default(''),
-    EMAIL_PASS: z.string().optional().default(''),
-    EMAIL_FROM: z.string().optional().default('GuraAha <no-reply@guraaha.com>')
+
+    INTOUCHPAY_BASE_URL: z.string().url().default('https://developer.intouchpay.co.rw/api/v1/sandbox/requestpayment/'),
+    INTOUCHPAY_PARTNER_PASSWORD: z.string().min(1),
+    INTOUCHPAY_USERNAME: z.string().min(1),
+    INTOUCHPAY_ACCOUNT_NO: z.string().min(1),
+    INTOUCHPAY_CALLBACK_URL: z.string().url().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -29,11 +30,4 @@ if (!parsed.success) {
     process.exit(1);
 }
 
-export const env = {
-  ...parsed.data,
-  EMAIL_HOST: process.env.EMAIL_HOST || '',
-  EMAIL_PORT: parseInt(process.env.EMAIL_PORT || '587'),
-  EMAIL_USER: process.env.EMAIL_USER || '',
-  EMAIL_PASS: process.env.EMAIL_PASS || '',
-  EMAIL_FROM: process.env.EMAIL_FROM || 'GuraAha <no-reply@guraaha.com>',
-};
+export const env = parsed.data;

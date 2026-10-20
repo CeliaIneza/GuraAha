@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -72,8 +72,8 @@ export const DashboardPage = () => {
   useEffect(() => {
     if (user?.role === 'BLOCKER') {
       setSubLoading(true);
-      subscriptionsApi.getMine()
-        .then(({ data }) => setSubscription(data))
+      subscriptionsApi.getStatus()
+        .then(({ data }) => setSubscription(data || null))
         .catch(() => setSubscription(null))
         .finally(() => setSubLoading(false));
     } else {
@@ -173,7 +173,7 @@ export const DashboardPage = () => {
           <div className="pb-5 border-b border-[#1E4038] mb-6">
             <b className="text-white block text-base font-bold">{user.firstName} {user.lastName}</b>
             <span className="text-xs text-[#8FAF9F] mt-0.5 block">
-              Blocker · {application?.verification_code || application?.verificationCode || 'Approved'}
+              Blocker Â· {application?.verification_code || application?.verificationCode || 'Approved'}
             </span>
           </div>
           <nav className="space-y-1">
@@ -228,7 +228,7 @@ export const DashboardPage = () => {
                 </p>
                 <p className="text-xs text-brand-ink-soft mt-1 mb-4">Valid for 7 days</p>
                 <button
-                  onClick={() => openMoMo({ kind: 'subscription-weekly', amount: settings.blockerProWeekly, title: 'Blocker Pro Weekly', listingId: null })}
+                  onClick={() => openMoMo({ kind: 'subscription-monthly', amount: settings.blockerProMonthly, title: 'Blocker Pro Monthly', listingId: null })}
                   className="w-full py-2.5 border-2 border-brand-green text-brand-green font-semibold rounded-xl text-sm hover:bg-brand-green hover:text-white transition-all"
                 >
                   Subscribe weekly
@@ -512,7 +512,7 @@ export const DashboardPage = () => {
                         }`}
                       />
                       {!form.ownerPhone.trim() && (
-                        <p className="text-xs text-red-600 mt-1">⚠ Required - buyers pay to see this number</p>
+                        <p className="text-xs text-red-600 mt-1">âš  Required - buyers pay to see this number</p>
                       )}
                     </div>
                   </div>
@@ -522,7 +522,7 @@ export const DashboardPage = () => {
                     disabled={saving}
                     className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl disabled:opacity-60 transition-colors"
                   >
-                    {saving ? 'Submitting…' : 'Submit for admin approval'}
+                    {saving ? 'Submittingâ€¦' : 'Submit for admin approval'}
                   </button>
                 </form>
               </div>
@@ -555,3 +555,5 @@ export const DashboardPage = () => {
     </div>
   );
 };
+
+
