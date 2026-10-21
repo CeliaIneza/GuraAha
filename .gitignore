@@ -3,6 +3,11 @@ node_modules/
 .env.*
 !.env.example
 dist/
+coverage/node_modules/
+.env
+.env.*
+!.env.example
+dist/
 coverage/
 backend/uploads/
 

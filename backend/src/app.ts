@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import blockerRoutes from './routes/blocker.routes';
 import authRoutes from './routes/auth.routes';
@@ -13,25 +13,6 @@ import { generateOpenApiDocument } from './openapi/document';
 import { UPLOAD_ROOT } from './middleware/upload';
 
 const app = express();
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Origin, Content-Type, Accept, Authorization, x-admin-setup-secret'
-    );
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(204);
-    }
-    return next();
-});
 
 app.use(express.json());
 

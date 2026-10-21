@@ -8,14 +8,16 @@ import { ListingService } from '../services/listing.service.js';
 import { ListingController } from '../controllers/listing.controller.js';
 
 import { authenticate } from '../middleware/authenticate.js';
+import { authenticate } from '../middleware/authenticate.js';
 import { requireRole, requireFreshRole } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 
 import {
     createListingSchema,
     rejectListingSchema,
+    addListingPhotoSchema,
 } from '../validators/listing.validator.js';
-import { createImageUploader, handleUploadErrors } from '../middleware/upload.js';
+import { createImageUploader } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -36,10 +38,12 @@ const listingService = new ListingService(
 const listingController = new ListingController(listingService);
 
 // PUBLIC
+// PUBLIC
 router.get('/', listingController.getApproved);
 router.get('/:id/photos', listingController.getPhotos);
 router.get('/:id', listingController.getById);
 
+// BLOCKER
 // BLOCKER
 router.post(
     '/',
@@ -76,6 +80,7 @@ router.post(
         }
         next();
     },
+    validate(addListingPhotoSchema),
     listingController.addPhoto
 );
 
