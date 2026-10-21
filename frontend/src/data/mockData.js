@@ -34,6 +34,16 @@ export const XTRA = [
   U + 'photo-1628624747186-a941c476b7ef'
 ];
 
+export const GRAD = {
+  t1: 'linear-gradient(135deg,#00705D,#2E9B84)',
+  t2: 'linear-gradient(135deg,#9C7C3C,#D3B42B)',
+  t3: 'linear-gradient(135deg,#00594A,#007A66)',
+  t4: 'linear-gradient(135deg,#8B6F2E,#9C7C3C)',
+};
+
+export const unsplashUrl = (base, width = 900) =>
+  `${base}?q=60&auto=format&fit=crop&w=${width}`;
+
 export const initialListings = [
   {
     id: 1,
@@ -205,6 +215,9 @@ export const initialListings = [
   }
 ];
 
+export const findDummyListing = (id) =>
+  initialListings.find((listing) => String(listing.id) === String(id));
+
 export const initialBlockerQueue = [
   { id: 'bq1', name: 'Uwase Marie', nid: '1 1998 8 001421 1 09', area: 'Kacyiru, Gasabo', agreement: true },
   { id: 'bq2', name: 'Nsengimana Paul', nid: '1 1991 8 003310 1 42', area: 'Huye town', agreement: true }
@@ -251,12 +264,12 @@ export const i18n = {
     nav_browse: "Reba amatangazo",
     nav_membership: "Abanyamuryango",
     nav_partners: "Abafatanyabikorwa",
-    nav_blocker: "Ba Umukommissiyoneri",
+    nav_blocker: "Ba Umukomisiyoneri",
     hero_title: "Shaka ubutaka. Shaka inzu. Guraaha!",
-    hero_sub: "Ubutaka n'amazu byemejwe mu ntara zose, uturere n'imirenge y'u Rwanda bitangazwa n'abakommissiyoneri bemewe.",
+    hero_sub: "Ubutaka n'amazu byemejwe mu ntara zose, uturere n'imirenge y'u Rwanda bitangazwa n'abakomisiyoneri bemewe.",
     search: "Shakisha",
     st1: "Amatangazo",
-    st2: "Abakommissiyoneri bemewe",
+    st2: "Abakomisiyoneri bemewe",
     st3: "Nimero zabonetse",
     feat: "Amatangazo akomeye",
     how: "Uko GuraAha ikora",
@@ -265,9 +278,9 @@ export const i18n = {
     h2t: "Reba amakuru yose",
     h2p: "Amafoto, ingano, nimero ya UPI, igiciro n'amahirwe y'ishoramari byose ku buntu.",
     h3t: "Fungura nimero ukoresheje MoMo",
-    h3p: "Ishyura 100 RWF ubone nimero y'umukommissiyoneri cyane 200 RWF ubone iy'nyirabyo kuri MoMo.",
+    h3p: "Ishyura 100 RWF ubone nimero y'umukomisiyoneri cyane 200 RWF ubone iy'nyirabyo kuri MoMo.",
     h4t: "Huza kandi ugure utekanye",
-    h4p: "Buri mukommissiyoneri ari ku rutonde ku kode yihariye. Aba-noteri n'abapima ubutaka bemewe."
+    h4p: "Buri mukomisiyoneri ari ku rutonde ku kode yihariye. Aba-noteri n'abapima ubutaka bemewe."
   },
   fr: {
     nav_home: "Accueil",

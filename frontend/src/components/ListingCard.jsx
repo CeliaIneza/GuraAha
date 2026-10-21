@@ -1,58 +1,94 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { useApp } from '../context/AppContext';
-import { listingLocationLine, listingSize, listingTitle, mediaUrl } from '../utils/listing';
+import {
+  listingCoverUrl,
+  listingGradient,
+  listingLocationLine,
+  listingPrice,
+  listingSize,
+  listingTitle,
+} from '../utils/listing';
+import { Card } from './ui/card';
 
-export const ListingCard = ({ listing }) => {
+const fallbackImg =
+  'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80';
+
+export const ListingCard = ({ listing, onClick, className }) => {
   const navigate = useNavigate();
   const { lang } = useApp();
-  const title = listingTitle(listing, lang);
-  const cover = mediaUrl(listing.coverPhotoPath);
-  const price = Number(listing.priceRwf || 0);
+  const [imgError, setImgError] = useState(false);
+
+  const title = listingTitle(listing, lang) || 'Property Listing';
+  const cover = listingCoverUrl(listing, 900) || fallbackImg;
+  const price = listingPrice(listing);
+  const size = listingSize(listing);
+  const location = listingLocationLine(listing, ['sector', 'district']);
+  const gradient = listingGradient(listing);
+
+  const handleClick = (e) => {
+    if (onClick) {
+      onClick(listing, e);
+      return;
+    }
+    if (listing?.id) {
+      navigate(`/listing/${listing.id}`, { state: { listing } });
+    }
+  };
 
   return (
-    <div
-      onClick={() => navigate(`/listing/${listing.id}`)}
-      className="bg-white border border-brand-line rounded-card overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 group flex flex-col h-full"
+    <Card
+      onClick={handleClick}
+      className={cn(
+        'group cursor-pointer flex flex-col justify-between overflow-hidden rounded-card border border-brand-line bg-white shadow-none transition-shadow duration-300 hover:shadow-[0_10px_30px_rgba(20,60,38,0.12)]',
+        className
+      )}
     >
-      <div
-        className="h-44 w-full relative overflow-hidden bg-emerald-900"
-        style={cover ? { backgroundImage: `url('${cover}')`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-      >
-        <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-        <span className="absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/90 text-brand-ink backdrop-blur-sm shadow-sm capitalize">
-          {listing.type}
-        </span>
-      </div>
+      <div>
+        <div
+          className="relative h-[180px] w-full overflow-hidden bg-brand-bg-soft"
+          style={{ backgroundImage: gradient }}
+        >
+          <img
+            src={imgError || !cover ? fallbackImg : cover}
+            alt={title}
+            onError={() => setImgError(true)}
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+            loading="lazy"
+          />
 
-      <div className="p-4 flex flex-col justify-between flex-1">
-        <div>
-          <div className="text-brand-green-dark font-bold text-lg mb-1">
-            {price.toLocaleString('en-US')} RWF
+          {size && (
+            <div className="pointer-events-none absolute bottom-2.5 right-2.5 z-10 rounded-md border border-white/10 bg-black/75 px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-sm">
+              {size}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2.5 p-[15px]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-full border border-brand-line bg-brand-bg-soft px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-green-dark">
+              {listing?.type}
+            </span>
+
+            <span className="text-lg font-bold tracking-tight text-brand-green-dark">
+              {price.toLocaleString('en-US')} RWF
+            </span>
           </div>
-          <h3 className="font-semibold text-brand-ink text-base line-clamp-2 mb-2 group-hover:text-brand-green transition-colors">
+
+          <h3 className="text-[15.5px] font-semibold leading-snug text-brand-ink line-clamp-2">
             {title}
           </h3>
-          <div className="text-xs text-brand-ink-soft flex items-center gap-1 mb-3">
-            <MapPin className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
-            <span>{listingLocationLine(listing) || listing.location?.village}</span>
-          </div>
-        </div>
 
-        <div className="pt-2 border-t border-brand-line/60 flex items-center justify-between">
-          <span className={`inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
-            listing.type === 'house'
-              ? 'bg-[#F1E8D0] text-brand-earth'
-              : 'bg-[#E4F1EC] text-brand-green-dark'
-          }`}>
-            {(listing.type || '').toUpperCase()}
-          </span>
-          <span className="text-xs text-brand-ink-soft font-medium">
-            {listingSize(listing)}
-          </span>
+          {location && (
+            <div className="flex items-center gap-1.5 pt-0.5 text-[13px] text-brand-ink-soft">
+              <MapPin className="h-4 w-4 shrink-0 text-brand-green" />
+              <span className="truncate">{location}</span>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 };

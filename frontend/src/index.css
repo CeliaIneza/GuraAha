@@ -1,30 +1,412 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+
 :root {
+  /* Core brand colors */
   --green: #007A66;
   --green-dark: #00614F;
   --ink: #0F2C26;
-  --ink-soft: #43584c;
+  --ink-soft: #43584C;
   --earth: #9C7C3C;
-  --bg: #ffffff;
+  --gold: #D3B42B;
+
+  /* Backgrounds and borders */
+  --bg: #FFFFFF;
   --bg-soft: #F2F7F5;
   --line: #DCE7E1;
+  --dashboard-bg: #FAFCFA;
+
+  /* Supporting brand colors */
+  --green-gradient-start: #00594A;
+  --green-light: #2E9B84;
+  --green-pale: #E4F1EC;
+  --green-border: #CFE0D9;
+
+  /* Status colors */
+  --amber: #B45309;
+  --amber-bg: #FEF3C7;
+  --red: #B91C1C;
+  --red-bg: #FEE2E2;
+  --success-bg: #E4F1EC;
+  --success-text: #00614F;
+
+  /* Land and house indicators */
+  --earth-bg: #F1E8D0;
+  --earth-dark: #8B6F2E;
+
+  /* Sidebar */
+  --sidebar-bg: #0F2C26;
+  --sidebar-text: #CFE0D9;
+  --sidebar-muted: #8FAF9F;
+  --sidebar-border-color: #1E4038;
+
+  /* Overlays */
+  --overlay-bg: rgba(10, 25, 16, 0.55);
+
+  /* Typography and shape */
+  --font-brand: 'Poppins', 'Segoe UI', Arial, sans-serif;
+  --radius: 14px;
+
+  /* SHADCN SEMANTIC VARIABLES */
+
+  --background: 0 0% 100%;
+  --foreground: 162 48% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 162 48% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 162 48% 12%;
+
+  --primary: 171 100% 24%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 150 26% 96%;
+  --secondary-foreground: 162 48% 12%;
+
+  --muted: 150 26% 96%;
+  --muted-foreground: 155 13% 31%;
+
+  --accent: 153 36% 92%;
+  --accent-foreground: 171 100% 19%;
+
+  --destructive: 0 72% 42%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 150 19% 88%;
+  --input: 150 19% 88%;
+  --ring: 171 100% 24%;
+
+  /* Chart palette */
+  --chart-1: 171 100% 24%;
+  --chart-2: 39 45% 43%;
+  --chart-3: 165 55% 40%;
+  --chart-4: 50 68% 50%;
+  --chart-5: 155 13% 31%;
+
+  /* shadcn sidebar variables */
+  --sidebar: 162 48% 12%;
+  --sidebar-foreground: 155 29% 85%;
+  --sidebar-primary: 171 100% 24%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 162 36% 19%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 162 36% 19%;
+  --sidebar-ring: 171 100% 24%;
 }
+
+
+.dark {
+  --background: 162 48% 8%;
+  --foreground: 150 20% 94%;
+
+  --card: 162 42% 11%;
+  --card-foreground: 150 20% 94%;
+
+  --popover: 162 42% 11%;
+  --popover-foreground: 150 20% 94%;
+
+  --primary: 165 55% 43%;
+  --primary-foreground: 162 48% 8%;
+
+  --secondary: 162 30% 17%;
+  --secondary-foreground: 150 20% 94%;
+
+  --muted: 162 30% 17%;
+  --muted-foreground: 155 15% 68%;
+
+  --accent: 162 30% 20%;
+  --accent-foreground: 150 20% 94%;
+
+  --destructive: 0 55% 38%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 162 25% 23%;
+  --input: 162 25% 23%;
+  --ring: 165 55% 43%;
+
+  --chart-1: 165 55% 43%;
+  --chart-2: 39 55% 58%;
+  --chart-3: 180 45% 48%;
+  --chart-4: 50 68% 55%;
+  --chart-5: 155 15% 68%;
+
+  --sidebar: 162 48% 7%;
+  --sidebar-foreground: 150 20% 94%;
+  --sidebar-primary: 165 55% 43%;
+  --sidebar-primary-foreground: 162 48% 8%;
+  --sidebar-accent: 162 30% 17%;
+  --sidebar-accent-foreground: 150 20% 94%;
+  --sidebar-border: 162 25% 20%;
+  --sidebar-ring: 165 55% 43%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-brand);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-brand);
+    color: var(--ink);
+    background: var(--bg);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  ::selection {
+    color: #FFFFFF;
+    background: var(--green);
+  }
+}
+
+
+@layer utilities {
+  .text-brand {
+    color: var(--green);
+  }
+
+  .text-brand-dark {
+    color: var(--green-dark);
+  }
+
+  .text-brand-soft {
+    color: var(--ink-soft);
+  }
+
+  .text-brand-earth {
+    color: var(--earth);
+  }
+
+  .text-brand-muted {
+    color: var(--sidebar-muted);
+  }
+
+  .bg-brand {
+    background-color: var(--green);
+  }
+
+  .bg-brand-dark {
+    background-color: var(--green-dark);
+  }
+
+  .bg-brand-soft {
+    background-color: var(--bg-soft);
+  }
+
+  .bg-brand-pale {
+    background-color: var(--green-pale);
+  }
+
+  .bg-dashboard {
+    background-color: var(--dashboard-bg);
+  }
+
+  .bg-sidebar {
+    background-color: var(--sidebar-bg);
+  }
+
+  .border-brand {
+    border-color: var(--green);
+  }
+
+  .border-brand-line {
+    border-color: var(--line);
+  }
+
+  .bg-brand-gradient {
+    background: linear-gradient(
+      140deg,
+      var(--green-gradient-start) 0%,
+      var(--green) 90%
+    );
+  }
+
+  .animate-spin-custom {
+    animation: spin 1s linear infinite;
+  }
+}
+
+
+@layer components {
+  .btn-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.1rem;
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    color: #FFFFFF;
+    background: var(--green);
+    font-weight: 500;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .btn-brand:hover {
+    border-color: var(--green-dark);
+    background: var(--green-dark);
+  }
+
+  .btn-brand:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
+
+  .btn-brand-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--ink);
+    background: #FFFFFF;
+    font-weight: 500;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .btn-brand-outline:hover {
+    border-color: var(--green);
+    background: var(--bg-soft);
+  }
+
+  .btn-brand-earth {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.1rem;
+    border: 1px solid var(--earth);
+    border-radius: 10px;
+    color: #FFFFFF;
+    background: var(--earth);
+    font-weight: 500;
+    transition: background-color 160ms ease;
+  }
+
+  .btn-brand-earth:hover {
+    background: var(--earth-dark);
+  }
+}
+
+
+.card-brand {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(15, 44, 38, 0.04);
+}
+
+.input-brand {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0.65rem 0.8rem;
+  color: var(--ink);
+  background: #FFFFFF;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input-brand:focus {
+  border-color: var(--green);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 122, 102, 0.12);
+}
+
+.input-brand::placeholder {
+  color: #8FA39A;
+}
+
+
+.badge-approved {
+  color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.badge-pending {
+  color: var(--amber);
+  background: var(--amber-bg);
+}
+
+.badge-rejected {
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+.badge-land {
+  color: var(--green-dark);
+  background: var(--success-bg);
+}
+
+.badge-house {
+  color: var(--earth-dark);
+  background: var(--earth-bg);
+}
+
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.animate-spin-custom {
-  animation: spin 1s linear infinite;
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
-/* Custom scrollbars and styling tweaks */
-body {
-  margin: 0;
-  font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
-  color: var(--ink);
-  background: var(--bg);
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--line);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-soft);
 }

@@ -1,38 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { listingsApi } from '../api/listings';
-import { blockerLabel, listingDescription, listingSize, listingTitle, mediaUrl } from '../utils/listing';
+import { findDummyListing } from '../data/mockData';
+import {
+  blockerLabel,
+  listingCoverUrl,
+  listingDescription,
+  listingGalleryUrls,
+  listingGradient,
+  listingPrice,
+  listingSize,
+  listingTitle,
+  mediaUrl,
+} from '../utils/listing';
 import { Lock, ChevronRight } from 'lucide-react';
 
 export const DetailPage = () => {
   const { id } = useParams();
+  const routerLocation = useLocation();
   const { lang, openMoMo, settings } = useApp();
-  const [listing, setListing] = useState(null);
-  const [photos, setPhotos] = useState([]);
+  const [listing, setListing] = useState(routerLocation.state?.listing || findDummyListing(id) || null);
+  const [photos, setPhotos] = useState(() => {
+    const seed = routerLocation.state?.listing || findDummyListing(id);
+    return seed ? listingGalleryUrls(seed) : [];
+  });
   const [active, setActive] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const dummy = routerLocation.state?.listing || findDummyListing(id);
+    if (dummy) {
+      const urls = listingGalleryUrls(dummy);
+      setListing(dummy);
+      setPhotos(urls);
+      setActive(urls[0] || '');
+      setError('');
+    }
+
     const load = async () => {
       try {
         const [{ data }, photoRes] = await Promise.all([
           listingsApi.getById(id),
           listingsApi.getPhotos(id).catch(() => ({ data: [] })),
         ]);
+        if (!data) return;
         setListing(data);
-        const urls = (photoRes.data || []).map((p) => mediaUrl(p.filePath || p.file_path)).filter(Boolean);
-        if (data.coverPhotoPath && !urls.includes(data.coverPhotoPath)) {
+        const urls = (photoRes.data || [])
+          .map((p) => mediaUrl(p.filePath || p.file_path))
+          .filter(Boolean);
+        if (data.coverPhotoPath && !urls.includes(mediaUrl(data.coverPhotoPath))) {
           urls.unshift(mediaUrl(data.coverPhotoPath));
         }
-        setPhotos(urls);
-        setActive(urls[0] || '');
+        const gallery = urls.length > 0 ? urls : listingGalleryUrls(data);
+        setPhotos(gallery);
+        setActive(gallery[0] || '');
       } catch (err) {
-        setError(err.message);
+        if (!dummy) setError(err.message || 'Listing not found');
       }
     };
     load();
-  }, [id]);
+  }, [id, routerLocation.state]);
 
   if (error) {
     return (
@@ -51,7 +79,16 @@ export const DetailPage = () => {
 
   const title = listingTitle(listing, lang);
   const loc = listing.location || {};
-  const crumbs = ['Rwanda', loc.province, loc.district, loc.sector, loc.cell, loc.village].filter(Boolean);
+  const crumbs = [
+    'Rwanda',
+    loc.province || listing.prov,
+    loc.district || listing.dist,
+    loc.sector || listing.sect,
+    loc.cell || listing.cell,
+    loc.village || listing.vill,
+  ].filter(Boolean);
+  const cover = active || listingCoverUrl(listing, 1400);
+  const gradient = listingGradient(listing);
 
   return (
     <div className="max-w-6xl mx-auto px-6 sm:px-10 py-8 min-h-screen">
@@ -67,8 +104,10 @@ export const DetailPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
         <div className="md:col-span-3">
           <div
-            className="w-full h-80 sm:h-96 rounded-card bg-slate-900 bg-cover bg-center shadow-md"
-            style={active ? { backgroundImage: `url('${active}')` } : undefined}
+            className="w-full h-80 sm:h-96 rounded-card bg-cover bg-center shadow-md"
+            style={{
+              backgroundImage: cover ? `url('${cover}'), ${gradient}` : gradient,
+            }}
           />
           {photos.length > 0 && (
             <div className="flex gap-3 mt-3">
@@ -78,7 +117,7 @@ export const DetailPage = () => {
                   type="button"
                   onClick={() => setActive(url)}
                   className={`flex-1 h-20 rounded-xl bg-cover bg-center ${active === url ? 'ring-4 ring-brand-green ring-offset-2' : 'opacity-80'}`}
-                  style={{ backgroundImage: `url('${url}')` }}
+                  style={{ backgroundImage: `url('${url}'), ${gradient}` }}
                 />
               ))}
             </div>
@@ -89,11 +128,11 @@ export const DetailPage = () => {
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Size</span>
-              <b className="text-base text-brand-ink">{listingSize(listing)}</b>
+              <b className="text-base text-brand-ink">{listingSize(listing) || '—'}</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">UPI / Parcel No.</span>
-              <b className="text-base text-brand-ink">{listing.upiNumber || '—'}</b>
+              <b className="text-base text-brand-ink">{listing.upiNumber || listing.upi || '—'}</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Type</span>
@@ -116,7 +155,7 @@ export const DetailPage = () => {
         <div className="md:col-span-2">
           <div className="sticky top-24 bg-white border-1.5 border-brand-line rounded-card p-6 shadow-md">
             <div className="text-3xl font-bold text-brand-green-dark mb-6">
-              {Number(listing.priceRwf || 0).toLocaleString('en-US')} RWF
+              {listingPrice(listing).toLocaleString('en-US')} RWF
             </div>
 
             {['blocker', 'owner'].map((kind) => (

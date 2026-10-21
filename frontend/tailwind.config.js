@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ["class"],
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,26 +8,60 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          green: '#007A66',
-          'green-dark': '#00614F',
-          ink: '#0F2C26',
-          'ink-soft': '#43584C',
-          earth: '#9C7C3C',
-          gold: '#D3B42B',
-          'bg-soft': '#F2F7F5',
-          line: '#DCE7E1',
-          amber: '#b45309',
-          'amber-bg': '#fef3c7',
-        }
-      },
-      fontFamily: {
-        sans: ['Poppins', 'Segoe UI', 'Arial', 'sans-serif'],
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        "brand-green": "var(--green)",
+        "brand-green-dark": "var(--green-dark)",
+        "brand-ink": "var(--ink)",
+        "brand-ink-soft": "var(--ink-soft)",
+        "brand-earth": "var(--earth)",
+        "brand-earth-dark": "var(--earth-dark)",
+        "brand-gold": "var(--gold)",
+        "brand-bg-soft": "var(--bg-soft)",
+        "brand-line": "var(--line)",
+        "brand-pale": "var(--green-pale)",
       },
       borderRadius: {
-        'card': '14px',
-      }
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+        card: "var(--radius)",
+      },
+      fontFamily: {
+        brand: ["var(--font-brand)"],
+      },
     },
   },
   plugins: [],
-}
+};
