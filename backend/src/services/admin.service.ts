@@ -18,6 +18,11 @@ export class AdminService {
             throw new Error('Admin creation is not configured (ADMIN_SETUP_SECRET missing)');
         }
 
+        // FIX: actually validate the provided secret against the configured one
+        if (providedSecret !== env.ADMIN_SETUP_SECRET) {
+            throw new Error('Invalid admin setup secret');
+        }
+
         const existingByPhone = await this.userRepository.findByPhone(input.phone);
         if(existingByPhone) {
             throw new Error('Phone number is already registered');

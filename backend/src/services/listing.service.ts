@@ -61,7 +61,7 @@ export class ListingService {
             sizeUnit: input.sizeUnit,
             upiNumber: input.upiNumber,
             ownerName: input.ownerName,
-            ownerPhone: input.ownerName,
+            ownerPhone: input.ownerPhone, // FIX: was incorrectly set to input.ownerName
             ownershipDocumentPath: input.ownershipDocumentPath
         });
     }
@@ -131,50 +131,50 @@ export class ListingService {
 
 
     async reject(listingId: string, adminId: string, rejectionReason: string) {
-    const listing = await this.listingRepository.findById(listingId);
- 
-    if (!listing) {
-      throw new Error('Listing not found');
+        const listing = await this.listingRepository.findById(listingId);
+
+        if (!listing) {
+            throw new Error('Listing not found');
+        }
+
+        if (listing.status !== 'PENDING') {
+            throw new Error('Only pending listings can be rejected');
+        }
+
+        return this.listingRepository.reject(listingId, adminId, rejectionReason);
     }
- 
-    if (listing.status !== 'PENDING') {
-      throw new Error('Only pending listings can be rejected');
+
+    async addPhoto(listingId: string, userId: string, filePath: string, sortOrder?: number) {
+        const listing = await this.listingRepository.findByIdWithOwner(listingId);
+
+        if (!listing) {
+            throw new Error('Listing not found');
+        }
+
+        if (listing.owner_user_id !== userId) {
+            throw new Error('You do not own this listing');
+        }
+
+        return this.listingPhotoRepository.create({ listingId, filePath, sortOrder });
     }
- 
-    return this.listingRepository.reject(listingId, adminId, rejectionReason);
-  }
- 
-  async addPhoto(listingId: string, userId: string, filePath: string, sortOrder?: number) {
-    const listing = await this.listingRepository.findByIdWithOwner(listingId);
- 
-    if (!listing) {
-      throw new Error('Listing not found');
+
+    async getPhotos(listingId: string) {
+        return this.listingPhotoRepository.findByListingId(listingId);
     }
- 
-    if (listing.owner_user_id !== userId) {
-      throw new Error('You do not own this listing');
+
+    async removePhoto(photoId: string, userId: string) {
+        const photo = await this.listingPhotoRepository.findById(photoId);
+
+        if (!photo) {
+            throw new Error('Photo not found');
+        }
+
+        const listing = await this.listingRepository.findByIdWithOwner(photo.listing_id);
+
+        if (!listing || listing.owner_user_id !== userId) {
+            throw new Error('You do not own this listing');
+        }
+
+        return this.listingPhotoRepository.deleteById(photoId);
     }
- 
-    return this.listingPhotoRepository.create({ listingId, filePath, sortOrder });
-  }
- 
-  async getPhotos(listingId: string) {
-    return this.listingPhotoRepository.findByListingId(listingId);
-  }
- 
-  async removePhoto(photoId: string, userId: string) {
-    const photo = await this.listingPhotoRepository.findById(photoId);
- 
-    if (!photo) {
-      throw new Error('Photo not found');
-    }
- 
-    const listing = await this.listingRepository.findByIdWithOwner(photo.listing_id);
- 
-    if (!listing || listing.owner_user_id !== userId) {
-      throw new Error('You do not own this listing');
-    }
- 
-    return this.listingPhotoRepository.deleteById(photoId);
-  }
 }

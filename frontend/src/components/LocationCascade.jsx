@@ -14,32 +14,23 @@ export const LocationCascade = ({
   required = false,
   onChange,
   className = '',
+  singleColumn = false,
 }) => {
   const stopIndex = LEVELS.findIndex((level) => level.key === deepest);
   const visible = LEVELS.slice(0, stopIndex + 1);
 
   const [options, setOptions] = useState({
-    province: [],
-    district: [],
-    sector: [],
-    cell: [],
-    village: [],
+    province: [], district: [], sector: [], cell: [], village: [],
   });
   const [selected, setSelected] = useState({
-    province: '',
-    district: '',
-    sector: '',
-    cell: '',
-    village: '',
+    province: '', district: '', sector: '', cell: '', village: '',
   });
   const [error, setError] = useState('');
 
   useEffect(() => {
     locationsApi
       .provinces()
-      .then(({ data }) => {
-        setOptions((prev) => ({ ...prev, province: data || [] }));
-      })
+      .then(({ data }) => setOptions((prev) => ({ ...prev, province: data || [] })))
       .catch((err) => setError(err.message));
   }, []);
 
@@ -57,15 +48,13 @@ export const LocationCascade = ({
 
   const handleSelect = async (levelKey, id) => {
     const levelIndex = visible.findIndex((level) => level.key === levelKey);
+
+    // Compute full next state before any setState call to avoid stale closure issues
     const nextSelected = { ...selected, [levelKey]: id };
-    visible.slice(levelIndex + 1).forEach((level) => {
-      nextSelected[level.key] = '';
-    });
+    visible.slice(levelIndex + 1).forEach((level) => { nextSelected[level.key] = ''; });
 
     const nextOptions = { ...options };
-    visible.slice(levelIndex + 1).forEach((level) => {
-      nextOptions[level.key] = [];
-    });
+    visible.slice(levelIndex + 1).forEach((level) => { nextOptions[level.key] = []; });
 
     setSelected(nextSelected);
     setOptions(nextOptions);
@@ -76,8 +65,8 @@ export const LocationCascade = ({
 
     try {
       const { data } = await locationsApi.children(id);
-      const updated = { ...nextOptions, [nextLevel.key]: data || [] };
-      setOptions(updated);
+      // Use functional update to avoid stale options
+      setOptions((prev) => ({ ...prev, [nextLevel.key]: data || [] }));
     } catch (err) {
       setError(err.message);
     }
@@ -85,13 +74,13 @@ export const LocationCascade = ({
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={singleColumn ? 'flex flex-col gap-2.5' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
         {visible.map((level, index) => {
           const parent = visible[index - 1];
           const disabled = Boolean(parent && !selected[parent.key]);
           return (
             <div key={level.key}>
-              <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">
                 {level.label}
               </label>
               <select
@@ -99,13 +88,13 @@ export const LocationCascade = ({
                 disabled={disabled}
                 value={selected[level.key]}
                 onChange={(e) => handleSelect(level.key, e.target.value)}
-                className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green bg-white disabled:bg-brand-bg-soft"
+                className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
               >
-                <option value="">{disabled ? `Select ${parent.label} first` : `Select ${level.label.toLowerCase()}`}</option>
+                <option value="">
+                  {disabled ? `Select ${parent.label} first` : `Select ${level.label}`}
+                </option>
                 {options[level.key].map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
+                  <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
               </select>
             </div>

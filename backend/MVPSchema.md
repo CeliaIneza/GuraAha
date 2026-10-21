@@ -28,7 +28,7 @@ CREATE INDEX idx_locations_level ON locations(level);
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     phone VARCHAR(20) NOT NULL UNIQUE,
-    password_hash TEXT,                       -- argon2 hash; nullable if OTP-only login — TBD
+    password_hash TEXT,                       -- argon2 hash; nullable if OTP-only login - TBD
     role user_role NOT NULL DEFAULT 'buyer',
     full_name VARCHAR(150),
     phone_verified_at TIMESTAMPTZ,

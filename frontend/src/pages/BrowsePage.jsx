@@ -239,6 +239,16 @@ export const BrowsePage = () => {
     setSearchParams({});
   };
 
+  const handleApplyMobile = () => {
+    applyFilters();
+    setShowMobileFilter(false);
+  };
+
+  const handleResetMobile = () => {
+    handleReset();
+    setShowMobileFilter(false);
+  };
+
   return (
     // 4rem = navbar height. Adjust if your navbar differs.
     <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-4 py-4 md:h-[calc(100vh-4rem)] md:overflow-hidden">
@@ -247,8 +257,7 @@ export const BrowsePage = () => {
         <aside className="w-full md:w-72 md:shrink-0 bg-white border border-brand-line rounded-[9px] p-5 shadow-sm md:h-full md:overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-lg text-brand-ink flex items-center gap-2">
-              <Filter className="w-4 h-4 text-brand-green" />
-              Filter
+              <Filter className="w-4 h-4 text-brand-green" /> Filter
             </h3>
             <button
               onClick={handleReset}
@@ -330,6 +339,12 @@ export const BrowsePage = () => {
                 {loading ? "Loading…" : `— ${listings.length} results`}
               </span>
             </h2>
+            <button
+              onClick={() => setShowMobileFilter(true)}
+              className="md:hidden flex items-center gap-2 text-sm font-semibold text-brand-ink border-2 border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50 transition-colors"
+            >
+              <Filter className="w-4 h-4 text-brand-green" /> Filter
+            </button>
           </div>
 
           {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -350,9 +365,38 @@ export const BrowsePage = () => {
                 No listings match these filters yet.
               </p>
             </div>
-          ) : null}
+          )}
         </main>
       </div>
+
+      {/* Mobile filter drawer */}
+      {showMobileFilter && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowMobileFilter(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Filter className="w-5 h-5 text-brand-green" />
+                <h3 className="font-bold text-lg text-brand-ink">Filter listings</h3>
+              </div>
+              <button onClick={() => setShowMobileFilter(false)} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <FilterContent
+              cascadeKey={cascadeKey}
+              typeFilter={typeFilter}
+              maxPriceFilter={maxPriceFilter}
+              onLocationChange={setLocationId}
+              onTypeChange={setTypeFilter}
+              onPriceChange={setMaxPriceFilter}
+              onApply={handleApplyMobile}
+              onReset={handleResetMobile}
+              isMobile
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
