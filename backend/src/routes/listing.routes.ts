@@ -8,7 +8,6 @@ import { ListingService } from '../services/listing.service.js';
 import { ListingController } from '../controllers/listing.controller.js';
 
 import { authenticate } from '../middleware/authenticate.js';
-import { authenticate } from '../middleware/authenticate.js';
 import { requireRole, requireFreshRole } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 
@@ -17,7 +16,10 @@ import {
     rejectListingSchema,
     addListingPhotoSchema,
 } from '../validators/listing.validator.js';
-import { createImageUploader } from '../middleware/upload.js';
+import {
+    createImageUploader,
+    handleUploadErrors,
+} from '../middleware/upload.js';
 
 const router = Router();
 

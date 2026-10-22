@@ -9,7 +9,8 @@
     "start": "nodemon dist/server.ts",
     "migrate": "tsx src/migrate.ts",
     "seedlocations": "tsx src/scripts/seed-locations.ts",
-    "generateopenapi": "tsx src/scripts/generate-openapi.ts"
+    "generateopenapi": "tsx src/scripts/generate-openapi.ts",
+    "seeddev": "tsx src/scripts/seed-dev.ts"
   },
   "repository": {
     "type": "git",
