@@ -143,7 +143,13 @@ async function insertBatch(
   );
 }
 
-async function seedLocations() {
+export async function seedLocations() {
+  const existing = await db.query('SELECT COUNT(*)::int AS n FROM locations');
+  if (existing.rows[0].n > 0) {
+    console.log('Locations already seeded, skipping.');
+    return;
+  }
+
   const raw = fs.readFileSync(DATA_PATH, 'utf-8');
   const data: RwandaAdminJson = JSON.parse(raw);
 
@@ -170,14 +176,13 @@ async function seedLocations() {
   }
 }
 
-seedLocations()
-  .catch((error) => {
-    console.error('Seeding failed:', error);
-    process.exitCode = 1;
-  })
-  .finally(() => {
-    // Standalone script — close the pool so the process actually exits.
-    // Don't reuse this pattern if this file is ever imported into the
-    // long-running server instead of run standalone.
-    void db.end();
-  });
+if (require.main === module) {
+  seedLocations()
+    .catch((error) => {
+      console.error('Seeding failed:', error);
+      process.exitCode = 1;
+    })
+    .finally(() => {
+      void db.end();
+    });
+}
