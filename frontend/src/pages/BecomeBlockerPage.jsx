@@ -150,23 +150,22 @@ export const BecomeBlockerPage = () => {
   };
 
   return (
-    <div className="min-h-[85vh] bg-dashboard py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-[85vh] bg-dashboard py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto space-y-6">
         
         {/* Main Application Card with 9px border radius */}
         <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
-          <CardHeader className="px-6 pt-6 sm:px-8 sm:pt-8 pb-1 sm:pb-2 bg-brand-bg-soft/40">
-            <CardTitle className="text-xl sm:text-2xl font-extrabold text-brand-ink">
+          <CardHeader className="p-4 sm:p-6 text-center flex flex-col items-center">
+            <CardTitle className="text-2xl font-bold text-brand-ink">
               Become a Blocker
             </CardTitle>
-            <CardDescription className="text-sm sm:text-md font-semibold text-brand-ink-soft leading-relaxed mt-1">
-              Earn commissions by listing land & houses in your area. 
-              Every blocker is verified before going live.
+            <CardDescription className="text-sm text-brand-ink-soft leading-relaxed mt-1 max-w-md">
+              Earn commissions by listing land & houses in your area. Every blocker is verified before going live.
             </CardDescription>
           </CardHeader>
 
           {isSubmitted ? (
-            <CardContent className="p-8 text-center space-y-4">
+            <CardContent className="p-6 sm:p-8 text-center space-y-4 pt-2">
               <div className="w-14 h-14 bg-brand-pale text-brand-green rounded-full flex items-center justify-center mx-auto shadow-xs">
                 <CheckCircle2 className="w-8 h-8 stroke-[2.2]" />
               </div>
@@ -182,12 +181,12 @@ export const BecomeBlockerPage = () => {
             </CardContent>
           ) : (
             <form onSubmit={handleSubmit}>
-              <CardContent className="p-6 sm:p-8 space-y-6">
+              <CardContent className="p-6 sm:p-8 pt-2 space-y-4">
                 
                 {/* Row 1: two inputs per row (username / full name & phone number) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-brand-ink">
+                    <label className="block text-xs font-semibold text-brand-ink">
                       Full name <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -205,7 +204,7 @@ export const BecomeBlockerPage = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-brand-ink">
+                    <label className="block text-xs font-semibold text-brand-ink">
                       Phone (MoMo) <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -275,7 +274,7 @@ export const BecomeBlockerPage = () => {
                     Upload signed agreement <span className="text-xs font-normal text-brand-ink-soft">(optional at this step)</span>
                   </label>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-[9px] border border-brand-line bg-brand-bg-soft/30 hover:bg-brand-bg-soft/50 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-1.5 rounded-[9px] border border-brand-line bg-brand-bg-soft/30 hover:bg-brand-bg-soft/50 transition-colors">
                     <label className="cursor-pointer inline-flex items-center">
                       <input
                         type="file"
@@ -325,7 +324,7 @@ export const BecomeBlockerPage = () => {
                       onChange={(e) => updateField('acceptedTerms', e.target.checked)}
                       className="mt-0.5 h-4 w-4 rounded-[4px] border-brand-line text-brand-green focus:ring-brand-green accent-[#007A66] cursor-pointer"
                     />
-                    <span className="text-xs sm:text-[13px] text-brand-ink-soft leading-relaxed group-hover:text-brand-ink transition-colors">
+                    <span className="text-xs sm:text-[12px] text-brand-ink-soft leading-relaxed group-hover:text-brand-ink transition-colors">
                       I accept the <strong>GuraAha Blocker Agreement</strong>: I will only post properties I am authorised to represent, with truthful details and real photos, and I accept the commission & conduct terms.
                     </span>
                   </label>
