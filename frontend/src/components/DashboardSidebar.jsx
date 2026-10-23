@@ -69,9 +69,6 @@ export const DashboardSidebar = ({
         <b className="text-white text-base sm:text-lg font-bold tracking-tight block text-center leading-snug">
           {displayName}
         </b>
-        <p>
-            Administration Panel
-        </p>
         <span className="text-xs font-bold text-[#8FAF9F] mt-1 block text-center uppercase tracking-wider">
           {displaySubtitle}
         </span>
