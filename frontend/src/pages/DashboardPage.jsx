@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { listingsApi } from '../api/listings';
@@ -7,12 +7,39 @@ import { blockersApi } from '../api/blockers';
 import { subscriptionsApi } from '../api/subscriptions';
 import { LocationCascade } from '../components/LocationCascade';
 import { formatStatus, listingLocationLine, listingTitle } from '../utils/listing';
-import { LayoutDashboard, PlusCircle, ArrowLeft, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react';
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from '../components/ui/sidebar';
+import { DashboardSidebar } from '../components/DashboardSidebar';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import {
+  LayoutDashboard,
+  PlusCircle,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Loader2,
+  Building2,
+  Calendar,
+  CreditCard,
+  Upload,
+  FileText,
+  X,
+  Sparkles,
+  Phone,
+  ArrowRight,
+  ShieldCheck,
+} from 'lucide-react';
 
 export const DashboardPage = () => {
   const { user, syncRole } = useAuth();
   const { settings, openMoMo, subscriptionTimestamp } = useApp();
   const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState('listings');
   const [myListings, setMyListings] = useState([]);
   const [application, setApplication] = useState(null);
@@ -51,11 +78,11 @@ export const DashboardPage = () => {
         const appRes = await blockersApi.me().catch(() => ({ data: null }));
         if (cancelled) return;
         setApplication(appRes.data);
-        if (user.role === 'USER' && appRes.data?.status === 'APPROVED') {
+        if (user?.role === 'USER' && appRes.data?.status === 'APPROVED') {
           await syncRole();
           return;
         }
-        if (user.role === 'BLOCKER') {
+        if (user?.role === 'BLOCKER') {
           const { data } = await listingsApi.getMine();
           if (!cancelled) setMyListings(data || []);
         }
@@ -67,12 +94,13 @@ export const DashboardPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [user.role, syncRole]);
+  }, [user?.role, syncRole]);
 
   useEffect(() => {
     if (user?.role === 'BLOCKER') {
       setSubLoading(true);
-      subscriptionsApi.getStatus()
+      subscriptionsApi
+        .getStatus()
         .then(({ data }) => setSubscription(data || null))
         .catch(() => setSubscription(null))
         .finally(() => setSubLoading(false));
@@ -84,9 +112,9 @@ export const DashboardPage = () => {
   const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   const handleAddSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!form.ownerPhone.trim()) {
-      setError('Owner phone number is required. Buyers pay to unlock this contact - without it they get nothing.');
+      setError('Owner phone number is required. Buyers pay to unlock this contact.');
       return;
     }
     setError('');
@@ -117,8 +145,9 @@ export const DashboardPage = () => {
 
       const { data: mine } = await listingsApi.getMine();
       setMyListings(mine || []);
-      setSubmittedMsg('Listing submitted for admin approval.');
+      setSubmittedMsg('Property listing successfully submitted for verification.');
       setActiveTab('listings');
+
       // Reset form
       setForm({
         titleEn: '',
@@ -141,419 +170,735 @@ export const DashboardPage = () => {
       setCoverPreview(null);
       setExtraPreviews([]);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to submit property listing.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (user.role !== 'BLOCKER') {
+  const [devPreview, setDevPreview] = useState(false);
+
+  // Blocker gate screen when not a blocker
+  if (user?.role !== 'BLOCKER' && !devPreview) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-16 text-center">
-        <h2 className="text-2xl font-bold mb-3">Blocker dashboard</h2>
-        <p className="text-brand-ink-soft mb-6">
-          {application?.status === 'PENDING'
-            ? 'Your blocker application is waiting for admin review.'
-            : application?.status === 'REJECTED'
-              ? 'Your application was rejected. Contact support or apply again if allowed.'
-              : 'You need an approved blocker profile before you can post listings.'}
-        </p>
-        <button onClick={() => navigate('/become-blocker')} className="py-2.5 px-6 bg-brand-green text-white rounded-xl font-semibold">
-          Become a blocker
-        </button>
+      <div className="min-h-[85vh] bg-dashboard flex items-center justify-center px-4 py-16">
+        <Card className="max-w-md w-full rounded-[9px] border-brand-line bg-white shadow-sm p-6 sm:p-8 text-center space-y-5">
+          <div className="w-14 h-14 bg-brand-green/10 text-brand-green rounded-full flex items-center justify-center mx-auto shadow-xs">
+            <ShieldCheck className="w-7 h-7 stroke-[2]" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-brand-ink">Blocker Portal</h2>
+            <p className="text-sm text-brand-ink-soft leading-relaxed mt-2">
+              {application?.status === 'PENDING'
+                ? 'Your blocker application is currently undergoing compliance review. You will be notified via SMS upon approval.'
+                : application?.status === 'REJECTED'
+                ? 'Your previous application was not approved. Please verify your National ID and re-apply.'
+                : 'You need an approved blocker profile before you can publish properties on GuraAha.'}
+            </p>
+          </div>
+          <div className="pt-2 space-y-2">
+            <Button
+              onClick={() => navigate('/become-blocker')}
+              className="w-full h-11 rounded-[9px] font-semibold text-base shadow-sm"
+            >
+              Become a Blocker
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDevPreview(true)}
+              className="w-full h-10 rounded-[9px] text-xs font-medium border-dashed border-gray-300 text-gray-600 hover:text-brand-green"
+            >
+              Preview Blocker Dashboard (UI Test Mode)
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }
 
+  const blockerNav = [
+    { id: 'listings', label: 'My Properties', icon: LayoutDashboard, badge: myListings.length },
+    { id: 'add', label: 'Add New Property', icon: PlusCircle },
+    { id: 'subscription', label: 'Pro Subscription', icon: CreditCard },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#fafcfa] flex flex-col md:flex-row">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0F2C26] text-[#CFE0D9] p-6 flex-col justify-between flex-shrink-0">
-        <div>
-          <div className="pb-5 border-b border-[#1E4038] mb-6">
-            <b className="text-white block text-base font-bold">{user.firstName} {user.lastName}</b>
-            <span className="text-xs text-[#8FAF9F] mt-0.5 block">
-              Blocker Â· {application?.verification_code || application?.verificationCode || 'Approved'}
-            </span>
-          </div>
-          <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab('listings')}
-              className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-left transition-colors ${
-                activeTab === 'listings' ? 'bg-[#007A66] text-white' : 'hover:bg-[#1A3D35]'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" /> My listings
-            </button>
-            <button
-              onClick={() => setActiveTab('add')}
-              className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-left transition-colors ${
-                activeTab === 'add' ? 'bg-[#007A66] text-white' : 'hover:bg-[#1A3D35]'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4" /> Add listing
-            </button>
-          </nav>
-        </div>
-        <button onClick={() => navigate('/')} className="mt-8 flex items-center gap-2 text-xs font-semibold text-[#8FAF9F] hover:text-white transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to public site
-        </button>
-      </aside>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen w-full bg-dashboard">
+        {/* Shared Dashboard Sidebar */}
+        <DashboardSidebar
+          role="BLOCKER"
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setSubmittedMsg('');
+            setError('');
+          }}
+          customNavItems={blockerNav}
+          verificationCode={application?.verification_code || application?.verificationCode || 'K7X2PM'}
+        />
 
-      {/* Main content */}
-      <main className="flex-1 p-6 sm:p-10 overflow-y-auto pb-20 md:pb-10">
-        {error && <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
-        {submittedMsg && <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">{submittedMsg}</div>}
-
-        {subLoading ? (
-          <div className="flex items-center justify-center py-20 text-gray-500">
-            <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading subscription details...
-          </div>
-        ) : !subscription ? (
-          /* Subscription gate screen */
-          <div className="max-w-xl mx-auto text-center py-12">
-            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl"></span>
-            </div>
-            <h2 className="text-2xl font-bold text-brand-ink mb-3">Subscribe to post listings</h2>
-            <p className="text-brand-ink-soft mb-8 leading-relaxed">
-              You are an approved GuraAha Blocker. Subscribe to start adding property listings.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-              {/* Weekly card */}
-              <div className="bg-white border-2 border-gray-200 rounded-xl p-5 shadow-sm">
-                <p className="text-xs font-bold text-brand-ink-soft uppercase tracking-wide mb-2">Weekly</p>
-                <p className="text-3xl font-extrabold text-brand-green-dark">
-                  {settings.blockerProWeekly?.toLocaleString()} <span className="text-sm font-normal">RWF</span>
-                </p>
-                <p className="text-xs text-brand-ink-soft mt-1 mb-4">Valid for 7 days</p>
-                <button
-                  onClick={() => openMoMo({ kind: 'subscription-monthly', amount: settings.blockerProMonthly, title: 'Blocker Pro Monthly', listingId: null })}
-                  className="w-full py-2.5 border-2 border-brand-green text-brand-green font-semibold rounded-xl text-sm hover:bg-brand-green hover:text-white transition-all"
-                >
-                  Subscribe weekly
-                </button>
-              </div>
-              {/* Monthly card */}
-              <div className="bg-white border-2 border-brand-green rounded-xl p-5 shadow-md">
-                <p className="text-xs font-bold text-brand-green uppercase tracking-wide mb-2">Monthly - Best value</p>
-                <p className="text-3xl font-extrabold text-brand-green-dark">
-                  {settings.blockerProMonthly?.toLocaleString()} <span className="text-sm font-normal">RWF</span>
-                </p>
-                <p className="text-xs text-brand-ink-soft mt-1 mb-4">Valid for 30 days</p>
-                <button
-                  onClick={() => openMoMo({ kind: 'subscription-monthly', amount: settings.blockerProMonthly, title: 'Blocker Pro Monthly', listingId: null })}
-                  className="w-full py-2.5 bg-brand-green text-white font-semibold rounded-xl text-sm hover:bg-brand-green-dark transition-all"
-                >
-                  Subscribe monthly
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Subscription active badge */}
-            <div className="mb-6 flex items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 px-3.5 py-1.5 rounded-full font-semibold border border-green-200">
-                Subscribed until {new Date(subscription.expires_at || subscription.expiresAt).toLocaleDateString()}
+        {/* Dashboard Main Inset */}
+        <SidebarInset className="flex-1 flex flex-col min-w-0 bg-dashboard">
+          {/* Top Inset Bar */}
+          <header className="h-14 border-b border-brand-line bg-white px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="h-9 w-9 rounded-[9px] border border-brand-line hover:bg-brand-bg-soft" />
+              <div className="h-4 w-px bg-brand-line hidden sm:block" />
+              <span className="text-sm font-semibold text-brand-ink">
+                {activeTab === 'listings' && 'My Property Listings'}
+                {activeTab === 'add' && 'Create New Property Listing'}
+                {activeTab === 'subscription' && 'Blocker Pro Subscription Plan'}
               </span>
             </div>
 
-            {activeTab === 'listings' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-brand-ink">My listings</h2>
-                  <button
-                    onClick={() => setActiveTab('add')}
-                    className="py-2.5 px-4 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl text-sm flex items-center gap-2 transition-colors"
-                  >
-                    <PlusCircle className="w-4 h-4" /> Add New Property
-                  </button>
-                </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-brand-pale text-brand-green border border-brand-green/20">
+                Verified Blocker
+              </span>
+              <span className="text-xs font-mono text-brand-ink-soft hidden sm:inline">
+                {application?.verification_code || application?.verificationCode || 'K7X2PM'}
+              </span>
+            </div>
+          </header>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                  <div className="bg-white border-2 border-gray-100 rounded-xl p-5 shadow-sm">
-                    <b className="text-2xl font-bold block">{myListings.length}</b>
-                    <span className="text-xs text-brand-ink-soft">Your listings</span>
-                  </div>
-                  <div className="bg-white border-2 border-gray-100 rounded-xl p-5 shadow-sm">
-                    <b className="text-2xl font-bold block">{myListings.filter((l) => l.status === 'APPROVED').length}</b>
-                    <span className="text-xs text-brand-ink-soft">Live on the site</span>
-                  </div>
-                </div>
-
-                <div className="bg-white border-2 border-gray-100 rounded-xl overflow-x-auto shadow-sm">
-                  <table className="w-full text-left text-sm min-w-[500px]">
-                    <thead className="bg-brand-bg-soft border-b border-gray-200 text-xs font-semibold text-brand-ink-soft">
-                      <tr>
-                        <th className="py-3 px-4">Property</th>
-                        <th className="py-3 px-4">Location</th>
-                        <th className="py-3 px-4">Price (RWF)</th>
-                        <th className="py-3 px-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {myListings.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50/50">
-                          <td className="py-3 px-4 font-semibold">{listingTitle(item)}</td>
-                          <td className="py-3 px-4 text-brand-ink-soft">{listingLocationLine(item)}</td>
-                          <td className="py-3 px-4 font-bold text-brand-green-dark">{Number(item.priceRwf || 0).toLocaleString()}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                              item.status === 'APPROVED' ? 'bg-[#E4F1EC] text-brand-green-dark'
-                                : item.status === 'PENDING' ? 'bg-amber-100 text-amber-800'
-                                : item.status === 'NEEDS_REVISION' ? 'bg-amber-100 text-amber-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {item.status === 'APPROVED' && <CheckCircle className="w-3 h-3" />}
-                              {item.status === 'PENDING' && <Clock className="w-3 h-3" />}
-                              {item.status === 'NEEDS_REVISION' && <AlertTriangle className="w-3 h-3" />}
-                              {item.status === 'REJECTED' && <AlertTriangle className="w-3 h-3" />}
-                              {formatStatus(item.status)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {myListings.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="py-8 text-center text-brand-ink-soft">No listings yet.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+          {/* Main Dashboard Content */}
+          <div className="p-4 sm:p-8 max-w-6xl w-full mx-auto space-y-6">
+            {/* Feedback Notifications */}
+            {error && (
+              <div className="flex items-start gap-2.5 p-3.5 rounded-[9px] bg-red-50/90 border border-red-200 text-red-700 text-xs sm:text-sm font-medium animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <span className="leading-snug">{error}</span>
+              </div>
+            )}
+            {submittedMsg && (
+              <div className="flex items-start gap-2.5 p-3.5 rounded-[9px] bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-medium animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span className="leading-snug">{submittedMsg}</span>
               </div>
             )}
 
-            {activeTab === 'add' && (
-              <div className="max-w-3xl">
-                <h2 className="text-2xl font-bold text-brand-ink mb-6">Add listing</h2>
-                <form onSubmit={handleAddSubmit} className="bg-white border-2 border-gray-100 rounded-xl p-6 space-y-4 shadow-sm">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Title (EN)</label>
-                      <input
-                        value={form.titleEn}
-                        onChange={update('titleEn')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Title (RW)</label>
-                      <input
-                        value={form.titleRw}
-                        onChange={update('titleRw')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Title (FR)</label>
-                      <input
-                        value={form.titleFr}
-                        onChange={update('titleFr')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-brand-ink-soft">At least one title language is required.</p>
+            {subLoading ? (
+              <div className="flex items-center justify-center py-20 text-brand-ink-soft gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-brand-green" />
+                <span className="text-sm font-medium">Loading subscription details…</span>
+              </div>
+            ) : !subscription ? (
+              /* Subscription Gate Screen */
+              <Card className="rounded-[9px] border-brand-line bg-white shadow-sm p-6 sm:p-10 text-center max-w-2xl mx-auto space-y-6">
+                <div className="w-14 h-14 bg-brand-green/10 text-brand-green rounded-full flex items-center justify-center mx-auto shadow-xs">
+                  <CreditCard className="w-7 h-7 text-brand-green" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold text-brand-ink">
+                    Subscribe to Post Listings
+                  </CardTitle>
+                  <CardDescription className="text-sm text-brand-ink-soft mt-1.5 max-w-md mx-auto leading-relaxed">
+                    You are an approved GuraAha Blocker. Activate a subscription pass to publish and manage land and house listings.
+                  </CardDescription>
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Description (EN)</label>
-                    <textarea
-                      value={form.descriptionEn}
-                      onChange={update('descriptionEn')}
-                      rows={3}
-                      className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left pt-2">
+                  {/* Weekly Card */}
+                  <Card className="rounded-[9px] border-brand-line p-5 bg-white shadow-xs flex flex-col justify-between">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Description (RW)</label>
-                      <textarea
-                        value={form.descriptionRw}
-                        onChange={update('descriptionRw')}
-                        rows={3}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
+                      <p className="text-xs font-bold text-brand-ink-soft uppercase tracking-wider mb-2">
+                        Weekly Pass
+                      </p>
+                      <p className="text-3xl font-extrabold text-brand-green">
+                        {settings?.blockerProWeekly?.toLocaleString() || '1,500'}{' '}
+                        <span className="text-sm font-normal text-brand-ink-soft">RWF</span>
+                      </p>
+                      <p className="text-xs text-brand-ink-soft mt-1 mb-4">Valid for 7 days</p>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Description (FR)</label>
-                      <textarea
-                        value={form.descriptionFr}
-                        onChange={update('descriptionFr')}
-                        rows={3}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                  </div>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        openMoMo?.({
+                          kind: 'subscription-weekly',
+                          amount: settings?.blockerProWeekly || 1500,
+                          title: 'Blocker Pro Weekly',
+                          listingId: null,
+                        })
+                      }
+                      className="w-full rounded-[9px] font-semibold border-brand-line hover:border-brand-green hover:text-brand-green"
+                    >
+                      Subscribe Weekly
+                    </Button>
+                  </Card>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Monthly Card */}
+                  <Card className="rounded-[9px] border-brand-green bg-brand-bg-soft/40 p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
+                    <span className="absolute top-2.5 right-2.5 text-[10px] font-bold uppercase tracking-wider bg-brand-green text-white px-2 py-0.5 rounded-[5px]">
+                      Best Value
+                    </span>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Type</label>
-                      <select
-                        value={form.type}
-                        onChange={update('type')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-brand-green transition-colors"
-                      >
-                        <option value="land">Land</option>
-                        <option value="house">House</option>
-                      </select>
+                      <p className="text-xs font-bold text-brand-green uppercase tracking-wider mb-2">
+                        Monthly Pass
+                      </p>
+                      <p className="text-3xl font-extrabold text-brand-green">
+                        {settings?.blockerProMonthly?.toLocaleString() || '5,000'}{' '}
+                        <span className="text-sm font-normal text-brand-ink-soft">RWF</span>
+                      </p>
+                      <p className="text-xs text-brand-ink-soft mt-1 mb-4">Valid for 30 full days</p>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Price (RWF)</label>
-                      <input
-                        type="number"
-                        required
-                        value={form.priceRwf}
-                        onChange={update('priceRwf')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Size</label>
-                      <input
-                        type="number"
-                        required
-                        value={form.sizeValue}
-                        onChange={update('sizeValue')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Size unit</label>
-                      <input
-                        value={form.sizeUnit}
-                        onChange={update('sizeUnit')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
+                    <Button
+                      variant="default"
+                      onClick={() =>
+                        openMoMo?.({
+                          kind: 'subscription-monthly',
+                          amount: settings?.blockerProMonthly || 5000,
+                          title: 'Blocker Pro Monthly',
+                          listingId: null,
+                        })
+                      }
+                      className="w-full rounded-[9px] font-semibold shadow-xs"
+                    >
+                      Subscribe Monthly
+                    </Button>
+                  </Card>
+                </div>
+              </Card>
+            ) : (
+              <>
+                {/* Active Subscription Badge */}
+                <div className="flex items-center justify-between flex-wrap gap-3 pb-1">
+                  <div className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-[9px] bg-brand-pale text-brand-green border border-brand-green/20">
+                    <Calendar className="w-3.5 h-3.5 text-brand-green" />
+                    <span>
+                      Subscription Active until{' '}
+                      {new Date(
+                        subscription.expires_at || subscription.expiresAt || Date.now() + 2592000000
+                      ).toLocaleDateString()}
+                    </span>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-2">Village (required)</label>
-                    <LocationCascade required deepest="village" onChange={({ locationId }) => setForm((prev) => ({ ...prev, villageId: locationId }))} />
-                  </div>
+                  {activeTab === 'listings' && (
+                    <Button
+                      onClick={() => setActiveTab('add')}
+                      variant="default"
+                      className="rounded-[9px] font-semibold text-xs sm:text-sm h-10 px-4 flex items-center gap-1.5 shadow-sm"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Add New Property</span>
+                    </Button>
+                  )}
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">UPI Number</label>
-                    <input
-                      value={form.upiNumber}
-                      onChange={update('upiNumber')}
-                      className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                    />
-                  </div>
+                {/* Tab: Listings View */}
+                {activeTab === 'listings' && (
+                  <div className="space-y-6">
+                    {/* Reusable Metric Stat Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Card className="rounded-[9px] border-brand-line p-5 bg-white shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-brand-ink-soft uppercase tracking-wider">
+                            Total Properties
+                          </span>
+                          <Building2 className="w-4 h-4 text-brand-green" />
+                        </div>
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="text-3xl font-extrabold text-brand-ink">
+                            {myListings.length}
+                          </span>
+                          <span className="text-xs text-brand-ink-soft">posted by you</span>
+                        </div>
+                      </Card>
 
-                  {/* Cover photo */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-2">Cover photo (required)</label>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      required
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        setForm((prev) => ({ ...prev, coverPhoto: file }));
-                        if (file) setCoverPreview(URL.createObjectURL(file));
-                      }}
-                      className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-green file:text-white"
-                    />
-                    {coverPreview && (
-                      <img src={coverPreview} alt="Cover" className="mt-2 w-full h-40 object-cover rounded-xl border-2 border-gray-100" />
-                    )}
-                  </div>
+                      <Card className="rounded-[9px] border-brand-line p-5 bg-white shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-brand-ink-soft uppercase tracking-wider">
+                            Live on Site
+                          </span>
+                          <CheckCircle2 className="w-4 h-4 text-brand-green" />
+                        </div>
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="text-3xl font-extrabold text-brand-green">
+                            {myListings.filter((l) => l.status === 'APPROVED' || !l.status).length}
+                          </span>
+                          <span className="text-xs text-brand-ink-soft">verified & public</span>
+                        </div>
+                      </Card>
 
-                  {/* Extra photos */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-2">Additional photos (up to 4, optional)</label>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files).slice(0, 4);
-                        setForm((prev) => ({ ...prev, extraPhotos: files }));
-                        setExtraPreviews(files.map((f) => URL.createObjectURL(f)));
-                      }}
-                      className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700"
-                    />
-                    {extraPreviews.length > 0 && (
-                      <div className="mt-2 grid grid-cols-4 gap-2">
-                        {extraPreviews.map((url, i) => (
-                          <img key={i} src={url} alt={`Extra ${i + 1}`} className="w-full h-20 object-cover rounded-lg border border-gray-200" />
-                        ))}
+                      <Card className="rounded-[9px] border-brand-line p-5 bg-white shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-brand-ink-soft uppercase tracking-wider">
+                            Pending Audit
+                          </span>
+                          <Clock className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="text-3xl font-extrabold text-brand-ink">
+                            {myListings.filter((l) => l.status === 'PENDING').length}
+                          </span>
+                          <span className="text-xs text-brand-ink-soft">under verification</span>
+                        </div>
+                      </Card>
+                    </div>
+
+                    {/* Listings Table Card */}
+                    <Card className="rounded-[9px] border-brand-line bg-white shadow-xs overflow-hidden">
+                      <div className="p-4 sm:p-5 border-b border-brand-line/60 flex items-center justify-between">
+                        <h3 className="font-bold text-base text-brand-ink">Managed Properties</h3>
+                        <span className="text-xs text-brand-ink-soft">
+                          {myListings.length} properties total
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-200 pt-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Owner name (hidden)</label>
-                      <input
-                        value={form.ownerName}
-                        onChange={update('ownerName')}
-                        className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-                      />
-                    </div>
-                  <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">
-                        Owner phone <span className="text-red-500">*</span>
-                        <span className="text-xs font-normal text-gray-400 ml-1">(buyers pay to unlock this)</span>
-                      </label>
-                      <input
-                        value={form.ownerPhone}
-                        onChange={update('ownerPhone')}
-                        placeholder="0788 XXX XXX"
-                        required
-                        className={`w-full p-2.5 border-2 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors ${
-                          !form.ownerPhone.trim() ? 'border-red-300 bg-red-50/30' : 'border-gray-200'
-                        }`}
-                      />
-                      {!form.ownerPhone.trim() && (
-                        <p className="text-xs text-red-600 mt-1">âš  Required - buyers pay to see this number</p>
-                      )}
-                    </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm min-w-[600px]">
+                          <thead className="bg-brand-bg-soft/60 border-b border-brand-line text-xs font-semibold text-brand-ink-soft">
+                            <tr>
+                              <th className="py-3 px-4">Property</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4">Location</th>
+                              <th className="py-3 px-4">Price (RWF)</th>
+                              <th className="py-3 px-4">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-brand-line/60">
+                            {myListings.map((item) => (
+                              <tr key={item.id} className="hover:bg-brand-bg-soft/40 transition-colors">
+                                <td className="py-3 px-4 font-semibold text-brand-ink">
+                                  {listingTitle(item)}
+                                </td>
+                                <td className="py-3 px-4 capitalize text-brand-ink-soft text-xs">
+                                  {item.type || 'Plot'}
+                                </td>
+                                <td className="py-3 px-4 text-brand-ink-soft text-xs">
+                                  {listingLocationLine(item)}
+                                </td>
+                                <td className="py-3 px-4 font-bold text-brand-green">
+                                  {Number(item.priceRwf || item.price || 0).toLocaleString()} RWF
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span
+                                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-[6px] ${
+                                      item.status === 'APPROVED' || !item.status
+                                        ? 'bg-brand-pale text-brand-green border border-brand-green/20'
+                                        : item.status === 'PENDING'
+                                        ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                        : item.status === 'NEEDS_REVISION'
+                                        ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                        : 'bg-red-50 text-red-800 border border-red-200'
+                                    }`}
+                                  >
+                                    {(item.status === 'APPROVED' || !item.status) && (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-brand-green" />
+                                    )}
+                                    {item.status === 'PENDING' && (
+                                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                                    )}
+                                    {item.status === 'NEEDS_REVISION' && (
+                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                                    )}
+                                    {item.status === 'REJECTED' && (
+                                      <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                                    )}
+                                    {formatStatus(item.status || 'APPROVED')}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                            {myListings.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="py-12 text-center text-brand-ink-soft">
+                                  <Building2 className="w-8 h-8 text-brand-line mx-auto mb-2" />
+                                  <p className="font-semibold text-brand-ink">No properties listed yet.</p>
+                                  <p className="text-xs text-brand-ink-soft mt-1">
+                                    Click "Add New Property" to submit your first land or house listing.
+                                  </p>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
                   </div>
+                )}
 
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl disabled:opacity-60 transition-colors"
-                  >
-                    {saving ? 'Submittingâ€¦' : 'Submit for admin approval'}
-                  </button>
-                </form>
-              </div>
+                {/* Tab: Add Listing Form */}
+                {activeTab === 'add' && (
+                  <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
+                    <CardHeader className="p-6 sm:p-8 pb-3 border-b border-brand-line/60">
+                      <CardTitle className="text-xl sm:text-2xl font-bold text-brand-ink">
+                        Add Property Listing
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm text-brand-ink-soft leading-relaxed mt-1">
+                        Submit verified land or house information. Title deeds and owner contact will be audited before publishing.
+                      </CardDescription>
+                    </CardHeader>
+
+                    <form onSubmit={handleAddSubmit}>
+                      <CardContent className="p-6 sm:p-8 space-y-6">
+                        {/* Multilingual Titles */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-brand-ink">
+                            Property Titles <span className="text-red-500">*</span>
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <Input
+                                value={form.titleEn}
+                                onChange={update('titleEn')}
+                                placeholder="Title in English"
+                                className="rounded-[9px] h-10.5 text-sm"
+                              />
+                              <span className="text-[11px] text-brand-ink-soft mt-1 block">English</span>
+                            </div>
+                            <div>
+                              <Input
+                                value={form.titleRw}
+                                onChange={update('titleRw')}
+                                placeholder="Umutwe mu Kinyarwanda"
+                                className="rounded-[9px] h-10.5 text-sm"
+                              />
+                              <span className="text-[11px] text-brand-ink-soft mt-1 block">Kinyarwanda</span>
+                            </div>
+                            <div>
+                              <Input
+                                value={form.titleFr}
+                                onChange={update('titleFr')}
+                                placeholder="Titre en Français"
+                                className="rounded-[9px] h-10.5 text-sm"
+                              />
+                              <span className="text-[11px] text-brand-ink-soft mt-1 block">Français</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Descriptions */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-brand-ink">
+                            Property Descriptions
+                          </label>
+                          <div className="space-y-3">
+                            <textarea
+                              value={form.descriptionEn}
+                              onChange={update('descriptionEn')}
+                              rows={2}
+                              placeholder="Description in English"
+                              className="w-full p-3 border border-brand-line rounded-[9px] text-sm text-brand-ink bg-white focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <textarea
+                                value={form.descriptionRw}
+                                onChange={update('descriptionRw')}
+                                rows={2}
+                                placeholder="Ibisobanuro mu Kinyarwanda"
+                                className="w-full p-3 border border-brand-line rounded-[9px] text-sm text-brand-ink bg-white focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                              />
+                              <textarea
+                                value={form.descriptionFr}
+                                onChange={update('descriptionFr')}
+                                rows={2}
+                                placeholder="Description en Français"
+                                className="w-full p-3 border border-brand-line rounded-[9px] text-sm text-brand-ink bg-white focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Type & Price */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-semibold text-brand-ink">
+                              Property Type <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={form.type}
+                              onChange={update('type')}
+                              className="w-full h-11 px-3 border border-brand-line rounded-[9px] text-sm bg-white text-brand-ink focus:outline-none focus:border-brand-green"
+                            >
+                              <option value="land">Land</option>
+                              <option value="plot">Plot</option>
+                              <option value="house">House</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-semibold text-brand-ink">
+                              Price (RWF) <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                              type="number"
+                              required
+                              value={form.priceRwf}
+                              onChange={update('priceRwf')}
+                              placeholder="e.g. 15000000"
+                              className="rounded-[9px] h-11 text-sm font-semibold"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Size & Unit */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-semibold text-brand-ink">
+                              Measurement Size <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                              type="number"
+                              required
+                              value={form.sizeValue}
+                              onChange={update('sizeValue')}
+                              placeholder="e.g. 600"
+                              className="rounded-[9px] h-11 text-sm"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-semibold text-brand-ink">
+                              Unit of Measurement
+                            </label>
+                            <select
+                              value={form.sizeUnit}
+                              onChange={update('sizeUnit')}
+                              className="w-full h-11 px-3 border border-brand-line rounded-[9px] text-sm bg-white text-brand-ink focus:outline-none focus:border-brand-green"
+                            >
+                              <option value="sqm">Square Meters (m²)</option>
+                              <option value="ha">Hectares (ha)</option>
+                              <option value="ares">Ares</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Village Cascading Selector */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-brand-ink">
+                            Location (Province, District & Sector) <span className="text-red-500">*</span>
+                          </label>
+                          <LocationCascade
+                            required
+                            deepest="village"
+                            onChange={({ locationId }) =>
+                              setForm((prev) => ({ ...prev, villageId: locationId }))
+                            }
+                          />
+                        </div>
+
+                        {/* UPI Number */}
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-brand-ink">
+                            UPI Number (Unique Parcel Identifier)
+                          </label>
+                          <Input
+                            value={form.upiNumber}
+                            onChange={update('upiNumber')}
+                            placeholder="e.g. 1/02/09/04/432"
+                            className="rounded-[9px] h-11 text-sm font-mono"
+                          />
+                        </div>
+
+                        {/* Cover Photo */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-brand-ink">
+                            Cover Photo <span className="text-red-500">*</span>
+                          </label>
+                          <div className="p-4 border border-dashed border-brand-line rounded-[9px] bg-brand-bg-soft/30 hover:border-brand-green/60 transition-colors">
+                            <label className="flex flex-col sm:flex-row items-center gap-3 cursor-pointer">
+                              <span className="w-10 h-10 rounded-[9px] bg-white border border-brand-line flex items-center justify-center text-brand-green shrink-0">
+                                <Upload className="w-5 h-5 text-brand-green" />
+                              </span>
+                              <div className="flex-1 text-center sm:text-left">
+                                <span className="text-xs font-semibold text-brand-ink block">
+                                  Click to upload property cover image
+                                </span>
+                                <span className="text-[11px] text-brand-ink-soft">
+                                  JPEG, PNG or WEBP (high-resolution recommended)
+                                </span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                required={!coverPreview}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setForm((prev) => ({ ...prev, coverPhoto: file }));
+                                    setCoverPreview(URL.createObjectURL(file));
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                            {coverPreview && (
+                              <div className="mt-3 relative w-full sm:w-60 h-36 rounded-[9px] overflow-hidden border border-brand-line">
+                                <img
+                                  src={coverPreview}
+                                  alt="Cover preview"
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCoverPreview(null);
+                                    setForm((prev) => ({ ...prev, coverPhoto: null }));
+                                  }}
+                                  className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 text-white rounded-[6px]"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Additional Photos */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-brand-ink">
+                            Additional Photos <span className="text-xs font-normal text-brand-ink-soft">(up to 4, optional)</span>
+                          </label>
+                          <div className="p-4 border border-dashed border-brand-line rounded-[9px] bg-brand-bg-soft/30">
+                            <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-white border border-brand-line rounded-[9px] text-xs font-semibold text-brand-ink hover:border-brand-green">
+                              <Upload className="w-3.5 h-3.5 text-brand-green" />
+                              <span>Select multiple images</span>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                multiple
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || []).slice(0, 4);
+                                  setForm((prev) => ({ ...prev, extraPhotos: files }));
+                                  setExtraPreviews(files.map((f) => URL.createObjectURL(f)));
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                            {extraPreviews.length > 0 && (
+                              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {extraPreviews.map((url, i) => (
+                                  <div key={i} className="relative h-20 rounded-[8px] overflow-hidden border border-brand-line">
+                                    <img src={url} alt={`Extra ${i + 1}`} className="w-full h-full object-cover" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Owner Verification Details */}
+                        <div className="p-4 rounded-[9px] bg-brand-bg-soft/40 border border-brand-line space-y-4">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-brand-green" />
+                            <h4 className="text-xs font-bold text-brand-ink uppercase tracking-wider">
+                              Owner Direct Contact (Protected)
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-brand-ink">
+                                Owner Full Name <span className="text-xs font-normal text-brand-ink-soft">(Private)</span>
+                              </label>
+                              <Input
+                                value={form.ownerName}
+                                onChange={update('ownerName')}
+                                placeholder="e.g. Mugisha Alex"
+                                className="rounded-[9px] h-10.5 text-sm bg-white"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-brand-ink">
+                                Owner Phone Number <span className="text-red-500">*</span>
+                              </label>
+                              <Input
+                                value={form.ownerPhone}
+                                onChange={update('ownerPhone')}
+                                placeholder="0788 XXX XXX"
+                                required
+                                className="rounded-[9px] h-10.5 text-sm bg-white"
+                              />
+                              <p className="text-[11px] text-brand-ink-soft">
+                                Buyers pay to unlock this verified contact
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                      </CardContent>
+
+                      {/* Submit Action */}
+                      <CardFooter className="p-6 sm:p-8 pt-0 border-t border-brand-line/60 flex items-center justify-between">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setActiveTab('listings')}
+                          className="rounded-[9px]"
+                        >
+                          Cancel
+                        </Button>
+
+                        <Button
+                          type="submit"
+                          disabled={saving}
+                          variant="default"
+                          className="rounded-[9px] font-semibold h-11 px-6 shadow-sm flex items-center gap-2"
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Submitting…</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Submit for Admin Approval</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </>
+                          )}
+                        </Button>
+                      </CardFooter>
+                    </form>
+                  </Card>
+                )}
+
+                {/* Tab: Subscription View */}
+                {activeTab === 'subscription' && (
+                  <Card className="rounded-[9px] border-brand-line bg-white shadow-sm p-6 sm:p-8 space-y-5">
+                    <CardTitle className="text-xl font-bold text-brand-ink">
+                      Active Blocker Subscription
+                    </CardTitle>
+                    <div className="p-4 rounded-[9px] bg-brand-bg-soft border border-brand-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-brand-green mb-1">
+                          Pro Plan Status
+                        </div>
+                        <div className="text-lg font-bold text-brand-ink">Monthly Unlimited Tier</div>
+                        <p className="text-xs text-brand-ink-soft mt-0.5">
+                          Expires on{' '}
+                          <strong>
+                            {new Date(
+                              subscription.expires_at || subscription.expiresAt || Date.now() + 2592000000
+                            ).toLocaleDateString()}
+                          </strong>
+                        </p>
+                      </div>
+
+                      <Button
+                        variant="default"
+                        onClick={() =>
+                          openMoMo?.({
+                            kind: 'subscription-monthly',
+                            amount: settings?.blockerProMonthly || 5000,
+                            title: 'Renew Blocker Pro Monthly',
+                            listingId: null,
+                          })
+                        }
+                        className="rounded-[9px] font-semibold text-xs sm:text-sm"
+                      >
+                        Renew / Extend Plan
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+              </>
             )}
-          </>
-        )}
-      </main>
-
-      {/* Mobile bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0F2C26] flex md:hidden border-t border-[#1E4038] z-50">
-        <button
-          onClick={() => setActiveTab('listings')}
-          className={`flex-1 py-3 flex flex-col items-center gap-0.5 text-[10px] font-semibold ${
-            activeTab === 'listings' ? 'text-white' : 'text-[#8FAF9F]'
-          }`}
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          Listings
-        </button>
-        <button
-          onClick={() => setActiveTab('add')}
-          className={`flex-1 py-3 flex flex-col items-center gap-0.5 text-[10px] font-semibold ${
-            activeTab === 'add' ? 'text-white' : 'text-[#8FAF9F]'
-          }`}
-        >
-          <PlusCircle className="w-5 h-5" />
-          Add
-        </button>
+          </div>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
-
-
