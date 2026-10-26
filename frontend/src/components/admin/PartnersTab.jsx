@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Briefcase, Plus, Edit2, Trash2, Award, X } from "lucide-react";
+import { RowActions } from "./RowActions";
 import {
   Panel,
   RefreshButton,
@@ -182,24 +183,13 @@ export const PartnersTab = ({ showToast }) => {
                     )}
                   </td>
                   <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEdit(p)}
-                        className="rounded-[9px]"
-                      >
-                        <Edit2 className="w-3 h-3" /> Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(p)}
-                        className="rounded-[9px]"
-                      >
-                        <Trash2 className="w-3 h-3" /> Delete
-                      </Button>
-                    </div>
+                    <RowActions
+                      label={`Actions for ${p.name}`}
+                      actions={[
+                        { label: "Edit", icon: Edit2, onClick: () => openEdit(p) },
+                        { label: "Delete", icon: Trash2, destructive: true, onClick: () => handleDelete(p) },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

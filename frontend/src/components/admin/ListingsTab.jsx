@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Button } from "../ui/button";
 import { listingTitle } from "../../utils/listing";
-import { FileCheck, Check, X } from "lucide-react";
+import { FileCheck, Check, X, Pencil } from "lucide-react";
+import { RowActions } from "./RowActions";
 import {
   Panel,
   RefreshButton,
@@ -103,32 +103,14 @@ export const ListingsTab = ({
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       {isPending && (
-                        <div className="inline-flex items-center gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => onApprove(l.id)}
-                            className="rounded-[9px]"
-                          >
-                            <Check className="w-3 h-3" /> Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => onRevise(l.id)}
-                            className="rounded-[9px]"
-                          >
-                            Revise
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onReject(l.id)}
-                            className="rounded-[9px] hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                          >
-                            <X className="w-3 h-3" /> Reject
-                          </Button>
-                        </div>
+                        <RowActions
+                          label={`Actions for ${title}`}
+                          actions={[
+                            { label: "Approve", icon: Check, onClick: () => onApprove(l.id) },
+                            { label: "Request revision", icon: Pencil, onClick: () => onRevise(l.id) },
+                            { label: "Reject", icon: X, destructive: true, onClick: () => onReject(l.id) },
+                          ]}
+                        />
                       )}
                       {!isPending && note && (
                         <span
