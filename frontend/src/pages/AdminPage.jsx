@@ -311,7 +311,6 @@ export const AdminDashboardPage = () => {
 
             <AdminStats
               cards={statCards}
-              activeTab={activeTab}
               onSelect={setActiveTab}
               loading={dataLoading}
             />

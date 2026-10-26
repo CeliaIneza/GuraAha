@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Button } from "../ui/button";
-import { Users, Check, X } from "lucide-react";
+import { Users, Check, X, Pencil } from "lucide-react";
+import { RowActions } from "./RowActions";
 import {
   Panel,
   RefreshButton,
@@ -89,32 +89,14 @@ export const BlockersTab = ({
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       {isPending && (
-                        <div className="inline-flex items-center gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => onApprove(app.id)}
-                            className="rounded-[9px]"
-                          >
-                            <Check className="w-3 h-3" /> Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => onRevise(app.id)}
-                            className="rounded-[9px]"
-                          >
-                            Revise
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onReject(app.id)}
-                            className="rounded-[9px] hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                          >
-                            <X className="w-3 h-3" /> Reject
-                          </Button>
-                        </div>
+                        <RowActions
+                          label={`Actions for ${fullName}`}
+                          actions={[
+                            { label: "Approve", icon: Check, onClick: () => onApprove(app.id) },
+                            { label: "Request revision", icon: Pencil, onClick: () => onRevise(app.id) },
+                            { label: "Reject", icon: X, destructive: true, onClick: () => onReject(app.id) },
+                          ]}
+                        />
                       )}
                       {!isPending && app.admin_note && (
                         <span className="text-xs text-gray-400 italic" title={app.admin_note}>
