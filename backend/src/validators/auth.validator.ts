@@ -21,13 +21,19 @@ export const loginSchema = z
         path: ['phone'],
     });
 
-    export type LoginInput = z.infer<typeof loginSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
 
-    export const refreshTokenSchema = z.object({
-        refreshToken: z.string().min(10),
-    });
+export const refreshTokenSchema = z.object({
+    refreshToken: z.string().min(10),
+});
 
-    export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
-    export const createAdminSchema = registerSchema;
-    export type CreateAdminInput = RegisterInput;
+export const createAdminSchema = registerSchema;
+export type CreateAdminInput = RegisterInput;
+
+export const verifyCodeSchema = z.object({
+    code: z.string().trim().min(4).max(10),
+});
+
+export type VerifyCodeInput = z.infer<typeof verifyCodeSchema>;

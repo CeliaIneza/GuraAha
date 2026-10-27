@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { UserRepository } from '../repositories/user.repository';
+import { AdminRepository, PaginationParams } from '../repositories/admin.repository';
 import { TokenService } from './token.service';
 import { CreateAdminInput } from '../validators/auth.validator';
 import { toAuthUserView } from '../utils/jwt.util';
@@ -10,15 +11,27 @@ const PASSWORD_SALT_ROUNDS = 12;
 export class AdminService {
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly tokenService: TokenService
+        private readonly tokenService: TokenService,
+        private readonly adminRepository: AdminRepository = new AdminRepository()
     ) {}
+
+    async getBlockers(params: PaginationParams) {
+        return this.adminRepository.findAllBlockers(params);
+    }
+
+    async getListings(params: PaginationParams) {
+        return this.adminRepository.findAllListings(params);
+    }
+
+    async getSubscriptions(params: PaginationParams) {
+        return this.adminRepository.findAllSubscriptions(params);
+    }
 
     async createAdmin(input: CreateAdminInput, providedSecret: string | undefined) {
         if (!env.ADMIN_SETUP_SECRET) {
             throw new Error('Admin creation is not configured (ADMIN_SETUP_SECRET missing)');
         }
 
-        // FIX: actually validate the provided secret against the configured one
         if (providedSecret !== env.ADMIN_SETUP_SECRET) {
             throw new Error('Invalid admin setup secret');
         }

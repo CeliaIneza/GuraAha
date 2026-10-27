@@ -83,7 +83,7 @@ export class BlockerController {
         try {
             const result =
                 await this.blockerService.approve(
-                    req.params.id,
+                    String(req.params.id),
                     req.user.id
                 );
 
@@ -109,7 +109,7 @@ export class BlockerController {
         try {
             const result =
                 await this.blockerService.reject(
-                    req.params.id,
+                    String(req.params.id),
                     req.user.id,
                     req.body.rejectionReason
                 );

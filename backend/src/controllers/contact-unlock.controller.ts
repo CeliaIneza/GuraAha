@@ -8,7 +8,7 @@ export class ContactUnlockController {
         try {
             const payment = await this.contactUnlockService.initiateUnlock(
                 req.user.id,
-                req.params.listingId,
+                String(req.params.listingId),
                 req.body.type,
                 req.body.phone
             );
@@ -25,7 +25,7 @@ export class ContactUnlockController {
 
     getRevealed = async (req: Request, res: Response) => {
         try {
-            const contact = await this.contactUnlockService.getRevealedContact(req.user.id, req.params.listingId);
+            const contact = await this.contactUnlockService.getRevealedContact(req.user.id, String(req.params.listingId));
             return res.status(200).json({ data: contact });
         } catch (error) {
             return res.status(404).json({
