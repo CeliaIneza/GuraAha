@@ -26,7 +26,11 @@ export class SubscriptionService {
       throw new Error('Only approved blockers can purchase a subscription');
     }
 
-    const { priceRwf } = SUBSCRIPTION_PLANS[plan];
+    const planConfig = SUBSCRIPTION_PLANS[plan];
+    if (!planConfig) {
+      throw new Error(`Unknown subscription plan "${plan}"`);
+    }
+    const { priceRwf } = planConfig;
 
     return this.paymentService.initiate(userId, phone, priceRwf, 'SUBSCRIPTION', {
       blockerId: blockerProfile.id,
@@ -42,7 +46,13 @@ export class SubscriptionService {
       return;
     }
 
-    const { durationDays } = SUBSCRIPTION_PLANS[plan];
+    const planConfig = SUBSCRIPTION_PLANS[plan];
+    if (!planConfig) {
+      console.error(`SUBSCRIPTION payment ${payment.id} completed with unknown plan: ${plan}`);
+      return;
+    }
+    const { durationDays } = planConfig;
+
 
     // Renewal stacking: if the blocker already has a subscription whose
     // window hasn't ended yet (regardless of whether a newer-but-shorter

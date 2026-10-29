@@ -267,6 +267,164 @@
         }
       }
     },
+    "/auth/verification/send": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Generates a 6-digit OTP code and dispatches it via Brevo / SMTP to the user email or phone.",
+        "responses": {
+          "200": {
+            "description": "Verification code dispatched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Account already verified or recipient destination missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verification/verify": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Verifies the submitted 6-digit code, activates the account, and updates verification timestamps.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 10,
+                    "description": "6-digit verification code"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account verified successfully — returns updated user profile with is_verified=true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid, expired, or already-used verification code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/setup": {
       "post": {
         "tags": [
@@ -346,6 +504,405 @@
           },
           "403": {
             "description": "Missing/invalid secret, duplicate phone/email, or ADMIN role not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/blockers": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve paginated blocker applications with filtering by verification status.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "Page number (1-indexed, default 1)"
+            },
+            "required": false,
+            "description": "Page number (1-indexed, default 1)",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "description": "Items per page (default 20, max 100)"
+            },
+            "required": false,
+            "description": "Items per page (default 20, max 100)",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by status (e.g. PENDING, APPROVED, REJECTED, ACTIVE)"
+            },
+            "required": false,
+            "description": "Filter by status (e.g. PENDING, APPROVED, REJECTED, ACTIVE)",
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of blockers with total count and metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "page",
+                        "limit",
+                        "totalPages"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "pagination"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/listings": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve paginated property listings across the system with status filters.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "Page number (1-indexed, default 1)"
+            },
+            "required": false,
+            "description": "Page number (1-indexed, default 1)",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "description": "Items per page (default 20, max 100)"
+            },
+            "required": false,
+            "description": "Items per page (default 20, max 100)",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by status (e.g. PENDING, APPROVED, REJECTED, ACTIVE)"
+            },
+            "required": false,
+            "description": "Filter by status (e.g. PENDING, APPROVED, REJECTED, ACTIVE)",
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of listings with total count and metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "page",
+                        "limit",
+                        "totalPages"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "pagination"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/subscriptions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve paginated blocker subscriptions with active/expired/cancelled status filters.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "Page number (1-indexed, default 1)"
+            },
+            "required": false,
+            "description": "Page number (1-indexed, default 1)",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "description": "Items per page (default 20, max 100)"
+            },
+            "required": false,
+            "description": "Items per page (default 20, max 100)",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by status (e.g. PENDING, APPROVED, REJECTED, ACTIVE)"
+            },
+            "required": false,
+            "description": "Filter by status (e.g. PENDING, APPROVED, REJECTED, ACTIVE)",
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of subscriptions with total count and metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "page",
+                        "limit",
+                        "totalPages"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "pagination"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
             "content": {
               "application/json": {
                 "schema": {
@@ -1808,6 +2365,987 @@
                   },
                   "required": [
                     "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{listingId}/contact/unlock": {
+      "post": {
+        "tags": [
+          "Contact Unlocks"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Initiates a MoMo USSD payment prompt via InTouchPay to unlock verified contact details (either OWNER or BLOCKER) for a specific listing.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID or UUID of the property listing"
+            },
+            "required": true,
+            "description": "ID or UUID of the property listing",
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "OWNER",
+                      "BLOCKER"
+                    ]
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "type",
+                  "phone"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment initiated — user receives USSD prompt on their mobile device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Listing not approved, invalid phone format, or unlock already purchased",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{listingId}/contact": {
+      "get": {
+        "tags": [
+          "Contact Unlocks"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieves decrypted contact information for a listing. Succeeded only if the caller has completed a verified unlock payment for this listing (or is the listing owner/admin).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID or UUID of the property listing"
+            },
+            "required": true,
+            "description": "ID or UUID of the property listing",
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unlocked contact details (phone numbers, full names)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Listing not found or contact not unlocked for this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contact-unlocks/mine": {
+      "get": {
+        "tags": [
+          "Contact Unlocks"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Lists all property listings and contact numbers successfully unlocked by the authenticated user.",
+        "responses": {
+          "200": {
+            "description": "List of unlocked contacts with listing summaries and timestamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/webhook/intouchpay": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "description": "Server-to-server webhook callback dispatched by InTouchPay upon completion of Mobile Money transaction. Validates transaction signature/payload and emits payment events to unlock contacts or activate subscriptions.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "partnerTransactionId": {
+                    "type": "string",
+                    "description": "Our internal payment ID / reference passed at initiation"
+                  },
+                  "transactionId": {
+                    "type": "string",
+                    "description": "InTouchPay gateway transaction ID"
+                  },
+                  "requestamount": {
+                    "type": "number",
+                    "nullable": true,
+                    "description": "Amount in RWF"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Status e.g. SUCCESS, FAILED, PENDING"
+                  },
+                  "statuscode": {
+                    "type": "string",
+                    "description": "Status code from telecom operator (MTN / Airtel)"
+                  },
+                  "statusdesc": {
+                    "type": "string",
+                    "description": "Human readable status description"
+                  }
+                },
+                "additionalProperties": {
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook acknowledged by GuraAha server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "partnerTransactionId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/mine": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve a chronological list of Mobile Money payments initiated by the caller.",
+        "responses": {
+          "200": {
+            "description": "List of payments with status, amounts, and purpose",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/{id}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve specific payment details and current transaction settlement status.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment record details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Payment not found or does not belong to the authenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/initiate": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Initiates a recurring or fixed-period Blocker Pro subscription payment via InTouchPay Mobile Money push prompt. Requires an approved BLOCKER account.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plan": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "plan",
+                  "phone"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment prompt initiated on blocker mobile phone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid plan, invalid phone number, or blocker profile missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/mine": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieves all historical and current subscriptions for the authenticated blocker.",
+        "responses": {
+          "200": {
+            "description": "List of blocker subscriptions with active period and status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/status": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Checks current active subscription tier, remaining validity days, and renewal timestamp for the caller.",
+        "responses": {
+          "200": {
+            "description": "Current subscription validity status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{id}/cancel": {
+      "patch": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Cancels an active subscription or disables automatic renewal for the specified subscription ID.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription marked as cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Subscription not found or not belonging to the blocker",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but lacking the required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lotto/mine": {
+      "get": {
+        "tags": [
+          "Lotto"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieves all lottery ticket entries earned by the authenticated user from contact unlocks.",
+        "responses": {
+          "200": {
+            "description": "List of lotto tickets tied to contact unlock transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Failed to retrieve lotto entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lotto/count": {
+      "get": {
+        "tags": [
+          "Lotto",
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Returns the total system-wide lottery entry count for auditing and prize draws. Admin only.",
+        "responses": {
+          "200": {
+            "description": "Total lotto entries count in the system",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
                   ]
                 }
               }
