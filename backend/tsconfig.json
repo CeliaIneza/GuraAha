@@ -11,6 +11,6 @@
     "forceConsistentCasingInFileNames": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/openapi/common.schemas.ts"],
   "exclude": ["node_modules", "dist"]
 }

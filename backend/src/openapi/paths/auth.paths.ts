@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   loginSchema,
   refreshTokenSchema,
@@ -81,4 +82,59 @@ registry.registerPath({
             content: { 'application/json': { schema: messageOnlyResponseSchema } },
         },
     },
-})
+});
+
+registry.registerPath({
+    method: 'post',
+    path: '/auth/verification/send',
+    tags: ['Auth'],
+    security: [{ bearerAuth: [] }],
+    description: 'Generates a 6-digit OTP code and dispatches it via Brevo / SMTP to the user email or phone.',
+    responses: {
+        200: {
+            description: 'Verification code dispatched successfully',
+            content: { 'application/json': { schema: messageOnlyResponseSchema } },
+        },
+        400: {
+            description: 'Account already verified or recipient destination missing',
+            content: { 'application/json': { schema: errorResponseSchema } },
+        },
+        401: {
+            description: 'Missing or invalid token',
+            content: { 'application/json': { schema: errorResponseSchema } },
+        },
+    },
+});
+
+registry.registerPath({
+    method: 'post',
+    path: '/auth/verification/verify',
+    tags: ['Auth'],
+    security: [{ bearerAuth: [] }],
+    description: 'Verifies the submitted 6-digit code, activates the account, and updates verification timestamps.',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        code: z.string().min(4).max(10).describe('6-digit verification code'),
+                    }),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Account verified successfully — returns updated user profile with is_verified=true',
+            content: { 'application/json': { schema: dataResponseSchema() } },
+        },
+        400: {
+            description: 'Invalid, expired, or already-used verification code',
+            content: { 'application/json': { schema: errorResponseSchema } },
+        },
+        401: {
+            description: 'Missing or invalid token',
+            content: { 'application/json': { schema: errorResponseSchema } },
+        },
+    },
+});
