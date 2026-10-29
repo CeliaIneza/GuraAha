@@ -22,7 +22,7 @@ export class ListingController {
   getById = async (req: Request, res: Response) => {
     try {
       const listing = await this.listingService.getById(
-        req.params.id,
+        String(req.params.id),
         req.user,
       );
       return res.status(200).json({ data: listing });
@@ -84,7 +84,7 @@ export class ListingController {
   approve = async (req: Request, res: Response) => {
     try {
       const listing = await this.listingService.approve(
-        req.params.id,
+        String(req.params.id),
         req.user.id,
       );
 
@@ -103,7 +103,7 @@ export class ListingController {
   reject = async (req: Request, res: Response) => {
     try {
       const listing = await this.listingService.reject(
-        req.params.id,
+        String(req.params.id),
         req.user.id,
         req.body.rejectionReason,
       );
@@ -122,7 +122,7 @@ export class ListingController {
   addPhoto = async (req: Request, res: Response) => {
     try {
       const photo = await this.listingService.addPhoto(
-        req.params.id,
+        String(req.params.id),
         req.user.id,
         req.body.filePath,
         req.body.sortOrder,
@@ -137,7 +137,7 @@ export class ListingController {
 
   getPhotos = async (req: Request, res: Response) => {
     try {
-      const photos = await this.listingService.getPhotos(req.params.id);
+      const photos = await this.listingService.getPhotos(String(req.params.id));
       return res.status(200).json({ data: photos });
     } catch (error) {
       return res.status(400).json({
@@ -149,7 +149,7 @@ export class ListingController {
 
   removePhoto = async (req: Request, res: Response) => {
     try {
-      await this.listingService.removePhoto(req.params.photoId, req.user.id);
+      await this.listingService.removePhoto(String(req.params.photoId), req.user.id);
       return res.status(200).json({ message: "Photo removed" });
     } catch (error) {
       return res.status(400).json({

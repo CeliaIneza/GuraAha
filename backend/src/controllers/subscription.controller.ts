@@ -46,7 +46,7 @@ export class SubscriptionController {
 
     cancel = async (req: Request, res: Response) => {
         try {
-            const cancelled = await this.subscriptionService.cancel(req.user.id, req.params.id);
+            const cancelled = await this.subscriptionService.cancel(req.user.id, String(req.params.id));
             return res.status(200).json({ message: 'Subscription cancelled', data: cancelled });
         } catch (error) {
             return res.status(400).json({

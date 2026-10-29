@@ -28,10 +28,9 @@ export class PaymentController {
 
     getById = async (req: Request, res: Response) => {
         try {
-            const payment = await this.paymentService.getById(req.params.id);
+            const payment = await this.paymentService.getById(String(req.params.id));
 
             if (payment.user_id !== req.user.id && req.user.role !== 'ADMIN') {
-                // don't confirm to a stranger that a given payment id exists.
                 return res.status(404).json({ message: 'Payment not found' });
             }
 

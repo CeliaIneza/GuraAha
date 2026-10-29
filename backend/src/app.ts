@@ -1,4 +1,5 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import blockerRoutes from './routes/blocker.routes';
 import authRoutes from './routes/auth.routes';
@@ -11,8 +12,25 @@ import subscriptionRoutes from './routes/subscription.routes';
 import lottoRoutes from './routes/lotto.routes';
 import { generateOpenApiDocument } from './openapi/document';
 import { UPLOAD_ROOT } from './middleware/upload';
+import { env } from './config/env';
 
 const app = express();
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (env.NODE_ENV === 'development' || !env.FRONTEND_URL) {
+            return callback(null, true);
+        }
+        if (origin === env.FRONTEND_URL || origin.endsWith('.run.app') || origin.includes('localhost')) {
+            return callback(null, true);
+        }
+        return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-setup-secret'],
+}));
 
 app.use(express.json());
 

@@ -21,6 +21,18 @@ const envSchema = z.object({
     INTOUCHPAY_USERNAME: z.string().min(1),
     INTOUCHPAY_ACCOUNT_NO: z.string().min(1),
     INTOUCHPAY_CALLBACK_URL: z.string().url().min(1),
+
+    EMAIL_HOST: z.string().optional().default('smtp-relay.brevo.com'),
+    EMAIL_PORT: z.coerce.number().int().optional().default(587),
+    EMAIL_USE_TLS: z.preprocess(
+        (val) => val === 'true' || val === true || val === '1',
+        z.boolean()
+    ).optional().default(false),
+    EMAIL_HOST_USER: z.string().optional(),
+    EMAIL_HOST_PASSWORD: z.string().optional(),
+    DEFAULT_FROM_EMAIL: z.string().optional().default('no-reply@guraaha.rw'),
+
+    FRONTEND_URL: z.string().optional().default('http://localhost:5173'),
 });
 
 const parsed = envSchema.safeParse(process.env);
