@@ -1,28 +1,63 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { env } from "../config/env";
+import { verifyAuthToken } from "../utils/jwt.util";
+import { RevokedTokenRepository } from "../repositories/revoked-token.repository";
 
-interface AccessTokenPayload {
-    sub: string;
-    role: string;
-}
+const revokedTokenRepository = new RevokedTokenRepository();
 
-
-
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
     const header = req.headers.authorization;
 
     if (!header || !header.startsWith('Bearer ')) {
         return res.status(401).json({ message: 'Missing or malformed Authorization header' });
     }
 
-    const token = header.slice('Bearer '.length);
+    const token = header.slice('Bearer '.length).trim();
 
     try {
-        const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
-        req.user = { id: payload.sub, role: payload.role };
+        const payload = verifyAuthToken(token);
+
+        if (payload.jti) {
+            const isRevoked = await revokedTokenRepository.isRevoked(payload.jti);
+            if (isRevoked) {
+                return res.status(401).json({ message: 'Token has been revoked' });
+            }
+        }
+
+        req.user = {
+            id: payload.sub,
+            role: payload.role,
+            jti: payload.jti,
+            exp: payload.exp,
+        };
         return next();
-    } catch (error) {
+    } catch {
         return res.status(401).json({ message: 'Invalid or expired token' });
     }
+}
+
+export async function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith('Bearer ')) {
+        return next();
+    }
+
+    const token = header.slice('Bearer '.length).trim();
+    try {
+        const payload = verifyAuthToken(token);
+        if (payload.jti) {
+            const isRevoked = await revokedTokenRepository.isRevoked(payload.jti);
+            if (isRevoked) {
+                return next();
+            }
+        }
+        req.user = {
+            id: payload.sub,
+            role: payload.role,
+            jti: payload.jti,
+            exp: payload.exp,
+        };
+    } catch {
+        // Ignore invalid token on optional auth routes
+    }
+    return next();
 }

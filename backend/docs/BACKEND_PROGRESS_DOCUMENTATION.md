@@ -112,7 +112,8 @@ backend/
 │       ├── 014_update_blocker_status.sql
 │       ├── 015_create_refresh-tokens.sql
 │       ├── 016_create_listings_constraints.sql
-│       └── 0017_create_payments_constraints.sql
+│       ├── 0017_create_payments_constraints.sql
+│       └── 018_create_revoked_tokens.sql
 ├── docs/
 │   └── BACKEND_PROGRESS_DOCUMENTATION.md  # Master documentation (this file)
 └── src/
@@ -125,15 +126,17 @@ backend/
     │   └── payment-config.ts        # Pricing tables, unlock fees, subscription tiers
     ├── controllers/
     │   ├── admin.controller.ts      # Admin dashboard & management endpoints
-    │   ├── auth.controller.ts       # Registration, login, token refresh, OTP verification
+    │   ├── auth.controller.ts       # Registration, login, token refresh, OTP verification, logout
     │   ├── blocker.controller.ts    # Blocker applications, status & reviews
     │   ├── contact-unlock.controller.ts # Contact unlocks & revealed numbers
     │   ├── listing.controller.ts    # Property listings, filtering, photos
     │   ├── location.controller.ts   # Rwanda administrative location hierarchy
+    │   ├── partner.controller.ts    # Due diligence partners directory & admin CRUD
     │   ├── payment.controller.ts    # InTouchPay webhook & transaction lookups
+    │   ├── setting.controller.ts    # Public bootstrap & admin configuration settings
     │   └── subscription.controller.ts # Blocker Pro subscription lifecycle
     ├── middleware/
-    │   ├── authenticate.ts          # Bearer token verification & user population
+    │   ├── authenticate.ts          # Bearer token verification, jti revocation check & optional auth
     │   ├── authorize.ts             # Role-based access control & fresh DB role validation
     │   ├── upload.ts                # Multer image upload pipeline (5MB, jpeg/png/webp)
     │   └── validate.ts              # Zod schema request validation middleware
@@ -149,7 +152,9 @@ backend/
     │       ├── listing.paths.ts
     │       ├── location.paths.ts
     │       ├── lotto.paths.ts
+    │       ├── partner.paths.ts
     │       ├── payment.paths.ts
+    │       ├── setting.paths.ts
     │       └── subscription.paths.ts
     ├── provider/
     │   └── intouchpay.provider.ts   # InTouchPay HTTP API integration & signature logic
@@ -162,7 +167,11 @@ backend/
     │   ├── location.repository.ts   # Hierarchical province/district/sector/cell/village
     │   ├── lotto.repository.ts      # Lotto ticket persistence & system counts
     │   ├── otp.repository.ts        # OTP creation, retrieval, invalidation
+    │   ├── partner.repository.ts    # Certified partners directory, search & filters
     │   ├── payment.repository.ts    # Payment record creation, MoMo updates, audit trail
+    │   ├── refreshtoken.repository.ts # Refresh token rotation & session revocation
+    │   ├── revoked-token.repository.ts # Revoked access token blocklist table queries
+    │   └── setting.repository.ts    # System settings key-value store and public config
     │   ├── refreshtoken.repository.ts # Refresh token storage & revocation
     │   ├── subscription.repository.ts # Subscription periods, active checks, cancellations
     │   └── user.repository.ts       # User lookups, password updates, verification flags
@@ -335,9 +344,18 @@ The PostgreSQL database contains 17 migration files creating the core relational
 
 ## 5. Security & Authentication Architecture
 
-### 5.1 Dual-Token JWT Lifecycle
-- **Access Token**: Short-lived (15 minutes). Carries `userId`, `role`, and `isVerified`. Passed via HTTP Header: `Authorization: Bearer <token>`.
-- **Refresh Token**: Long-lived (7 days). Stored hashed in the `refresh_tokens` database table. Rotated on every single `/auth/refresh` invocation. Revoking the token immediately invalidates the entire session.
+### 5.1 Dual-Token JWT Lifecycle & Token Invalidation on Logout
+- **Access Token**: Short-lived (15 minutes). Carries `userId`, `role`, and a cryptographically unique `jti` (JWT ID UUID). Passed via HTTP Header: `Authorization: Bearer <token>`.
+- **Refresh Token**: Long-lived (7 days). Stored hashed in the `refresh_tokens` database table. Rotated on every single `/auth/refresh` invocation.
+- **Immediate Revocation on Logout (`POST /auth/logout`)**:
+  - GuraAha enforces full immediate revocation across both token tiers.
+  - Refresh token is marked `revoked_at = NOW()` in the database.
+  - Access token's unique `jti` and expiration timestamp are recorded in the `revoked_tokens` table.
+  - The `authenticate` middleware checks incoming JWTs against `revoked_tokens` — instantly rejecting logged-out sessions before expiration.
+- **Global Logout (`POST /auth/logout-all`)**:
+  - Revokes all active refresh tokens for the user in `refresh_tokens`.
+  - Invalidate current access token `jti` in `revoked_tokens`.
+  - Terminates all web, mobile, and third-party sessions simultaneously.
 
 ### 5.2 Password Security
 Passwords are automatically hashed using **Argon2id** (memory cost: 65,536 KiB, time cost: 3 iterations, parallelism: 4 threads). Argon2id is immune to GPU cracking attacks and resistant to side-channel timing analysis.
@@ -421,15 +439,24 @@ GuraAha integrates Brevo (or standard SMTP relay) using `nodemailer`:
    - Emits `paymentEvents.emit('paymentCompleted', payment)`.
    - Subscribers (ContactUnlockService, SubscriptionService) atomically complete the corresponding purchase.
 
-### 7.4 Contact Unlocks & Lotto Entries
-- **Direct Owner vs Blocker**: Buyers can choose to unlock the Owner's phone directly or the Blocker's vetted phone.
-- **Single-Priced**: Defined in `payment-config.ts` (e.g., 2,000 RWF for Owner, 1,000 RWF for Blocker).
-- **Lotto Generation**: Upon successful unlock payment, `LottoRepository.create({ userId, unlockId })` automatically mints a lottery entry.
+### 7.4 Dynamic Contact Unlocks & Lotto Entries
+- **Dynamic Pricing from Database Settings**: Unlocking prices are not hardcoded; they are stored dynamically in PostgreSQL (`settings` table under key `contact_unlock_prices_rwf`) and administered in real-time by admins.
+- **Party Roles**:
+  - `OWNER`: Unlocks verified title owner contact (default: 1,000 RWF).
+  - `BLOCKER`: Unlocks vetted field blocker contact (default: 500 RWF).
+- **Public Pricing Endpoint**: `GET /api/v1/contact-unlocks/prices` enables mobile and web frontends to fetch live pricing anytime without app re-deployments.
+- **Lotto Generation**: Upon successful unlock payment, `LottoRepository.create(userId, unlockId, client)` atomically mints a lottery entry inside a database transaction.
 
-### 7.5 Blocker Pro Subscriptions
-- Subscriptions entitle blockers to publish unlimited verified listings and access premium visibility.
-- Tiers: `WEEKLY` (e.g., 5,000 RWF) or `MONTHLY` (e.g., 18,000 RWF).
-- Status endpoint `GET /api/v1/subscriptions/status` computes remaining days and active standing.
+### 7.5 Dynamic Blocker Pro Subscriptions
+- **Dynamic Subscription Plans in Settings**: All plan tiers, durations, and prices reside in the `settings` database table under key `subscription_plans`.
+- **Default Configured Tiers**:
+  - `MONTHLY`: 5,000 RWF for 30 days
+  - `QUARTERLY`: 25,000 RWF for 90 days
+  - `YEARLY`: 90,000 RWF for 365 days
+- **Public Plans Endpoint**: `GET /api/v1/subscriptions/plans` returns the live tier map with prices and durations.
+- **Renewal Stacking**: When a blocker purchases or renews an active plan, the new validity period stacks automatically on top of existing remaining time (`expiresAt = startsAt + planConfig.durationDays * 86400000`).
+- **Status Inspection**: `GET /api/v1/subscriptions/status` computes remaining days and active standing.
+
 
 ### 7.6 Admin Management & Auditing
 - **Pagination**: All admin endpoints accept `page` (default 1) and `limit` (default 20, max 100), returning:
@@ -460,7 +487,8 @@ Machine-readable OpenAPI Spec: `http://localhost:3000/docs.json`
 | `POST` | `/auth/register` | Public | Create new user account (`USER` role) and auto-send OTP |
 | `POST` | `/auth/login` | Public | Authenticate with phone/email + password; returns access & refresh tokens |
 | `POST` | `/auth/refresh` | Public | Exchange refresh token for fresh access & rotated refresh token |
-| `POST` | `/auth/logout` | Public | Invalidate refresh token session |
+| `POST` | `/auth/logout` | Optional Bearer | Invalidate refresh token session and blacklist access token `jti` |
+| `POST` | `/auth/logout-all` | Bearer | Terminate all active sessions across all devices simultaneously |
 | `POST` | `/auth/verification/send` | Bearer | Send/resend 6-digit OTP code to registered email |
 | `POST` | `/auth/verification/verify` | Bearer | Verify 6-digit OTP code to activate account |
 
@@ -496,6 +524,7 @@ Machine-readable OpenAPI Spec: `http://localhost:3000/docs.json`
 ### 8.5 Contact Unlocks (`/listings` & `/contact-unlocks`)
 | Method | Path | Auth | Description |
 |:---|:---|:---|:---|
+| `GET` | `/contact-unlocks/prices` | Public | Live dynamic pricing in RWF for OWNER and BLOCKER contact unlocks |
 | `POST` | `/listings/:listingId/contact/unlock` | Bearer | Initiate InTouchPay payment for contact details |
 | `GET` | `/listings/:listingId/contact` | Bearer | View unlocked owner/blocker contact phone numbers |
 | `GET` | `/contact-unlocks/mine` | Bearer | List all properties unlocked by authenticated user |
@@ -510,10 +539,12 @@ Machine-readable OpenAPI Spec: `http://localhost:3000/docs.json`
 ### 8.7 Subscriptions (`/subscriptions`)
 | Method | Path | Auth | Description |
 |:---|:---|:---|:---|
+| `GET` | `/subscriptions/plans` | Public | Live dynamic subscription plan options, prices (RWF), and durations |
 | `POST` | `/subscriptions/initiate` | Blocker | Initiate Mobile Money payment for Blocker Pro tier |
 | `GET` | `/subscriptions/mine` | Blocker | View blocker subscription history |
 | `GET` | `/subscriptions/status` | Blocker | Check active subscription validity and remaining days |
 | `PATCH` | `/subscriptions/:id/cancel` | Blocker | Cancel auto-renewal of subscription |
+
 
 ### 8.8 Lotto Rewards (`/lotto`)
 | Method | Path | Auth | Description |
@@ -528,6 +559,24 @@ Machine-readable OpenAPI Spec: `http://localhost:3000/docs.json`
 | `GET` | `/admin/blockers` | Admin | Paginated list of blockers with `?page`, `?limit`, `?status` |
 | `GET` | `/admin/listings` | Admin | Paginated list of listings with `?page`, `?limit`, `?status` |
 | `GET` | `/admin/subscriptions` | Admin | Paginated list of subscriptions with `?page`, `?limit`, `?status` |
+
+### 8.10 Partners (`/partners`)
+| Method | Path | Auth | Description |
+|:---|:---|:---|:---|
+| `GET` | `/partners` | Public | Paginated list of certified due diligence partners (`?type`, `?locationId`, `?isCertified`, `?search`) |
+| `GET` | `/partners/:id` | Public | Partner details with joined location and contact channels |
+| `POST` | `/partners` | Admin | Create a new surveyor, notary, valuer, or engineer entry |
+| `PATCH` | `/partners/:id` | Admin | Update partner information, certification status, or active toggle |
+| `DELETE` | `/partners/:id` | Admin | Deactivate partner (or permanent delete with `?hard=true`) |
+
+### 8.11 System Settings (`/settings`)
+| Method | Path | Auth | Description |
+|:---|:---|:---|:---|
+| `GET` | `/settings/public` | Public | Retrieve whitelisted operational params (fees, support numbers, app version) |
+| `GET` | `/settings` | Admin | List all system configuration entries |
+| `GET` | `/settings/:key` | Admin | Retrieve single setting by key |
+| `PUT` | `/settings/:key` | Admin | Upsert setting value and description |
+| `DELETE` | `/settings/:key` | Admin | Remove custom setting entry |
 
 ---
 

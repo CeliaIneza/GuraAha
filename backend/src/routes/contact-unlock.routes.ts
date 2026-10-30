@@ -14,20 +14,8 @@ import { authenticate } from '../middleware/authenticate';
 import { validate } from '../middleware/validate';
 import { initiateContactUnlockSchema } from '../validators/contact-unlock.validator';
 
-// This router mounts at '/' in app.ts (no prefix) because its routes span
-// two different URL namespaces — /listings/:listingId/contact... and
-// /contact-unlocks/mine — rather than one shared prefix like every other
-// routes file in this codebase.
 const router = Router();
 
-// Constructing a fresh PaymentRepository/IntouchPayProvider/PaymentService
-// here (rather than importing a shared singleton) matches how every other
-// routes file in this codebase wires its own dependencies — these classes
-// hold no per-instance state, so duplicating the construction is harmless.
-// What DOES matter is that ContactUnlockService's constructor runs at least
-// once at module load, since that's what registers its payment-completed
-// handler in payment-events.ts (a module-level singleton regardless of how
-// many PaymentService instances exist).
 const contactUnlockRepository = new ContactUnlockRepository();
 const listingRepository = new ListingRepository();
 const userRepository = new UserRepository();
@@ -57,6 +45,11 @@ router.get(
     '/listings/:listingId/contact',
     authenticate,
     contactUnlockController.getRevealed
+);
+
+router.get(
+    '/contact-unlocks/prices',
+    contactUnlockController.getPricing
 );
 
 router.get(

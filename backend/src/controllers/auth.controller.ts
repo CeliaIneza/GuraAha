@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 import { TokenService } from "../services/token.service";
 import { VerificationService } from "../services/verification.service";
+import { decodeAuthToken } from "../utils/jwt.util";
 
 export class AuthController {
   constructor(
@@ -63,13 +64,53 @@ export class AuthController {
 
   logout = async (req: Request, res: Response) => {
     try {
-      if (req.body.refreshToken) {
-        await this.tokenService.logout(req.body.refreshToken);
+      const refreshToken = req.body?.refreshToken;
+
+      let accessTokenJti: string | undefined = req.user?.jti;
+      let accessTokenExp: number | undefined = req.user?.exp;
+      let userId: string | undefined = req.user?.id;
+
+      if (!accessTokenJti) {
+        const header = req.headers.authorization;
+        if (header && header.startsWith("Bearer ")) {
+          const rawToken = header.slice("Bearer ".length).trim();
+          const decoded = decodeAuthToken(rawToken);
+          if (decoded) {
+            accessTokenJti = decoded.jti;
+            accessTokenExp = decoded.exp;
+            userId = decoded.sub;
+          }
+        }
       }
-      return res.status(200).json({ message: "Logged out" });
+
+      await this.tokenService.logout({
+        refreshToken,
+        accessTokenJti,
+        accessTokenExp,
+        userId,
+      });
+
+      return res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
       return res.status(400).json({
         message: error instanceof Error ? error.message : "Failed to logout",
+      });
+    }
+  };
+
+  logoutAll = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      await this.tokenService.logoutAll(userId, req.user?.jti, req.user?.exp);
+
+      return res.status(200).json({ message: "Logged out from all sessions successfully" });
+    } catch (error) {
+      return res.status(400).json({
+        message: error instanceof Error ? error.message : "Failed to logout all sessions",
       });
     }
   };

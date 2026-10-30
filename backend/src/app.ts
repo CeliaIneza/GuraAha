@@ -10,6 +10,8 @@ import contactUnlockRoutes from './routes/contact-unlock.routes';
 import paymentRoutes from './routes/payment.routes';
 import subscriptionRoutes from './routes/subscription.routes';
 import lottoRoutes from './routes/lotto.routes';
+import partnerRoutes from './routes/partner.routes';
+import settingRoutes from './routes/setting.routes';
 import { generateOpenApiDocument } from './openapi/document';
 import { UPLOAD_ROOT } from './middleware/upload';
 import { env } from './config/env';
@@ -52,22 +54,20 @@ app.get('/health', (_req, res) => {
 app.get('/docs.json', (_req, res) => res.json(openApiDocument));
 app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
 
-// Existing routes
 app.use('/api/v1/blockers', blockerRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/location', locationRoutes);
 app.use('/api/v1/listings', listingRoutes);
 
-// Previously missing routes — now registered
-// contactUnlockRoutes mounts at / because it spans two URL namespaces:
-//   POST /api/v1/listings/:listingId/contact/unlock
-//   GET  /api/v1/listings/:listingId/contact
-//   GET  /api/v1/contact-unlocks/mine
 app.use('/api/v1', contactUnlockRoutes);
+
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/v1/lotto', lottoRoutes);
+
+app.use('/api/v1/partners', partnerRoutes);
+app.use('/api/v1/settings', settingRoutes);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ message: `No route for ${req.method} ${req.originalUrl}` });

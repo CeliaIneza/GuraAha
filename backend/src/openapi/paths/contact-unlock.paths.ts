@@ -66,6 +66,24 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/contact-unlocks/prices',
+  tags: ['Contact Unlocks'],
+  summary: 'Get dynamic contact unlock pricing',
+  description: 'Retrieves current dynamic contact unlock pricing in RWF for OWNER and BLOCKER from database settings.',
+  responses: {
+    200: {
+      description: 'Contact unlock prices dictionary',
+      content: { 'application/json': { schema: dataResponseSchema(z.record(z.string(), z.number())) } },
+    },
+    500: {
+      description: 'Internal server error',
+      content: { 'application/json': { schema: errorResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: 'get',
   path: '/contact-unlocks/mine',
   tags: ['Contact Unlocks'],
   security: bearerAuthSecurity,
@@ -78,3 +96,4 @@ registry.registerPath({
     401: unauthorizedResponse,
   },
 });
+

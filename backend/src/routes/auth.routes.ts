@@ -13,6 +13,7 @@ import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
+  logoutSchema,
   verifyCodeSchema,
 } from "../validators/auth.validator";
 
@@ -28,8 +29,10 @@ const authController = new AuthController(authService, tokenService, verificatio
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshTokenSchema), authController.refresh);
-router.post('/logout', authController.logout);
+router.post('/logout', validate(logoutSchema), authController.logout);
+router.post('/logout-all', authenticate, authController.logoutAll);
 
+// ── Phone / Account Verification Endpoints ──
 router.post('/verification/send', authenticate, authController.sendVerification);
 router.post('/verification/verify', authenticate, validate(verifyCodeSchema), authController.verifyAccount);
 

@@ -29,6 +29,12 @@ export const refreshTokenSchema = z.object({
 
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
+export const logoutSchema = z.object({
+    refreshToken: z.string().optional(),
+});
+
+export type LogoutInput = z.infer<typeof logoutSchema>;
+
 export const createAdminSchema = registerSchema;
 export type CreateAdminInput = RegisterInput;
 

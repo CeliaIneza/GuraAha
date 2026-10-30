@@ -54,4 +54,15 @@ export class SubscriptionController {
             });
         }
     };
+
+    getPlans = async (_req: Request, res: Response) => {
+        try {
+            const plans = await this.subscriptionService.getPlans();
+            return res.status(200).json({ data: plans });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve subscription plans',
+            });
+        }
+    };
 }

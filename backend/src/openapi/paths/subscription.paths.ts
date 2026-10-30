@@ -37,10 +37,34 @@ registry.registerPath({
   },
 });
 
+export const subscriptionPlanConfigSchema = z.object({
+  priceRwf: z.number().describe('Subscription fee in Rwandan Francs (RWF)'),
+  durationDays: z.number().describe('Validity period in days'),
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/subscriptions/plans',
+  tags: ['Subscriptions'],
+  summary: 'Get active subscription plans and pricing',
+  description: 'Retrieves all available Blocker Pro subscription tiers (e.g. MONTHLY, QUARTERLY, YEARLY) dynamically configured in database settings. No authentication required.',
+  responses: {
+    200: {
+      description: 'Dictionary of subscription plans with price and duration',
+      content: { 'application/json': { schema: dataResponseSchema(z.record(z.string(), subscriptionPlanConfigSchema)) } },
+    },
+    500: {
+      description: 'Internal server error',
+      content: { 'application/json': { schema: errorResponseSchema } },
+    },
+  },
+});
+
 registry.registerPath({
   method: 'get',
   path: '/subscriptions/mine',
   tags: ['Subscriptions'],
+
   security: bearerAuthSecurity,
   description: 'Retrieves all historical and current subscriptions for the authenticated blocker.',
   responses: {

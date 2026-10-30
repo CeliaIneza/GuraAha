@@ -15,11 +15,6 @@ import { initiateSubscriptionSchema } from '../validators/subscription.validator
 
 const router = Router();
 
-// See contact-unlock.routes.ts for why fresh instances here are fine —
-// same reasoning applies: these classes hold no per-instance state, and
-// SubscriptionService's constructor registering its payment-completed
-// handler only needs to run once at module load, which importing this
-// file (from app.ts) guarantees.
 const subscriptionRepository = new SubscriptionRepository();
 const blockerRepository = new BlockerRepository();
 const paymentRepository = new PaymentRepository();
@@ -37,6 +32,7 @@ router.post(
     subscriptionController.initiate
 );
 
+router.get('/plans', subscriptionController.getPlans);
 router.get('/mine', authenticate, requireRole('BLOCKER'), subscriptionController.getMine);
 router.get('/status', authenticate, requireRole('BLOCKER'), subscriptionController.getStatus);
 router.patch('/:id/cancel', authenticate, requireRole('BLOCKER'), subscriptionController.cancel);
