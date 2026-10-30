@@ -1,20 +1,27 @@
 import { SubscriptionRepository } from '../repositories/subscription.repository';
 import { BlockerRepository } from '../repositories/blocker.repository';
 import { PaymentService } from './payment.service';
+import { SettingService } from './setting.service';
 import { onPaymentCompleted, CompletedPayment } from '../provider/payment.event';
-import { SUBSCRIPTION_PLANS, isValidSubscriptionPlan } from '../config/payment-config';
 
 export class SubscriptionService {
   constructor(
     private readonly subscriptionRepository: SubscriptionRepository,
     private readonly blockerRepository: BlockerRepository,
-    private readonly paymentService: PaymentService
+    private readonly paymentService: PaymentService,
+    private readonly settingService: SettingService = new SettingService()
   ) {
     onPaymentCompleted('SUBSCRIPTION', this.handlePaymentCompleted);
   }
 
+  async getPlans() {
+    return this.settingService.getSubscriptionPlans();
+  }
+
   async initiate(userId: string, phone: string, plan: string) {
-    if (!isValidSubscriptionPlan(plan)) {
+    // Dynamic validation against database settings
+    const planConfig = await this.settingService.getSubscriptionPlan(plan);
+    if (!planConfig) {
       throw new Error(`Unknown subscription plan "${plan}"`);
     }
 
@@ -26,39 +33,28 @@ export class SubscriptionService {
       throw new Error('Only approved blockers can purchase a subscription');
     }
 
-    const planConfig = SUBSCRIPTION_PLANS[plan];
-    if (!planConfig) {
-      throw new Error(`Unknown subscription plan "${plan}"`);
-    }
     const { priceRwf } = planConfig;
 
     return this.paymentService.initiate(userId, phone, priceRwf, 'SUBSCRIPTION', {
       blockerId: blockerProfile.id,
-      plan,
+      plan: plan.toUpperCase(),
     });
   }
 
   private handlePaymentCompleted = async (payment: CompletedPayment) => {
     const { blockerId, plan } = payment.metadata;
 
-    if (typeof blockerId !== 'string' || typeof plan !== 'string' || !isValidSubscriptionPlan(plan)) {
+    if (typeof blockerId !== 'string' || typeof plan !== 'string') {
       console.error(`SUBSCRIPTION payment ${payment.id} completed with malformed metadata`, payment.metadata);
       return;
     }
 
-    const planConfig = SUBSCRIPTION_PLANS[plan];
+    const planConfig = await this.settingService.getSubscriptionPlan(plan);
     if (!planConfig) {
       console.error(`SUBSCRIPTION payment ${payment.id} completed with unknown plan: ${plan}`);
       return;
     }
     const { durationDays } = planConfig;
-
-
-    // Renewal stacking: if the blocker already has a subscription whose
-    // window hasn't ended yet (regardless of whether a newer-but-shorter
-    // one was bought in between), the new period starts when the existing
-    // one would have ended, rather than restarting from now and wasting
-    // whatever time was left. A brand-new subscriber just starts from now.
     const latest = await this.subscriptionRepository.findLatest(blockerId);
     const now = new Date();
     const startsAt = latest && new Date(latest.expires_at) > now ? new Date(latest.expires_at) : now;
@@ -67,7 +63,7 @@ export class SubscriptionService {
     try {
       await this.subscriptionRepository.create({
         blockerId,
-        plan,
+        plan: plan.toUpperCase(),
         paymentId: payment.id,
         startsAt,
         expiresAt,

@@ -3,8 +3,9 @@ import { ListingRepository } from '../repositories/listing.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { LottoRepository } from '../repositories/lotto.repository';
 import { PaymentService } from './payment.service';
+import { SettingService } from './setting.service';
 import { onPaymentCompleted, CompletedPayment } from '../provider/payment.event';
-import { CONTACT_UNLOCK_PRICES_RWF, ContactUnlockType } from '../config/payment-config';
+import { ContactUnlockType } from '../config/payment-config';
 import { db } from '../config/database';
 
 function isContactUnlockType(value: unknown): value is ContactUnlockType {
@@ -17,13 +18,19 @@ export class ContactUnlockService {
     private readonly listingRepository: ListingRepository,
     private readonly userRepository: UserRepository,
     private readonly lottoRepository: LottoRepository,
-    private readonly paymentService: PaymentService
+    private readonly paymentService: PaymentService,
+    private readonly settingService: SettingService = new SettingService()
   ) {
-    // Registered at construction rather than scattered through app.ts —
-    // keeps "what happens when a CONTACT_UNLOCK payment completes" next to
-    // the rest of this service. app.ts only has to construct this service
+    // app.ts only has to construct this service
     // once, before any webhook traffic can arrive.
     onPaymentCompleted('CONTACT_UNLOCK', this.handlePaymentCompleted);
+  }
+
+  /**
+   * Retrieves dynamic contact unlock pricing from system settings.
+   */
+  async getPricing(): Promise<Record<ContactUnlockType, number>> {
+    return this.settingService.getContactUnlockPrices();
   }
 
   async initiateUnlock(userId: string, listingId: string, type: ContactUnlockType, phone: string) {
@@ -40,7 +47,8 @@ export class ContactUnlockService {
       throw new Error('You have already unlocked this contact');
     }
 
-    const amountRwf = CONTACT_UNLOCK_PRICES_RWF[type];
+    // Dynamic price lookup from database settings table
+    const amountRwf = await this.settingService.getContactUnlockPrice(type);
 
     return this.paymentService.initiate(userId, phone, amountRwf, 'CONTACT_UNLOCK', {
       listingId,
@@ -106,8 +114,6 @@ export class ContactUnlockService {
     }
 
     if (blockerUnlock) {
-      // listing.owner_user_id is the blocker's own user id (see the
-      // comment on ListingRepository.findByIdWithOwner) — not the land owner
       const blockerUser = await this.userRepository.findById(listing.owner_user_id);
       result.blockerPhone = blockerUser?.phone ?? null;
     }

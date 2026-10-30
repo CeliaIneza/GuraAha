@@ -44,4 +44,15 @@ export class ContactUnlockController {
             });
         }
     };
+
+    getPricing = async (_req: Request, res: Response) => {
+        try {
+            const pricing = await this.contactUnlockService.getPricing();
+            return res.status(200).json({ data: pricing });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve contact unlock pricing',
+            });
+        }
+    };
 }
