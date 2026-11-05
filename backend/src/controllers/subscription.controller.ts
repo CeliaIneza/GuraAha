@@ -65,4 +65,15 @@ export class SubscriptionController {
             });
         }
     };
+
+    getVipStatus = async (req: Request, res: Response) => {
+        try {
+            const status = await this.subscriptionService.getVipStatus(req.user.id);
+            return res.status(200).json({ data: status });
+        } catch (error) {
+            return res.status(400).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve VIP status',
+            });
+        }
+    };
 }

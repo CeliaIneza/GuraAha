@@ -7,11 +7,15 @@ import {
     DEFAULT_SUBSCRIPTION_PLANS,
     SETTING_KEY_CONTACT_UNLOCK_PRICES,
     SETTING_KEY_SUBSCRIPTION_PLANS,
+    SETTING_KEY_VIP_EARLY_ACCESS_DAYS,
+    SETTING_KEY_VIP_MIN_DISCOUNT_PERCENT,
 } from "../config/payment-config";
 
 const DEFAULT_PUBLIC_SETTINGS: Record<string, string> = {
     [SETTING_KEY_CONTACT_UNLOCK_PRICES]: JSON.stringify(DEFAULT_CONTACT_UNLOCK_PRICES_RWF),
     [SETTING_KEY_SUBSCRIPTION_PLANS]: JSON.stringify(DEFAULT_SUBSCRIPTION_PLANS),
+    [SETTING_KEY_VIP_EARLY_ACCESS_DAYS]: "7",
+    [SETTING_KEY_VIP_MIN_DISCOUNT_PERCENT]: "10",
     contact_unlock_fee_rwf: "1000",
     subscription_pricing: JSON.stringify({
         MONTHLY: 5000,
@@ -142,5 +146,27 @@ export class SettingService {
     async isValidSubscriptionPlan(plan: string): Promise<boolean> {
         const config = await this.getSubscriptionPlan(plan);
         return config !== null;
+    }
+
+    async getVipEarlyAccessDays(): Promise<number> {
+        try {
+            const row = await this.settingRepository.getByKey(SETTING_KEY_VIP_EARLY_ACCESS_DAYS);
+            if (row && row.value) {
+                const days = parseInt(row.value, 10);
+                if (!isNaN(days) && days > 0) return days;
+            }
+        } catch {}
+        return 7;
+    }
+
+    async getVipMinDiscountPercent(): Promise<number> {
+        try {
+            const row = await this.settingRepository.getByKey(SETTING_KEY_VIP_MIN_DISCOUNT_PERCENT);
+            if (row && row.value) {
+                const pct = parseFloat(row.value);
+                if (!isNaN(pct) && pct >= 0) return pct;
+            }
+        } catch {}
+        return 10;
     }
 }

@@ -12,9 +12,12 @@ import subscriptionRoutes from './routes/subscription.routes';
 import lottoRoutes from './routes/lotto.routes';
 import partnerRoutes from './routes/partner.routes';
 import settingRoutes from './routes/setting.routes';
+import newsRoutes from './routes/news.routes';
+import alertRoutes from './routes/alert.routes';
 import { generateOpenApiDocument } from './openapi/document';
 import { UPLOAD_ROOT } from './middleware/upload';
 import { env } from './config/env';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 
@@ -68,6 +71,11 @@ app.use('/api/v1/lotto', lottoRoutes);
 
 app.use('/api/v1/partners', partnerRoutes);
 app.use('/api/v1/settings', settingRoutes);
+
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/news', newsRoutes);
+app.use('/api/v1/alerts', alertRoutes);
+
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ message: `No route for ${req.method} ${req.originalUrl}` });
