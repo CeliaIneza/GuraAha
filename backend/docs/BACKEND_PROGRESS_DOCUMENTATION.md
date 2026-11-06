@@ -572,11 +572,34 @@ Machine-readable OpenAPI Spec: `http://localhost:3000/docs.json`
 ### 8.11 System Settings (`/settings`)
 | Method | Path | Auth | Description |
 |:---|:---|:---|:---|
-| `GET` | `/settings/public` | Public | Retrieve whitelisted operational params (fees, support numbers, app version) |
+| `GET` | `/settings/public` | Public | Retrieve whitelisted operational params (fees, support numbers, app version, VIP window) |
 | `GET` | `/settings` | Admin | List all system configuration entries |
 | `GET` | `/settings/:key` | Admin | Retrieve single setting by key |
 | `PUT` | `/settings/:key` | Admin | Upsert setting value and description |
 | `DELETE` | `/settings/:key` | Admin | Remove custom setting entry |
+
+### 8.12 News & Market Updates (`/news`)
+| Method | Path | Auth | Description |
+|:---|:---|:---|:---|
+| `GET` | `/news` | Public | Paginated list of published news, market updates, and Cyamunara auction announcements (`?topic`, `?district`, `?page`, `?limit`) |
+| `GET` | `/news/:id` | Public | Full article content, translations (RW/EN/FR), read time, and author details |
+| `POST` | `/news/admin/publish` | Admin | Publish article with automatic in-app bell notification push and SMS/WhatsApp fan-out |
+
+### 8.13 In-App Notifications (`/notifications`)
+| Method | Path | Auth | Description |
+|:---|:---|:---|:---|
+| `GET` | `/notifications` | Bearer | Paginated notification bell feed for the authenticated user (`?page`, `?limit`) |
+| `GET` | `/notifications/unread-count` | Bearer | Unread notification count badge for the header bell icon |
+| `PATCH` | `/notifications/:id/read` | Bearer | Mark a specific notification item as read |
+| `PATCH` | `/notifications/mark-all-read` | Bearer | Mark all notifications as read for current user |
+
+### 8.14 Deal & Market Alerts (`/alerts`)
+| Method | Path | Auth | Description |
+|:---|:---|:---|:---|
+| `POST` | `/alerts/subscribe` | Public / Bearer | Subscribe or update phone number topic, district, and channel alert preferences |
+| `GET` | `/alerts/me` | Bearer | Retrieve active alert topic and district preferences for the caller |
+| `POST` | `/alerts/unsubscribe` | Public | Opt-out phone number from receiving SMS/WhatsApp alerts |
+
 
 ---
 

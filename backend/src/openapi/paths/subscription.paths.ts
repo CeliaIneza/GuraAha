@@ -94,6 +94,22 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/subscriptions/vip-status',
+  tags: ['Subscriptions', 'VIP Room'],
+  summary: 'Check user VIP Room membership standing',
+  description: 'Checks if caller has an active VIP Room subscription, remaining validity days, and renewal date.',
+  security: bearerAuthSecurity,
+  responses: {
+    200: {
+      description: 'VIP subscription status',
+      content: { 'application/json': { schema: dataResponseSchema() } },
+    },
+    401: unauthorizedResponse,
+  },
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/subscriptions/{id}/cancel',
   tags: ['Subscriptions'],

@@ -9,7 +9,6 @@ import { SubscriptionService } from '../services/subscription.service';
 import { SubscriptionController } from '../controllers/subscription.controller';
 
 import { authenticate } from '../middleware/authenticate';
-import { requireRole } from '../middleware/authorize';
 import { validate } from '../middleware/validate';
 import { initiateSubscriptionSchema } from '../validators/subscription.validator';
 
@@ -27,14 +26,14 @@ const subscriptionController = new SubscriptionController(subscriptionService);
 router.post(
     '/initiate',
     authenticate,
-    requireRole('BLOCKER'),
     validate(initiateSubscriptionSchema),
     subscriptionController.initiate
 );
 
 router.get('/plans', subscriptionController.getPlans);
-router.get('/mine', authenticate, requireRole('BLOCKER'), subscriptionController.getMine);
-router.get('/status', authenticate, requireRole('BLOCKER'), subscriptionController.getStatus);
-router.patch('/:id/cancel', authenticate, requireRole('BLOCKER'), subscriptionController.cancel);
+router.get('/vip-status', authenticate, subscriptionController.getVipStatus);
+router.get('/status', authenticate, subscriptionController.getStatus);
+router.get('/mine', authenticate, subscriptionController.getMine);
+router.patch('/:id/cancel', authenticate, subscriptionController.cancel);
 
 export default router;

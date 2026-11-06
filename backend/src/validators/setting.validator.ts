@@ -10,6 +10,8 @@ export type UpsertSettingInput = z.infer<typeof upsertSettingSchema>;
 export const PUBLIC_SETTING_KEYS = [
     "contact_unlock_prices_rwf",
     "subscription_plans",
+    "vip_early_access_days",
+    "vip_min_discount_percent",
     "contact_unlock_fee_rwf",
     "subscription_pricing",
     "lotto_ticket_price_rwf",
@@ -20,4 +22,3 @@ export const PUBLIC_SETTING_KEYS = [
     "maintenance_mode",
     "terms_version"
 ] as const;
-

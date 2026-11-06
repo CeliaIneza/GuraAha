@@ -12,6 +12,14 @@ export class ContactUnlockController {
                 req.body.type,
                 req.body.phone
             );
+
+            if (payment && (payment as any).isVipFree) {
+                return res.status(200).json({
+                    message: 'VIP Room perk: Contact unlocked for free with double Lotto entries granted!',
+                    data: payment,
+                });
+            }
+
             return res.status(201).json({
                 message: 'Payment initiated — approve the USSD prompt on your phone to complete the unlock',
                 data: payment,

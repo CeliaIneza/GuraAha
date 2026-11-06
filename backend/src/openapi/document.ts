@@ -12,6 +12,10 @@ import './paths/subscription.paths';
 import './paths/lotto.paths';
 import './paths/partner.paths';
 import './paths/setting.paths';
+import './paths/news.paths';
+import './paths/notification.paths';
+import './paths/alert.paths';
+
 
 export function generateOpenApiDocument() {
     const generator = new OpenApiGeneratorV3(registry.definitions);

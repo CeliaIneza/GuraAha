@@ -6,7 +6,7 @@ type QueryExecutor = { query: typeof db.query };
 export interface CreateContactUnlockInput {
   userId: string;
   listingId: string;
-  paymentId: string;
+  paymentId: string | null;
   type: ContactUnlockType;
   amountRwf: number;
 }
@@ -26,7 +26,7 @@ export class ContactUnlockRepository {
       [
         input.userId,
         input.listingId,
-        input.paymentId,
+        input.paymentId ?? null,
         input.type,
         input.amountRwf,
       ],
