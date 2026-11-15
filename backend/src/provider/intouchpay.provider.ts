@@ -9,9 +9,9 @@ import { env } from '../config/env';
 
 // TBD: confirm these env vars exist in your env schema.
 // INTOUCHPAY_USERNAME, INTOUCHPAY_ACCOUNT_NO, INTOUCHPAY_PARTNER_PASSWORD,
-// INTOUCHPAY_BASE_URL (sandbox vs production — see below),
+// INTOUCHPAY_BASE_URL (sandbox vs production see below),
 // INTOUCHPAY_CALLBACK_URL (must be a publicly reachable URL IntouchPay can
-// POST to — won't work against localhost without a tunnel).
+// POST to won't work against localhost without a tunnel).
 
 const SANDBOX_URL = 'https://developer.intouchpay.co.rw/api/v1/sandbox/requestpayment/';
 const PRODUCTION_URL = 'https://www.intouchpay.co.rw/api/requestpayment/';
@@ -68,7 +68,7 @@ export class IntouchPayProvider implements PaymentProvider {
   async initiate(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
     if (!this.username || !this.accountNo || !this.partnerPassword || !this.callbackUrl) {
       throw new Error(
-        'IntouchPay is not configured — missing one of INTOUCHPAY_USERNAME / INTOUCHPAY_ACCOUNT_NO / INTOUCHPAY_PARTNER_PASSWORD / INTOUCHPAY_CALLBACK_URL'
+        'IntouchPay is not configured missing one of INTOUCHPAY_USERNAME / INTOUCHPAY_ACCOUNT_NO / INTOUCHPAY_PARTNER_PASSWORD / INTOUCHPAY_CALLBACK_URL'
       );
     }
 
@@ -95,7 +95,7 @@ export class IntouchPayProvider implements PaymentProvider {
 
     if (!response.ok || !raw.success) {
       // TBD: raw.responsecode maps to a known table of errors (insufficient
-      // funds, invalid number, etc. — see the list you pasted). Surfacing
+      // funds, invalid number, etc. see the list you pasted). Surfacing
       // raw.message as-is for now; consider mapping specific codes to
       // friendlier messages for the client later.
       throw new Error(`IntouchPay request failed (${raw.responsecode ?? response.status}): ${raw.message ?? 'Unknown error'}`);
@@ -105,7 +105,7 @@ export class IntouchPayProvider implements PaymentProvider {
       throw new Error('IntouchPay response did not include a transactionid');
     }
 
-    // Note: this immediate response only means "USSD prompt sent" — status
+    // Note: this immediate response only means "USSD prompt sent" status
     // is "Pending" here regardless of what the user does next. The actual
     // completion/failure only arrives later via the callback in
     // parseCallback. Don't treat a successful initiate() as a successful

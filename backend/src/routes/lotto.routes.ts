@@ -4,7 +4,7 @@ import { LottoRepository } from '../repositories/lotto.repository.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { requireRole } from '../middleware/authorize.js';
 
-// No service/controller layer here deliberately — there is no lotto
+// No service/controller layer here deliberately there is no lotto
 // BUSINESS LOGIC to speak of yet (no draw mechanism, no prize structure,
 // nothing in the schema beyond "a row exists"). This is read-only until 
 // we define how winners are chosen, how often, what they win.

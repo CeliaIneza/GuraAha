@@ -81,6 +81,22 @@ export class ListingController {
     }
   };
 
+  getVipDeals = async (req: Request, res: Response) => {
+    try {
+      const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+      const pageSize = req.query.pageSize ? Math.min(50, Math.max(1, Number(req.query.pageSize))) : 20;
+      const listings = await this.listingService.getVipDeals({ page, pageSize });
+      return res.status(200).json({ data: listings });
+    } catch (error) {
+      return res.status(500).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve VIP deals",
+      });
+    }
+  };
+
   approve = async (req: Request, res: Response) => {
     try {
       const listing = await this.listingService.approve(

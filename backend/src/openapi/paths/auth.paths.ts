@@ -148,7 +148,7 @@ registry.registerPath({
     },
     responses: {
         200: {
-            description: 'Account verified successfully — returns updated user profile with is_verified=true',
+            description: 'Account verified successfully returns updated user profile with is_verified=true',
             content: { 'application/json': { schema: dataResponseSchema() } },
         },
         400: {

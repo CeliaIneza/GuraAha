@@ -114,6 +114,15 @@ export class ListingService {
         });
     }
 
+    async getVipDeals(filters: { page?: number; pageSize?: number }) {
+        const pageSize = Math.min(Math.max(filters.pageSize ?? 20, 1), 100);
+        const page = Math.max(filters.page ?? 1, 1);
+        return this.listingRepository.findVipDeals({
+            limit: pageSize,
+            offset: (page - 1) * pageSize,
+        });
+    }
+
 
     async approve(listingId: string, adminId: string) {
         const listing = await this.listingRepository.findById(listingId);

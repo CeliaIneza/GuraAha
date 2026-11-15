@@ -54,6 +54,10 @@ app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
 });
 
+app.get('/api/v1/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
 app.get('/docs.json', (_req, res) => res.json(openApiDocument));
 app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
 

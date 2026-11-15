@@ -9,10 +9,18 @@ import { BecomeBlockerPage } from './pages/BecomeBlockerPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
+import { MembershipPage } from './pages/MembershipPage.jsx';
+import { PartnersPage } from './pages/PartnersPage.jsx';
+import { DetailPage } from './pages/DetailPage.jsx';
+import { VipRoomPage } from './pages/VipRoomPage.jsx';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage.jsx';
+import { ResetPasswordPage } from './pages/ResetPasswordPage.jsx';
 import { Button } from './components/ui/button.jsx';
 import { Card, CardHeader, CardTitle, CardContent } from './components/ui/card.jsx';
 import { Layers, Search, ShieldCheck, Code2, LogIn, UserCheck, Shield, LayoutDashboard } from 'lucide-react';
 import { AdminDashboardPage } from './pages/AdminPage.jsx';
+import { MoMoModal } from './components/MoMoModal.jsx';
+import { Footer } from './components/Footer.jsx';
 
 function DashboardPlaceholder({ title, description, badge }) {
   const { user } = useAuth();
@@ -90,9 +98,15 @@ function MainLayout() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/listing/:id" element={<DetailPage />} />
+            <Route path="/vip-room" element={<VipRoomPage />} />
+            <Route path="/membership" element={<MembershipPage />} />
+            <Route path="/partners" element={<PartnersPage />} />
             <Route path="/become-blocker" element={<BecomeBlockerPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route
               path="/admin"
@@ -102,6 +116,8 @@ function MainLayout() {
           </Routes>
         </main>
       )}
+      {!isDashboardView && <Footer />}
+      <MoMoModal />
     </div>
   );
 }

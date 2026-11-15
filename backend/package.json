@@ -10,7 +10,8 @@
     "migrate": "tsx src/migrate.ts",
     "seedlocations": "tsx src/scripts/seed-locations.ts",
     "generateopenapi": "tsx src/scripts/generate-openapi.ts",
-    "seeddev": "tsx src/scripts/seed-dev.ts"
+    "seeddev": "tsx src/scripts/seed-dev.ts",
+    "seed:admin": "tsx src/scripts/seed-admin-only.ts"
   },
   "repository": {
     "type": "git",

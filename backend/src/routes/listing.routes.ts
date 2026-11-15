@@ -42,6 +42,8 @@ const listingController = new ListingController(listingService);
 // PUBLIC
 // PUBLIC
 router.get('/', listingController.getApproved);
+router.get('/vip-deals', authenticate, listingController.getVipDeals);
+
 router.get('/:id/photos', listingController.getPhotos);
 router.get('/:id', listingController.getById);
 
@@ -76,7 +78,7 @@ router.post(
             const relativePath = `listings/${req.file.filename}`;
             req.body.filePath = relativePath;
         }
-        // sortOrder may come in as a string from FormData — coerce to number
+        // sortOrder may come in as a string from FormData coerce to number
         if (req.body.sortOrder !== undefined) {
             req.body.sortOrder = Number(req.body.sortOrder);
         }

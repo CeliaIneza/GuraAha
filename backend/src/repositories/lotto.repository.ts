@@ -3,7 +3,7 @@ import { db } from '../config/database';
 type QueryExecutor = { query: typeof db.query };
 
 export class LottoRepository {
-  // No separate CreateLottoEntryInput — a lotto entry is never created on
+  // No separate CreateLottoEntryInput a lotto entry is never created on
   // its own, only as a side effect of a contact unlock
   async create(userId: string, contactUnlockId: string, executor: QueryExecutor = db) {
     const result = await executor.query(

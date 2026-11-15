@@ -1,7 +1,7 @@
 import { api } from './client';
 
 export const paymentsApi = {
-  // Initiate a contact unlock — sends MoMo push to user's phone.
+  // Initiate a contact unlock sends MoMo push to user's phone.
   // payload: { type: 'BLOCKER' | 'OWNER', phone: string }
   // Returns: { data: { payment: { id, status, ... } } }
   initiateUnlock: (listingId, payload) =>

@@ -76,42 +76,43 @@ export const MyPropertiesTab = ({ listings, onNavigate }) => {
           </div>
         </Card>
 
-        {/* Column 4: subscription card (65%) + add button (30%) + 5% gap */}
-        <div className="min-h-[148px] flex flex-col justify-between gap-[5%]">
-          <Card className="h-[65%] rounded-[9px] border-brand-line bg-white shadow-xs p-3.5 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-extrabold text-brand-ink tracking-tight block">
-                Blocker Pro
-              </span>
-              <button
-                type="button"
-                onClick={() => onNavigate("subscription")}
-                className="text-xs font-bold text-brand-green bg-brand-green/10 hover:underline cursor-pointer"
-              >
-                change plan
-              </button>
-            </div>
+        {/* Column 4: Subscription status card — equal height with other stat cards */}
+        <Card className="rounded-[9px] border-brand-line bg-white shadow-xs min-h-[148px] p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-extrabold text-brand-ink tracking-tight block">
+              Blocker Pro
+            </span>
+            <button
+              type="button"
+              onClick={() => onNavigate("subscription")}
+              className="text-xs font-bold text-brand-green bg-brand-green/10 hover:underline cursor-pointer"
+            >
+              change plan
+            </button>
+          </div>
 
-            <div className="my-auto py-1 text-center">
-              <span className="inline-flex items-center text-xs font-bold text-brand-green bg-brand-green/10">
-                Active
-              </span>
-            </div>
+          <div className="my-auto py-1 text-center">
+            <span className="inline-flex items-center text-xs font-bold text-brand-green bg-brand-green/10">
+              Active
+            </span>
+          </div>
 
-            <div className="w-full pb-1 flex items-center justify-center text-xs text-brand-ink-soft">
-              <span className="font-medium text-brand-ink-soft">Monthly renews 05 Oct</span>
-            </div>
-          </Card>
+          <div className="w-full pb-1 flex items-center justify-center text-xs text-brand-ink-soft">
+            <span className="font-medium text-brand-ink-soft">Monthly renews 05 Oct</span>
+          </div>
+        </Card>
+      </div>
 
-          <Button
-            onClick={() => onNavigate("add")}
-            variant="default"
-            className="h-[30%] w-full rounded-[9px] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4 shrink-0" />
-            <span>Add New Property</span>
-          </Button>
-        </div>
+      {/* Add New Property — full-width CTA below stats row */}
+      <div className="flex justify-end">
+        <Button
+          onClick={() => onNavigate("add")}
+          variant="default"
+          className="rounded-[9px] font-bold text-sm flex items-center gap-2 shadow-xs cursor-pointer px-5 h-10"
+        >
+          <PlusCircle className="w-4 h-4 shrink-0" />
+          <span>Add New Property</span>
+        </Button>
       </div>
 
       {/* Listings table */}

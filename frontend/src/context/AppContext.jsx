@@ -11,6 +11,8 @@ const DEFAULT_SETTINGS = {
   blockerProMonthly: 5000,
   unlockPassWeekly: 1000,
   unlockPassMonthly: 3500,
+  vipRoomWeekly: 2500,
+  vipRoomMonthly: 8000,
 };
 
 const SETTINGS_MAP = {
@@ -20,6 +22,8 @@ const SETTINGS_MAP = {
   blocker_pro_monthly: 'blockerProMonthly',
   unlock_pass_weekly: 'unlockPassWeekly',
   unlock_pass_monthly: 'unlockPassMonthly',
+  vip_room_weekly: 'vipRoomWeekly',
+  vip_room_monthly: 'vipRoomMonthly',
 };
 
 export const AppProvider = ({ children }) => {

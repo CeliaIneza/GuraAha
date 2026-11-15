@@ -21,7 +21,7 @@ export class ContactUnlockController {
             }
 
             return res.status(201).json({
-                message: 'Payment initiated — approve the USSD prompt on your phone to complete the unlock',
+                message: 'Payment initiated, approve the USSD prompt on your phone to complete the unlock',
                 data: payment,
             });
         } catch (error) {

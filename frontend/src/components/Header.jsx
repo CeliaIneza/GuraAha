@@ -2,8 +2,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, UserCheck, LogIn, LogOut } from 'lucide-react';
+import { ShieldCheck, UserCheck, LogIn, LogOut, Star } from 'lucide-react';
 import { Button } from './ui/button';
+import { NotificationBell } from './NotificationBell';
 import {
   Select,
   SelectContent,
@@ -23,6 +24,19 @@ export const Header = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = React.useState(false);
+  const profileRef = React.useRef(null);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const isRw = lang === 'rw';
   const isActive = (path) => {
@@ -94,6 +108,7 @@ export const Header = () => {
           ['/membership', t('nav_membership')],
           ['/partners', t('nav_partners')],
           ['/become-blocker', t('nav_blocker')],
+          ['/vip-room', t('nav_vip')],
         ].map(([path, label]) => (
           <Link
             key={path}
@@ -119,6 +134,8 @@ export const Header = () => {
           isRw ? 'gap-1.5 sm:gap-2' : 'gap-2 sm:gap-3'
         }`}
       >
+        <NotificationBell />
+
         <Select
           value={lang}
           onValueChange={(val) => {
@@ -175,17 +192,67 @@ export const Header = () => {
         )}
 
         {user ? (
-          <Button
-            onClick={handleLogout}
-            variant="outline"
-            size={isRw ? 'sm' : 'default'}
-            className={`rounded-[9px] border-2 ${
-              isRw ? 'px-2.5 py-1 text-xs sm:text-sm h-8.5' : ''
-            }`}
-          >
-            <LogOut className={`${isRw ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-brand-ink-soft`} />
-            Log out
-          </Button>
+          <>
+            {/* Profile dropdown - desktop */}
+            <div className="relative hidden sm:block" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen(o => !o)}
+                className={`inline-flex items-center gap-1.5 font-semibold text-brand-ink bg-brand-bg-soft border border-brand-line rounded-[9px] px-2.5 py-1.5 max-w-[130px] hover:border-brand-green/60 hover:bg-brand-green/5 transition-colors cursor-pointer ${isRw ? 'text-xs' : 'text-sm'}`}
+              >
+                <svg className="w-3.5 h-3.5 text-brand-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" strokeWidth="2"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeWidth="2" strokeLinecap="round"/></svg>
+                <span className="truncate">{user.firstName || user.first_name || 'User'}</span>
+                <svg className={`w-3 h-3 text-brand-ink-soft shrink-0 transition-transform ${profileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              {profileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-brand-line rounded-[12px] shadow-xl z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-brand-line bg-brand-bg-soft">
+                    <p className="font-bold text-sm text-brand-ink">{(user.firstName || user.first_name || '')} {(user.lastName || user.last_name || '')}</p>
+                    <p className="text-xs text-brand-ink-soft truncate mt-0.5">{user.email || user.phone || ''}</p>
+                    <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
+                      user.role === 'BLOCKER' ? 'bg-brand-green/10 text-brand-green' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>{user.role || 'USER'}</span>
+                  </div>
+                  <div className="py-1">
+                    {user.role === 'BLOCKER' && (
+                      <Link to="/dashboard" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-ink hover:bg-brand-bg-soft transition-colors">
+                        <UserCheck className="w-4 h-4 text-brand-green" />
+                        My Dashboard
+                      </Link>
+                    )}
+                    {user.role === 'ADMIN' && (
+                      <Link to="/admin" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-ink hover:bg-brand-bg-soft transition-colors">
+                        <ShieldCheck className="w-4 h-4 text-purple-600" />
+                        Admin Panel
+                      </Link>
+                    )}
+                    <Link to="/membership" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-ink hover:bg-brand-bg-soft transition-colors">
+                      <Star className="w-4 h-4 text-brand-gold" />
+                      Membership
+                    </Link>
+                    <div className="border-t border-brand-line mx-2 my-1" />
+                    <button onClick={() => { setProfileOpen(false); handleLogout(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                      <LogOut className="w-4 h-4" />
+                      Log out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Mobile: simple logout */}
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size={isRw ? 'sm' : 'default'}
+              className={`sm:hidden rounded-[9px] border-2 ${
+                isRw ? 'px-2.5 py-1 text-xs sm:text-sm h-8.5' : ''
+              }`}
+            >
+              <LogOut className={`${isRw ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-brand-ink-soft`} />
+              Log out
+            </Button>
+          </>
         ) : (
           <>
             <Button

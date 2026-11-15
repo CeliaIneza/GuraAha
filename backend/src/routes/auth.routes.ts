@@ -36,4 +36,9 @@ router.post('/logout-all', authenticate, authController.logoutAll);
 router.post('/verification/send', authenticate, authController.sendVerification);
 router.post('/verification/verify', authenticate, validate(verifyCodeSchema), authController.verifyAccount);
 
+
+// ── Password Reset Endpoints ──
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
 export default router;

@@ -12,7 +12,7 @@ export class SubscriptionController {
                 req.body.plan
             );
             return res.status(201).json({
-                message: 'Payment initiated — approve the USSD prompt on your phone to activate the plan',
+                message: 'Payment initiated, approve the USSD prompt on your phone to activate the plan',
                 data: payment,
             });
         } catch (error) {

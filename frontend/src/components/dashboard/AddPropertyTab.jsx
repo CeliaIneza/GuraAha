@@ -115,9 +115,7 @@ export function useAddPropertyForm(onSuccess) {
     if (!formData.coverPhoto) {
       e.coverPhoto = "A cover photo is required";
     }
-    if (!formData.ownerPhone.trim()) {
-      e.ownerPhone = "Owner phone number is required. Buyers pay to unlock this contact.";
-    }
+    // ownerPhone is optional — if provided, buyers pay to unlock it
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -491,7 +489,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                 />
               </Field>
 
-              <Field label="Owner Phone Number" required error={errors.ownerPhone}>
+              <Field label="Owner Phone Number" hint="(optional — buyers pay to unlock)" error={errors.ownerPhone}>
                 <Input
                   type="tel"
                   value={formData.ownerPhone}
@@ -501,9 +499,14 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                     errors.ownerPhone ? errorInputClass : ""
                   }`}
                 />
-                {!errors.ownerPhone && (
+                {!errors.ownerPhone && formData.ownerPhone && (
                   <p className="text-[11px] text-brand-ink-soft">
                     Buyers pay to unlock this verified contact
+                  </p>
+                )}
+                {!formData.ownerPhone && !errors.ownerPhone && (
+                  <p className="text-[11px] text-amber-600">
+                    If not provided, only the Blocker's contact will be shown to buyers
                   </p>
                 )}
               </Field>

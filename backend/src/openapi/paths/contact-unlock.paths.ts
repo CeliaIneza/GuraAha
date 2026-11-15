@@ -29,7 +29,7 @@ registry.registerPath({
   },
   responses: {
     201: {
-      description: 'Payment initiated — user receives USSD prompt on their mobile device',
+      description: 'Payment initiated, user receives USSD prompt on their mobile device',
       content: { 'application/json': { schema: dataResponseSchema() } },
     },
     400: {
