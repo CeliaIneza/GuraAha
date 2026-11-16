@@ -19,6 +19,17 @@ export function dataResponseSchema(dataSchema: z.ZodTypeAny = z.any()) {
     });
 }
 
+export function paginatedDataResponseSchema(itemSchema: z.ZodTypeAny = z.any()) {
+    return z.object({
+        data: z.array(itemSchema),
+        pagination: z.object({
+            total: z.number().int(),
+            page: z.number().int(),
+            limit: z.number().int(),
+            totalPages: z.number().int(),
+        }),
+    });
+}
 
 export const unauthorizedResponse = {
     description: 'Missing, malformed, or expired access token',

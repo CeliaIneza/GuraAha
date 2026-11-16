@@ -17,9 +17,12 @@ export const MoMoModal = () => {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const isSubscription = momoModal.kind?.startsWith('subscription-');
+  const isSubscription = momoModal.kind?.startsWith('subscription-') || momoModal.kind?.startsWith('subscription-vip_room');
   const subscriptionPlan = isSubscription
-    ? momoModal.kind.replace('subscription-', '').toUpperCase()
+    ? momoModal.kind
+        .replace('subscription-vip_room_', 'VIP_ROOM_')
+        .replace('subscription-', '')
+        .toUpperCase()
     : null;
   const unlockType = momoModal.kind === 'blocker' ? 'BLOCKER' : 'OWNER';
 
@@ -91,13 +94,20 @@ export const MoMoModal = () => {
     setChecking(true);
     try {
       if (isSubscription) {
-        // GET /subscriptions/status
+        // GET /subscriptions/status works for both blocker and VIP subscriptions
         const res = await subscriptionsApi.getStatus();
-        const sub = res?.data;
-        if (sub && (sub.status === 'ACTIVE' || sub.is_active)) {
-          const exp = sub.expires_at || sub.expiresAt;
+        const data = res?.data;
+        const isVipKind = subscriptionPlan?.startsWith('VIP_ROOM');
+        const sub = isVipKind
+          ? data?.vipSubscription
+          : data?.blockerSubscription;
+        if (sub && sub.isActive) {
+          const exp = sub.subscription?.expires_at || sub.subscription?.expiresAt;
+          const planLabel = subscriptionPlan?.startsWith('VIP_ROOM')
+            ? 'VIP Room'
+            : subscriptionPlan === 'MONTHLY' ? 'Monthly' : 'Weekly';
           setContact({
-            name: `${subscriptionPlan === 'MONTHLY' ? 'Monthly' : subscriptionPlan === 'QUARTERLY' ? 'Quarterly' : 'Yearly'} plan activated!`,
+            name: `${planLabel} plan activated!`,
             phone: exp ? `Valid until ${new Date(exp).toLocaleDateString()}` : 'Active',
           });
           notifySubscription();

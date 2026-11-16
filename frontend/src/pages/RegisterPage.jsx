@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PasswordInput } from '../components/PasswordInput';
 import { normalizePhone } from '../utils/phone';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { AlertCircle } from 'lucide-react';
 
 export const RegisterPage = () => {
   const { register } = useAuth();
@@ -21,7 +25,20 @@ export const RegisterPage = () => {
   const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setError('Please provide both your first and last name.');
+      return;
+    }
+    if (!form.phone.trim()) {
+      setError('Please provide a valid Rwandan phone number.');
+      return;
+    }
+    if (!form.password || form.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+
     setError('');
     setSubmitting(true);
     try {
@@ -34,117 +51,143 @@ export const RegisterPage = () => {
       });
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 bg-gradient-to-br from-[#f0f7f4] to-white">
+    <div className="min-h-[85vh] bg-dashboard flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
       <div className="w-full max-w-lg">
-        {/* Brand mark */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-brand-green flex items-center justify-center shadow-md">
-            <span className="text-white font-extrabold text-lg">G</span>
-          </div>
-          <span className="text-2xl font-extrabold text-brand-ink tracking-tight">GuraAha</span>
-        </div>
+        
+        {/* Main Registration Card with uniform 9px radius and seamless interior */}
+        <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
+          
+          {/* Centered Card Header without SVG emblem and without divider line */}
+          <CardHeader className="p-4 sm:p-6 text-center flex flex-col items-center">
+            <CardTitle className="text-2xl font-bold text-brand-ink">
+              Create an account
+            </CardTitle>
+            <CardDescription className="text-sm text-brand-ink-soft mt-1 max-w-md leading-relaxed">
+              Buyers start here. After login you can apply to become a Blocker and post listings.
+            </CardDescription>
+          </CardHeader>
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl px-8 py-10 shadow-xl">
-          <h1 className="text-2xl font-bold text-brand-ink mb-1">Create an account</h1>
-          <p className="text-sm text-brand-ink-soft mb-8">
-            Buyers start here. After login you can apply to become a Blocker and post listings.
-          </p>
+          {/* Form Content directly following header with no dividing border */}
+          <form onSubmit={handleSubmit}>
+            <CardContent className="p-6 sm:p-8 pt-2 space-y-4">
+              
+              {/* Error Banner */}
+              {error && (
+                <div className="flex items-start gap-2.5 p-3.5 rounded-[9px] bg-red-50/90 border border-red-200 text-red-700 text-xs sm:text-sm font-medium animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{error}</span>
+                </div>
+              )}
 
-          {error && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm leading-relaxed">
-              {error}
-            </div>
-          )}
+              {/* Name row: Firstname and Lastname on the same line */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-brand-ink">
+                    First name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    required
+                    value={form.firstName}
+                    onChange={update('firstName')}
+                    placeholder="Jean"
+                    className="rounded-[9px] h-11 pl-3.5 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-brand-ink">
+                    Last name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    required
+                    value={form.lastName}
+                    onChange={update('lastName')}
+                    placeholder="Mugabo"
+                    className="rounded-[9px] h-11 pl-3.5 text-sm"
+                  />
+                </div>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">First name <span className="text-red-500">*</span></label>
-                <input
+              {/* Phone number */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-brand-ink">
+                  Phone number <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="tel"
                   required
-                  value={form.firstName}
-                  onChange={update('firstName')}
-                  placeholder="Jean"
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
+                  value={form.phone}
+                  onChange={update('phone')}
+                  placeholder="e.g. 0788 123 456"
+                  className="rounded-[9px] h-11 pl-3.5 text-sm"
+                />
+                <p className="text-xs text-brand-ink-soft/80 flex items-center gap-1">
+                  <span className="text-brand-green font-bold">✓</span> Enter without country code - we accept 078x, 072x, 073x
+                </p>
+              </div>
+
+              {/* Email address */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-brand-ink">
+                  Email address <span className="text-brand-ink-soft/70 font-normal">(optional)</span>
+                </label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={update('email')}
+                  placeholder="you@email.com"
+                  className="rounded-[9px] h-11 pl-3.5 text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Last name <span className="text-red-500">*</span></label>
-                <input
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-brand-ink">
+                  Password <span className="text-brand-ink-soft/70 font-normal">(min 8 characters)</span>
+                </label>
+                <PasswordInput
+                  value={form.password}
+                  onChange={update('password')}
                   required
-                  value={form.lastName}
-                  onChange={update('lastName')}
-                  placeholder="Mugabo"
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
+                  minLength={8}
+                  placeholder="Choose a strong password"
                 />
               </div>
-            </div>
 
-            {/* Phone */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Phone number <span className="text-red-500">*</span></label>
-              <input
-                type="tel"
-                required
-                value={form.phone}
-                onChange={update('phone')}
-                placeholder="e.g. 0788 123 456"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-              />
-              <p className="text-xs text-brand-ink-soft mt-1.5 flex items-center gap-1">
-                <span className="text-brand-green">✓</span> Enter without country code - we accept 078x, 072x, 073x
+            </CardContent>
+
+            {/* Submit Action */}
+            <CardFooter className="p-6 sm:p-8 pt-2 flex flex-col gap-4">
+              <Button
+                type="submit"
+                disabled={submitting}
+                variant="default"
+                className="w-full h-11 rounded-[9px] font-semibold text-sm sm:text-base shadow-sm active:translate-y-px"
+              >
+                {submitting ? 'Creating account…' : 'Create account'}
+              </Button>
+
+              {/* Login link */}
+              <p className="text-sm text-brand-ink-soft text-center">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="text-brand-green font-semibold hover:underline"
+                >
+                  Log in
+                </Link>
               </p>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Email address <span className="text-gray-400 font-normal">(optional)</span></label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={update('email')}
-                placeholder="you@email.com"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green transition-colors"
-              />
-              <p className="text-xs text-brand-ink-soft mt-1.5">Recommended - used for application status notifications</p>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Password <span className="text-gray-400 font-normal">(min 8 characters)</span></label>
-              <PasswordInput
-                value={form.password}
-                onChange={update('password')}
-                required
-                minLength={8}
-                placeholder="Choose a strong password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl disabled:opacity-60 transition-colors text-base mt-2"
-            >
-              {submitting ? 'Creating account…' : 'Create account'}
-            </button>
+            </CardFooter>
           </form>
 
-          <p className="text-sm text-brand-ink-soft mt-6 text-center">
-            Already have an account?{' '}
-            <Link to="/login" className="text-brand-green font-semibold hover:underline">
-              Log in
-            </Link>
-          </p>
-        </div>
+        </Card>
+
       </div>
     </div>
   );

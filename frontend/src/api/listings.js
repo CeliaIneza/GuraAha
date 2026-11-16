@@ -28,4 +28,12 @@ export const listingsApi = {
   reject: (id, rejectionReason) =>
     api(`/listings/${id}/reject`, { method: 'PATCH', body: { rejectionReason }, auth: true }),
   removePhoto: (photoId) => api(`/listings/photos/${photoId}`, { method: 'DELETE', auth: true }),
+  // VIP-only deals: requires active VIP_ROOM subscription on the backend
+  getVipDeals: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.page) search.set('page', String(params.page));
+    if (params.pageSize) search.set('pageSize', String(params.pageSize));
+    const qs = search.toString();
+    return api(`/listings/vip-deals${qs ? `?${qs}` : ''}`, { auth: true });
+  },
 };

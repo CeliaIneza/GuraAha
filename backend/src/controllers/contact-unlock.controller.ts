@@ -8,12 +8,20 @@ export class ContactUnlockController {
         try {
             const payment = await this.contactUnlockService.initiateUnlock(
                 req.user.id,
-                req.params.listingId,
+                String(req.params.listingId),
                 req.body.type,
                 req.body.phone
             );
+
+            if (payment && (payment as any).isVipFree) {
+                return res.status(200).json({
+                    message: 'VIP Room perk: Contact unlocked for free with double Lotto entries granted!',
+                    data: payment,
+                });
+            }
+
             return res.status(201).json({
-                message: 'Payment initiated — approve the USSD prompt on your phone to complete the unlock',
+                message: 'Payment initiated, approve the USSD prompt on your phone to complete the unlock',
                 data: payment,
             });
         } catch (error) {
@@ -25,7 +33,7 @@ export class ContactUnlockController {
 
     getRevealed = async (req: Request, res: Response) => {
         try {
-            const contact = await this.contactUnlockService.getRevealedContact(req.user.id, req.params.listingId);
+            const contact = await this.contactUnlockService.getRevealedContact(req.user.id, String(req.params.listingId));
             return res.status(200).json({ data: contact });
         } catch (error) {
             return res.status(404).json({
@@ -41,6 +49,17 @@ export class ContactUnlockController {
         } catch (error) {
             return res.status(400).json({
                 message: error instanceof Error ? error.message : 'Failed to retrieve your unlocks',
+            });
+        }
+    };
+
+    getPricing = async (_req: Request, res: Response) => {
+        try {
+            const pricing = await this.contactUnlockService.getPricing();
+            return res.status(200).json({ data: pricing });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve contact unlock pricing',
             });
         }
     };

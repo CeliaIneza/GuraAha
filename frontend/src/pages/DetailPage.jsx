@@ -128,11 +128,11 @@ export const DetailPage = () => {
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Size</span>
-              <b className="text-base text-brand-ink">{listingSize(listing) || '—'}</b>
+              <b className="text-base text-brand-ink">{listingSize(listing) }</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">UPI / Parcel No.</span>
-              <b className="text-base text-brand-ink">{listing.upiNumber || listing.upi || '—'}</b>
+              <b className="text-base text-brand-ink">{listing.upiNumber || listing.upi }</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Type</span>

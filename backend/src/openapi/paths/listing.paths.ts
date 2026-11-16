@@ -40,7 +40,7 @@ registry.registerPath({
     path: '/listings/{id}',
     tags: ['Listings'],
     description:
-        'Public for APPROVED listings only. A PENDING/REJECTED listing returns 404 to anyone except its owning blocker or an admin — deliberately indistinguishable from "does not exist".',
+        'Public for APPROVED listings only. A PENDING/REJECTED listing returns 404 to anyone except its owning blocker or an admin, deliberately indistinguishable from "does not exist".',
     request: { params: idParamSchema },
     responses: {
         200: {
@@ -115,7 +115,7 @@ registry.registerPath({
     path: '/listings/{id}/photos',
     tags: ['Listings'],
     security: bearerAuthSecurity,
-    description: 'multipart/form-data upload — field name "photo". Allowed types: JPEG, PNG, WebP. Max 5MB.',
+    description: 'multipart/form-data upload field name "photo". Allowed types: JPEG, PNG, WebP. Max 5MB.',
     request: {
         params: idParamSchema,
         body: { content: { 'multipart/form-data': { schema: addPhotoMultipartSchema } } },
@@ -208,6 +208,90 @@ registry.registerPath({
             description: 'Not found, or not PENDING',
             content: { 'application/json': { schema: errorResponseSchema } },
         },
+        401: unauthorizedResponse,
+        403: forbiddenResponse,
+    },
+});
+
+registry.registerPath({
+    method: 'get',
+    path: '/listings/vip/deals',
+    tags: ['Listings', 'VIP Room'],
+    summary: 'Browse VIP Room exclusive deals',
+    description: 'Returns below-market, pre-launch, and discreet listings during their 7-day exclusive window. VIP subscribers receive unblurred details; non-subscribers receive veiled previews.',
+    request: {
+        query: z.object({
+            page: z.coerce.number().int().positive().optional(),
+            pageSize: z.coerce.number().int().positive().max(100).optional(),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'List of VIP deals',
+            content: { 'application/json': { schema: dataResponseSchema(z.array(z.any())) } },
+        },
+    },
+});
+
+registry.registerPath({
+    method: 'patch',
+    path: '/listings/{id}/toggle-disabled',
+    tags: ['Listings'],
+    summary: 'Enable or disable listing visibility',
+    description: 'Blockers and Admins can toggle listing state (e.g. on hold, reserved, or sold) without deleting historical records.',
+    security: bearerAuthSecurity,
+    request: {
+        params: idParamSchema,
+    },
+    responses: {
+        200: {
+            description: 'Listing visibility toggled',
+            content: { 'application/json': { schema: dataResponseSchema() } },
+        },
+        400: { description: 'Unauthorized or listing not found' },
+        401: unauthorizedResponse,
+    },
+});
+
+registry.registerPath({
+    method: 'get',
+    path: '/listings/admin/pending-vip',
+    tags: ['Listings', 'Admin', 'VIP Room'],
+    summary: 'List pending VIP deal submissions for review',
+    security: bearerAuthSecurity,
+    responses: {
+        200: {
+            description: 'Pending VIP deal submissions',
+            content: { 'application/json': { schema: dataResponseSchema(z.array(z.any())) } },
+        },
+        401: unauthorizedResponse,
+        403: forbiddenResponse,
+    },
+});
+
+registry.registerPath({
+    method: 'patch',
+    path: '/listings/{id}/approve-vip',
+    tags: ['Listings', 'Admin', 'VIP Room'],
+    summary: 'Approve listing as VIP exclusive deal',
+    description: 'Marks listing as approved VIP, sets the 7-day early access expiration window, and queues deal alerts.',
+    security: bearerAuthSecurity,
+    request: {
+        params: idParamSchema,
+        body: {
+            content: {
+                'application/json': {
+                    schema: z.object({ earlyAccessDays: z.number().int().positive().max(30).optional() }),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Listing approved for VIP Room',
+            content: { 'application/json': { schema: dataResponseSchema() } },
+        },
+        400: { description: 'Failed to approve for VIP' },
         401: unauthorizedResponse,
         403: forbiddenResponse,
     },

@@ -161,4 +161,24 @@ export class UserRepository {
 
     return result.rows[0] ?? null;
   }
+
+  async markVerified(
+    userId: string,
+    executor: QueryExecutor = db
+  ) {
+    const result = await executor.query(
+      `
+      UPDATE users
+      SET phone_verified_at = NOW(),
+          email_verified_at = NOW(),
+          status = 'ACTIVE',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING ${USER_COLUMNS_NO_HASH}
+      `,
+      [userId]
+    );
+
+    return result.rows[0] ?? null;
+  }
 }

@@ -9,17 +9,11 @@ import { SubscriptionService } from '../services/subscription.service';
 import { SubscriptionController } from '../controllers/subscription.controller';
 
 import { authenticate } from '../middleware/authenticate';
-import { requireRole } from '../middleware/authorize';
 import { validate } from '../middleware/validate';
 import { initiateSubscriptionSchema } from '../validators/subscription.validator';
 
 const router = Router();
 
-// See contact-unlock.routes.ts for why fresh instances here are fine —
-// same reasoning applies: these classes hold no per-instance state, and
-// SubscriptionService's constructor registering its payment-completed
-// handler only needs to run once at module load, which importing this
-// file (from app.ts) guarantees.
 const subscriptionRepository = new SubscriptionRepository();
 const blockerRepository = new BlockerRepository();
 const paymentRepository = new PaymentRepository();
@@ -32,13 +26,14 @@ const subscriptionController = new SubscriptionController(subscriptionService);
 router.post(
     '/initiate',
     authenticate,
-    requireRole('BLOCKER'),
     validate(initiateSubscriptionSchema),
     subscriptionController.initiate
 );
 
-router.get('/mine', authenticate, requireRole('BLOCKER'), subscriptionController.getMine);
-router.get('/status', authenticate, requireRole('BLOCKER'), subscriptionController.getStatus);
-router.patch('/:id/cancel', authenticate, requireRole('BLOCKER'), subscriptionController.cancel);
+router.get('/plans', subscriptionController.getPlans);
+router.get('/vip-status', authenticate, subscriptionController.getVipStatus);
+router.get('/status', authenticate, subscriptionController.getStatus);
+router.get('/mine', authenticate, subscriptionController.getMine);
+router.patch('/:id/cancel', authenticate, subscriptionController.cancel);
 
 export default router;

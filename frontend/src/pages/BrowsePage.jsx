@@ -19,7 +19,7 @@ import { Filter, RotateCcw, Search } from "lucide-react";
  * true  -> listings AND locations come only from local mock data (no network calls)
  * false -> mock data is shown first, then replaced by API data when it returns
  */
-const USE_DUMMY_ONLY = true;
+const USE_DUMMY_ONLY = false;
 
 const LEVELS = ["Province", "District", "Sector", "Cell", "Village"];
 
@@ -83,9 +83,9 @@ const fetchChildren = (id) =>
 // ---- Filter option maps ----
 const typeItems = {
   "": "All types",
-  land: "Land",
-  plot: "Plot",
-  house: "House",
+  LAND: "Land",
+  PLOT: "Plot",
+  HOUSE: "House",
 };
 
 const triggerClass =
@@ -184,7 +184,7 @@ export const BrowsePage = () => {
   // Dummy listings, filtered by type and max price (location isn't modelled in mock data)
   const dummyFiltered = (params) => {
     let data = initialListings.filter((listing) => !listing.vip);
-    if (params.type) data = data.filter((l) => l.type === params.type);
+    if (params.type) data = data.filter((l) => (l.type || '').toUpperCase() === (params.type || '').toUpperCase());
     if (params.price)
       data = data.filter((l) => l.price <= Number(params.price));
     return data;
@@ -292,9 +292,9 @@ export const BrowsePage = () => {
               placeholder="All types"
             >
               <SelectItem value="">All types</SelectItem>
-              <SelectItem value="land">Land</SelectItem>
-              <SelectItem value="plot">Plot</SelectItem>
-              <SelectItem value="house">House</SelectItem>
+              <SelectItem value="LAND">Land</SelectItem>
+              <SelectItem value="PLOT">Plot</SelectItem>
+              <SelectItem value="HOUSE">House</SelectItem>
             </FilterSelect>
 
             <div>
@@ -327,7 +327,7 @@ export const BrowsePage = () => {
             <h2 className="text-xl font-bold text-brand-ink">
               Browse listings{" "}
               <span className="text-sm font-semibold text-brand-ink-soft">
-                {loading ? "Loading…" : `— ${listings.length} results`}
+                {loading ? "Loading…" : ` ${listings.length} results`}
               </span>
             </h2>
           </div>

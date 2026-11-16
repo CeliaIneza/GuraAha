@@ -1,3 +1,4 @@
+import { EmailService } from './email.service';
 import { BlockerRepository } from '../repositories/blocker.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { ApplyForBlockerInput, RejectBlockerInput } from '../validators/blocker.validator';
@@ -22,9 +23,6 @@ export class BlockerService {
             throw new Error('User account is not active');
         }
 
-        if(!user.phone_verified_at) {
-            throw new Error('Phone number must be verified');
-        }
 
         if(user.role !== 'USER') {
             throw new Error('Only users can apply to become blockers');
@@ -36,12 +34,24 @@ export class BlockerService {
             throw new Error('Blocker profile already exists for this user');
         }
 
-        return this.blockerRepository.create({
+        const application = await this.blockerRepository.create({
             userId,
             nationalId: input.nationalId,
             operatingLocationId: input.operatingLocationId,
             agreementDocumentPath: input.agreementDocumentPath,
         });
+
+        // Send confirmation email to applicant
+        try {
+            const emailService = new EmailService();
+            if (user.email) {
+                await emailService.sendBlockerApplicationEmail(user.email, `${user.first_name} ${user.last_name}`);
+            }
+        } catch (emailErr) {
+            console.error('Failed to send blocker application email:', emailErr);
+        }
+
+        return application;
     }
 
     async getApplicationById(id: string) {
@@ -132,6 +142,18 @@ export class BlockerService {
             );
 
             await client.query('COMMIT');
+
+            // Send approval email
+            try {
+                const userInfo = await this.userRepository.findById(updatedProfile.user_id);
+                if (userInfo && userInfo.email) {
+                    const emailService = new EmailService();
+                    await emailService.sendBlockerApprovalEmail(userInfo.email, `${userInfo.first_name} ${userInfo.last_name}`, updatedProfile.verification_code);
+                }
+            } catch (emailErr) {
+                console.error('Failed to send blocker approval email:', emailErr);
+            }
+
             return updatedProfile;
         } catch (error) {
             await client.query('ROLLBACK');

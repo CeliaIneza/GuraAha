@@ -12,7 +12,7 @@ export class SubscriptionController {
                 req.body.plan
             );
             return res.status(201).json({
-                message: 'Payment initiated — approve the USSD prompt on your phone to activate the plan',
+                message: 'Payment initiated, approve the USSD prompt on your phone to activate the plan',
                 data: payment,
             });
         } catch (error) {
@@ -46,11 +46,33 @@ export class SubscriptionController {
 
     cancel = async (req: Request, res: Response) => {
         try {
-            const cancelled = await this.subscriptionService.cancel(req.user.id, req.params.id);
+            const cancelled = await this.subscriptionService.cancel(req.user.id, String(req.params.id));
             return res.status(200).json({ message: 'Subscription cancelled', data: cancelled });
         } catch (error) {
             return res.status(400).json({
                 message: error instanceof Error ? error.message : 'Failed to cancel subscription',
+            });
+        }
+    };
+
+    getPlans = async (_req: Request, res: Response) => {
+        try {
+            const plans = await this.subscriptionService.getPlans();
+            return res.status(200).json({ data: plans });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve subscription plans',
+            });
+        }
+    };
+
+    getVipStatus = async (req: Request, res: Response) => {
+        try {
+            const status = await this.subscriptionService.getVipStatus(req.user.id);
+            return res.status(200).json({ data: status });
+        } catch (error) {
+            return res.status(400).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve VIP status',
             });
         }
     };
