@@ -48,10 +48,29 @@ export class PaymentService {
   async handleWebhook(rawBody: unknown, headers: Record<string, string | string[] | undefined>) {
     const parsed = this.provider.parseCallback(rawBody, headers);
 
-    const payment = await this.paymentRepository.findByProviderReference(parsed.providerReference);
+    // Best practice: verify requesttransactionid against database first, fallback to providerReference
+    let payment = parsed.requestTransactionId
+      ? await this.paymentRepository.findById(parsed.requestTransactionId)
+      : null;
+
+    if (!payment && parsed.providerReference) {
+      payment = await this.paymentRepository.findByProviderReference(parsed.providerReference);
+    }
 
     if (!payment) {
-      throw new Error(`No payment found for provider reference ${parsed.providerReference}`);
+      throw new Error(
+        `No payment found for requesttransactionid=${parsed.requestTransactionId ?? 'n/a'} or transactionid=${parsed.providerReference}`
+      );
+    }
+
+    // Best practice: Be idempotent, if already COMPLETED, do not process again
+    if (payment.status === 'COMPLETED') {
+      return payment;
+    }
+
+    // Transient 'pending' callback, keep in PENDING state
+    if (parsed.status === 'PENDING') {
+      return payment;
     }
 
     if (parsed.status === 'FAILED') {
@@ -76,11 +95,47 @@ export class PaymentService {
     return updated;
   }
 
+  async syncPendingPayment(paymentId: string) {
+    const payment = await this.paymentRepository.findById(paymentId);
+    if (!payment || payment.status !== 'PENDING' || !payment.provider_reference) {
+      return payment;
+    }
+
+    if (this.provider.checkTransactionStatus) {
+      const check = await this.provider.checkTransactionStatus(payment.id, payment.provider_reference);
+      if (check.status === 'COMPLETED') {
+        return this.handleWebhook(
+          {
+            jsonpayload: {
+              requesttransactionid: payment.id,
+              transactionid: payment.provider_reference,
+              status: 'Successfull',
+              responsecode: '01',
+            },
+          },
+          {}
+        );
+      } else if (check.status === 'FAILED') {
+        await this.paymentRepository.markFailed(payment.id, check.rawResponse);
+        return this.paymentRepository.findById(payment.id);
+      }
+    }
+
+    return payment;
+  }
+
   async getMine(userId: string) {
+    const payments = await this.paymentRepository.findByUserId(userId);
+    for (const p of payments) {
+      if (p.status === 'PENDING' && p.provider_reference) {
+        await this.syncPendingPayment(p.id).catch(() => {});
+      }
+    }
     return this.paymentRepository.findByUserId(userId);
   }
 
   async getById(paymentId: string) {
+    await this.syncPendingPayment(paymentId).catch(() => {});
     const payment = await this.paymentRepository.findById(paymentId);
     if (!payment) {
       throw new Error('Payment not found');

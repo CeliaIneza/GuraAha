@@ -11,4 +11,9 @@ export const blockersApi = {
       body: { rejectionReason },
       auth: true,
     }),
+  delete: (id) =>
+    api(`/blockers/applications/${id}`, {
+      method: 'DELETE',
+      auth: true,
+    }),
 };

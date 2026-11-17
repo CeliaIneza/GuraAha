@@ -52,6 +52,7 @@ export interface UpdateListingInput {
 
 export interface ListingFilters {
   villageId?: string;
+  locationId?: string;
   districtId?: string;
   province?: string;
   district?: string;
@@ -102,6 +103,80 @@ const LISTING_COLUMNS = `
   updated_at
 `;
 
+const ENRICHED_LISTING_SELECT = `
+  l.id,
+  l.blocker_id,
+  l.village_id,
+  l.type,
+  l.category,
+  l.sub_type,
+  l.condition,
+  l.title_rw,
+  l.title_en,
+  l.title_fr,
+  l.description_rw,
+  l.description_en,
+  l.description_fr,
+  l.price_rwf,
+  l.size_value,
+  l.size_unit,
+  l.upi_number,
+  l.owner_name,
+  l.owner_phone,
+  l.ownership_document_path,
+  l.status,
+  l.is_vip,
+  l.vip_was_price_rwf,
+  l.vip_discount_percent,
+  l.vip_reason,
+  l.vip_early_access_days,
+  l.vip_expires_at,
+  l.is_disabled,
+  l.rejection_reason,
+  l.reviewed_by,
+  l.reviewed_at,
+  l.approved_at,
+  l.created_at,
+  l.updated_at,
+  bp.user_id AS owner_user_id,
+  (
+    SELECT lp.file_path
+    FROM listing_photos lp
+    WHERE lp.listing_id = l.id
+    ORDER BY lp.sort_order ASC, lp.created_at ASC
+    LIMIT 1
+  ) AS cover_photo_path,
+  (
+    SELECT COUNT(*)::int
+    FROM contact_unlocks cu
+    WHERE cu.listing_id = l.id
+  ) AS unlock_count,
+  jsonb_build_object(
+    'village', loc_vil.name,
+    'cell', loc_cel.name,
+    'sector', loc_sec.name,
+    'district', loc_dis.name,
+    'province', loc_pro.name
+  ) AS location,
+  jsonb_build_object(
+    'id', bp.id,
+    'firstName', u.first_name,
+    'lastName', u.last_name,
+    'verificationCode', bp.verification_code
+  ) AS blocker
+`;
+
+const ENRICHED_LISTING_JOINS = `
+  FROM listings l
+  INNER JOIN blocker_profiles bp ON bp.id = l.blocker_id
+  LEFT JOIN users u ON u.id = bp.user_id
+  LEFT JOIN locations loc_vil ON loc_vil.id = l.village_id
+  LEFT JOIN locations loc_cel ON loc_cel.id = loc_vil.parent_id
+  LEFT JOIN locations loc_sec ON loc_sec.id = loc_cel.parent_id
+  LEFT JOIN locations loc_dis ON loc_dis.id = loc_sec.parent_id
+  LEFT JOIN locations loc_pro ON loc_pro.id = loc_dis.parent_id
+`;
+
 export class ListingRepository {
   async create(input: CreateListingInput, executor: QueryExecutor = db) {
     const isVip = Boolean(input.isVip);
@@ -132,7 +207,7 @@ export class ListingRepository {
       [
         input.blockerId,
         input.villageId,
-        input.type,
+        input.type ? input.type.toUpperCase() : input.type,
         input.category ?? null,
         input.subType ?? null,
         input.condition ?? null,
@@ -161,7 +236,11 @@ export class ListingRepository {
 
   async findById(id: string, executor: QueryExecutor = db) {
     const result = await executor.query(
-      `SELECT ${LISTING_COLUMNS} FROM listings WHERE id = $1`,
+      `
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
+      WHERE l.id = $1
+      `,
       [id]
     );
     return result.rows[0] ?? null;
@@ -170,44 +249,8 @@ export class ListingRepository {
   async findByIdWithOwner(id: string, executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT
-        l.id,
-        l.blocker_id,
-        l.village_id,
-        l.type,
-        l.category,
-        l.sub_type,
-        l.condition,
-        l.title_rw,
-        l.title_en,
-        l.title_fr,
-        l.description_rw,
-        l.description_en,
-        l.description_fr,
-        l.price_rwf,
-        l.size_value,
-        l.size_unit,
-        l.upi_number,
-        l.owner_name,
-        l.owner_phone,
-        l.ownership_document_path,
-        l.status,
-        l.is_vip,
-        l.vip_was_price_rwf,
-        l.vip_discount_percent,
-        l.vip_reason,
-        l.vip_early_access_days,
-        l.vip_expires_at,
-        l.is_disabled,
-        l.rejection_reason,
-        l.reviewed_by,
-        l.reviewed_at,
-        l.approved_at,
-        l.created_at,
-        l.updated_at,
-        bp.user_id AS owner_user_id
-      FROM listings l
-      INNER JOIN blocker_profiles bp ON bp.id = l.blocker_id
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
       WHERE l.id = $1
       `,
       [id]
@@ -218,10 +261,10 @@ export class ListingRepository {
   async findByBlockerId(blockerId: string, executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT ${LISTING_COLUMNS}
-      FROM listings
-      WHERE blocker_id = $1
-      ORDER BY created_at DESC
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
+      WHERE l.blocker_id = $1
+      ORDER BY l.created_at DESC
       `,
       [blockerId]
     );
@@ -231,10 +274,10 @@ export class ListingRepository {
   async findPending(executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT ${LISTING_COLUMNS}
-      FROM listings
-      WHERE status = 'PENDING'
-      ORDER BY created_at ASC
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
+      WHERE l.status = 'PENDING'
+      ORDER BY l.created_at ASC
       `
     );
     return result.rows;
@@ -243,52 +286,60 @@ export class ListingRepository {
   async findPendingVip(executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT ${LISTING_COLUMNS}
-      FROM listings
-      WHERE status = 'PENDING' AND is_vip = TRUE
-      ORDER BY created_at ASC
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
+      WHERE l.status = 'PENDING' AND l.is_vip = TRUE
+      ORDER BY l.created_at ASC
       `
     );
     return result.rows;
   }
 
   async findApproved(filters: ListingFilters, isVipUser: boolean = false, executor: QueryExecutor = db) {
-    const conditions: string[] = [`status = 'APPROVED'`, `is_disabled = FALSE`];
+    const conditions: string[] = [`l.status = 'APPROVED'`, `l.is_disabled = FALSE`];
     const values: unknown[] = [];
 
     // VIP Visibility Rule
     if (!isVipUser) {
-      conditions.push(`(is_vip = FALSE OR vip_expires_at IS NULL OR vip_expires_at <= NOW())`);
+      conditions.push(`(l.is_vip = FALSE OR l.vip_expires_at IS NULL OR l.vip_expires_at <= NOW())`);
     }
 
     if (filters.villageId) {
       values.push(filters.villageId);
-      conditions.push(`village_id = $${values.length}`);
+      conditions.push(`l.village_id = $${values.length}`);
+    }
+
+    if (filters.locationId) {
+      values.push(filters.locationId);
+      const paramIdx = `$${values.length}`;
+      conditions.push(
+        `(${paramIdx}::uuid IN (l.village_id, loc_cel.id, loc_sec.id, loc_dis.id, loc_pro.id))`
+      );
     }
 
     if (filters.type) {
       values.push(filters.type);
-      conditions.push(`type = $${values.length}`);
+      conditions.push(`UPPER(l.type) = UPPER($${values.length})`);
     }
 
     if (filters.category) {
       values.push(filters.category);
-      conditions.push(`category = $${values.length}`);
+      conditions.push(`UPPER(l.category) = UPPER($${values.length})`);
     }
 
     if (filters.subType) {
       values.push(filters.subType);
-      conditions.push(`sub_type = $${values.length}`);
+      conditions.push(`UPPER(l.sub_type) = UPPER($${values.length})`);
     }
 
     if (filters.maxPrice) {
       values.push(filters.maxPrice);
-      conditions.push(`price_rwf <= $${values.length}`);
+      conditions.push(`l.price_rwf <= $${values.length}`);
     }
 
     if (filters.minPrice) {
       values.push(filters.minPrice);
-      conditions.push(`price_rwf >= $${values.length}`);
+      conditions.push(`l.price_rwf >= $${values.length}`);
     }
 
     values.push(filters.limit);
@@ -298,10 +349,10 @@ export class ListingRepository {
 
     const result = await executor.query(
       `
-      SELECT ${LISTING_COLUMNS}
-      FROM listings
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
       WHERE ${conditions.join(' AND ')}
-      ORDER BY created_at DESC
+      ORDER BY l.created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
       `,
       values
@@ -312,13 +363,13 @@ export class ListingRepository {
   async findVipDeals(filters: { limit: number; offset: number }, executor: QueryExecutor = db) {
     const result = await executor.query(
       `
-      SELECT ${LISTING_COLUMNS}
-      FROM listings
-      WHERE is_vip = TRUE
-        AND status = 'APPROVED'
-        AND is_disabled = FALSE
-        AND (vip_expires_at IS NULL OR vip_expires_at > NOW())
-      ORDER BY created_at DESC
+      SELECT ${ENRICHED_LISTING_SELECT}
+      ${ENRICHED_LISTING_JOINS}
+      WHERE l.is_vip = TRUE
+        AND l.status = 'APPROVED'
+        AND l.is_disabled = FALSE
+        AND (l.vip_expires_at IS NULL OR l.vip_expires_at > NOW())
+      ORDER BY l.created_at DESC
       LIMIT $1 OFFSET $2
       `,
       [filters.limit, filters.offset]
@@ -345,13 +396,13 @@ export class ListingRepository {
       UPDATE listings
       SET
         status = 'APPROVED',
+        is_disabled = FALSE,
         reviewed_by = $1,
         reviewed_at = NOW(),
         approved_at = NOW(),
         rejection_reason = NULL,
         updated_at = NOW()
       WHERE id = $2
-        AND status = 'PENDING'
       RETURNING ${LISTING_COLUMNS}
       `,
       [reviewedBy, listingId]
@@ -365,16 +416,16 @@ export class ListingRepository {
       UPDATE listings
       SET
         status = 'APPROVED',
+        is_disabled = FALSE,
         is_vip = TRUE,
         vip_early_access_days = $1,
-        vip_expires_at = NOW() + ($1 || ' days')::interval,
+        vip_expires_at = NOW() + ($1::int * INTERVAL '1 day'),
         reviewed_by = $2,
         reviewed_at = NOW(),
         approved_at = NOW(),
         rejection_reason = NULL,
         updated_at = NOW()
       WHERE id = $3
-        AND status = 'PENDING'
       RETURNING ${LISTING_COLUMNS}
       `,
       [earlyAccessDays, reviewedBy, listingId]
@@ -398,10 +449,32 @@ export class ListingRepository {
         reviewed_at = NOW(),
         updated_at = NOW()
       WHERE id = $3
-        AND status = 'PENDING'
       RETURNING ${LISTING_COLUMNS}
       `,
       [rejectionReason, reviewedBy, listingId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async revise(
+    listingId: string,
+    reviewedBy: string,
+    adminNote: string,
+    executor: QueryExecutor = db
+  ) {
+    const result = await executor.query(
+      `
+      UPDATE listings
+      SET
+        status = 'PENDING',
+        rejection_reason = $1,
+        reviewed_by = $2,
+        reviewed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $3
+      RETURNING ${LISTING_COLUMNS}
+      `,
+      [adminNote, reviewedBy, listingId]
     );
     return result.rows[0] ?? null;
   }
@@ -502,6 +575,20 @@ export class ListingRepository {
         listingId,
         blockerId,
       ]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteById(listingId: string, executor: QueryExecutor = db) {
+    await executor.query(
+      `DELETE FROM lotto_entries WHERE contact_unlock_id IN (SELECT id FROM contact_unlocks WHERE listing_id = $1)`,
+      [listingId]
+    );
+    await executor.query(`DELETE FROM contact_unlocks WHERE listing_id = $1`, [listingId]);
+    await executor.query(`DELETE FROM listing_photos WHERE listing_id = $1`, [listingId]);
+    const result = await executor.query(
+      `DELETE FROM listings WHERE id = $1 RETURNING ${LISTING_COLUMNS}`,
+      [listingId]
     );
     return result.rows[0] ?? null;
   }

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { listingsApi } from '../api/listings';
+import { paymentsApi } from '../api/payments';
 import { findDummyListing } from '../data/mockData';
 import {
   blockerLabel,
@@ -14,12 +16,13 @@ import {
   listingTitle,
   mediaUrl,
 } from '../utils/listing';
-import { Lock, ChevronRight } from 'lucide-react';
+import { Lock, Unlock, Phone, ChevronRight } from 'lucide-react';
 
 export const DetailPage = () => {
   const { id } = useParams();
   const routerLocation = useLocation();
-  const { lang, openMoMo, settings } = useApp();
+  const { lang, openMoMo, settings, unlockTimestamp } = useApp();
+  const { user } = useAuth();
   const [listing, setListing] = useState(routerLocation.state?.listing || findDummyListing(id) || null);
   const [photos, setPhotos] = useState(() => {
     const seed = routerLocation.state?.listing || findDummyListing(id);
@@ -27,6 +30,7 @@ export const DetailPage = () => {
   });
   const [active, setActive] = useState('');
   const [error, setError] = useState('');
+  const [revealed, setRevealed] = useState({});
 
   useEffect(() => {
     const dummy = routerLocation.state?.listing || findDummyListing(id);
@@ -49,8 +53,9 @@ export const DetailPage = () => {
         const urls = (photoRes.data || [])
           .map((p) => mediaUrl(p.filePath || p.file_path))
           .filter(Boolean);
-        if (data.coverPhotoPath && !urls.includes(mediaUrl(data.coverPhotoPath))) {
-          urls.unshift(mediaUrl(data.coverPhotoPath));
+        const coverPath = data.coverPhotoPath || data.cover_photo_path;
+        if (coverPath && !urls.includes(mediaUrl(coverPath))) {
+          urls.unshift(mediaUrl(coverPath));
         }
         const gallery = urls.length > 0 ? urls : listingGalleryUrls(data);
         setPhotos(gallery);
@@ -61,6 +66,18 @@ export const DetailPage = () => {
     };
     load();
   }, [id, routerLocation.state]);
+
+  useEffect(() => {
+    if (!user || !id) return;
+    paymentsApi
+      .getRevealedContact(id)
+      .then((res) => {
+        if (res?.data) {
+          setRevealed(res.data);
+        }
+      })
+      .catch(() => {});
+  }, [id, user, unlockTimestamp]);
 
   if (error) {
     return (
@@ -128,15 +145,15 @@ export const DetailPage = () => {
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Size</span>
-              <b className="text-base text-brand-ink">{listingSize(listing) }</b>
+              <b className="text-base text-brand-ink">{listingSize(listing) || ' '}</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">UPI / Parcel No.</span>
-              <b className="text-base text-brand-ink">{listing.upiNumber || listing.upi }</b>
+              <b className="text-base text-brand-ink">{listing.upi_number || listing.upiNumber || listing.upi || ' '}</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Type</span>
-              <b className="text-base text-brand-ink capitalize">{listing.type}</b>
+              <b className="text-base text-brand-ink capitalize">{(listing.type || '').toLowerCase()}</b>
             </div>
             <div className="bg-brand-bg-soft rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">Verified blocker</span>
@@ -158,35 +175,82 @@ export const DetailPage = () => {
               {listingPrice(listing).toLocaleString('en-US')} RWF
             </div>
 
-            {['blocker', 'owner'].map((kind) => (
-              <div key={kind} className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4">
-                <h4 className="font-bold text-sm text-brand-ink flex items-center gap-2 mb-1">
-                  <Lock className="w-4 h-4 text-brand-green" />
-                  {kind === 'blocker' ? 'Blocker (agent) contact' : 'Owner contact'}
-                </h4>
-                <p className="text-xs text-brand-ink-soft mb-3">
-                  {kind === 'blocker'
-                    ? 'Talk to the verified local agent managing this property.'
-                    : 'Deal directly with the property owner.'}
-                </p>
-                <button
-                  onClick={() => openMoMo({
-                    kind,
-                    listingId: listing.id,
-                    amount: kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee,
-                    title,
-                  })}
-                  className={`w-full py-2.5 text-white font-semibold rounded-xl text-sm ${
-                    kind === 'blocker' ? 'bg-brand-green hover:bg-brand-green-dark' : 'bg-brand-earth hover:bg-amber-800'
-                  }`}
-                >
-                  Unlock for {kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee} RWF
-                </button>
-              </div>
-            ))}
+            {(() => {
+              const hasOwnerContact = Boolean(
+                listing.hasOwnerContact ||
+                  listing.has_owner_contact ||
+                  listing.ownerPhone ||
+                  listing.owner_phone ||
+                  revealed?.ownerPhone ||
+                  revealed?.owner_phone
+              );
+              const availableKinds = hasOwnerContact ? ['blocker', 'owner'] : ['blocker'];
+              return availableKinds;
+            })().map((kind) => {
+              const isUnlocked =
+                kind === 'blocker'
+                  ? Boolean(revealed?.blockerPhone || revealed?.blocker_phone)
+                  : Boolean(revealed?.ownerPhone || revealed?.owner_phone);
+
+              const phone =
+                kind === 'blocker'
+                  ? revealed?.blockerPhone || revealed?.blocker_phone
+                  : revealed?.ownerPhone || revealed?.owner_phone;
+
+              const name =
+                kind === 'blocker'
+                  ? blockerLabel(listing)
+                  : revealed?.ownerName || revealed?.owner_name || 'Property Owner';
+
+              return (
+                <div key={kind} className="mb-4 bg-brand-bg-soft border border-brand-line rounded-xl p-4">
+                  <h4 className="font-bold text-sm text-brand-ink flex items-center gap-2 mb-1">
+                    {isUnlocked ? (
+                      <Unlock className="w-4 h-4 text-brand-green" />
+                    ) : (
+                      <Lock className="w-4 h-4 text-brand-green" />
+                    )}
+                    {kind === 'blocker' ? 'Blocker (agent) contact' : 'Owner contact'}
+                  </h4>
+                  <p className="text-xs text-brand-ink-soft mb-3">
+                    {kind === 'blocker'
+                      ? 'Talk to the verified local agent managing this property.'
+                      : 'Deal directly with the property owner.'}
+                  </p>
+                  {isUnlocked ? (
+                    <div className="bg-white border border-brand-green/30 rounded-xl p-3 space-y-1">
+                      <div className="text-xs text-brand-ink-soft font-medium">{name}</div>
+                      <a
+                        href={`tel:${phone}`}
+                        className="inline-flex items-center gap-2 text-base font-bold text-brand-green-dark hover:underline font-mono"
+                      >
+                        <Phone className="w-4 h-4" />
+                        {phone}
+                      </a>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        openMoMo({
+                          kind,
+                          listingId: listing.id,
+                          amount: kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee,
+                          title,
+                        })
+                      }
+                      className={`w-full py-2.5 text-white font-semibold rounded-xl text-sm ${
+                        kind === 'blocker' ? 'bg-brand-green hover:bg-brand-green-dark' : 'bg-brand-earth hover:bg-amber-800'
+                      }`}
+                    >
+                      Unlock for {(kind === 'blocker' ? settings.blockerUnlockFee : settings.ownerUnlockFee).toLocaleString('en-US')} RWF
+                    </button>
+                  )}
+                </div>
+              );
+            })}
 
             <div className="text-xs text-brand-ink-soft bg-brand-bg-soft p-3 rounded-lg border border-brand-line leading-relaxed">
-              Contact unlocks via MoMo are being built separately. Numbers stay hidden until that API is live.
+              Every contact unlock grants automatic entry into the GuraAha Monthly Lotto draw. VIP Room &amp; Unlock Pass subscribers unlock contacts for free.
             </div>
           </div>
         </div>

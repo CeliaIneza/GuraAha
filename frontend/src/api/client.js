@@ -1,4 +1,13 @@
-const API_BASE = '/api/v1';
+const rawApiUrl = (import.meta.env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
+export const API_BASE = rawApiUrl
+  ? rawApiUrl.endsWith('/api/v1')
+    ? rawApiUrl
+    : `${rawApiUrl}/api/v1`
+  : '/api/v1';
+
+export const BACKEND_ORIGIN = rawApiUrl
+  ? rawApiUrl.replace(/\/api\/v1$/, '')
+  : '';
 
 export const ACCESS_KEY = 'guraaha_access_token';
 export const REFRESH_KEY = 'guraaha_refresh_token';

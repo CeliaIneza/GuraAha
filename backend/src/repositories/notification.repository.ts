@@ -76,10 +76,24 @@ export class NotificationRepository {
   ): Promise<NotificationRow[]> {
     const result = await executor.query(
       `
-      SELECT ${NOTIFICATION_COLUMNS}
-      FROM notifications
-      WHERE user_id = $1 OR user_id IS NULL
-      ORDER BY created_at DESC
+      SELECT
+        n.id,
+        n.user_id,
+        n.icon,
+        n.title,
+        n.summary,
+        n.action_type,
+        n.action_id,
+        CASE
+          WHEN n.user_id IS NULL THEN (nr.notification_id IS NOT NULL OR n.is_read)
+          ELSE n.is_read
+        END AS is_read,
+        n.created_at
+      FROM notifications n
+      LEFT JOIN notification_reads nr
+        ON nr.notification_id = n.id AND nr.user_id = $1
+      WHERE n.user_id = $1 OR n.user_id IS NULL
+      ORDER BY n.created_at DESC
       LIMIT $2 OFFSET $3
       `,
       [userId, limit, offset]
@@ -91,9 +105,11 @@ export class NotificationRepository {
     const result = await executor.query(
       `
       SELECT COUNT(*)::int AS count
-      FROM notifications
-      WHERE (user_id = $1 OR user_id IS NULL)
-        AND is_read = FALSE
+      FROM notifications n
+      LEFT JOIN notification_reads nr
+        ON nr.notification_id = n.id AND nr.user_id = $1
+      WHERE (n.user_id = $1 AND n.is_read = FALSE)
+         OR (n.user_id IS NULL AND n.is_read = FALSE AND nr.notification_id IS NULL)
       `,
       [userId]
     );
@@ -101,26 +117,52 @@ export class NotificationRepository {
   }
 
   async markAsRead(userId: string, notificationId: string, executor: QueryExecutor = db): Promise<boolean> {
-    const result = await executor.query(
+    const directResult = await executor.query(
       `
       UPDATE notifications
       SET is_read = TRUE
-      WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)
+      WHERE id = $1 AND user_id = $2
       `,
       [notificationId, userId]
     );
-    return (result.rowCount ?? 0) > 0;
+    if ((directResult.rowCount ?? 0) > 0) {
+      return true;
+    }
+
+    const broadcastResult = await executor.query(
+      `
+      INSERT INTO notification_reads (notification_id, user_id)
+      SELECT id, $2 FROM notifications WHERE id = $1 AND user_id IS NULL
+      ON CONFLICT (notification_id, user_id) DO NOTHING
+      `,
+      [notificationId, userId]
+    );
+    return (broadcastResult.rowCount ?? 0) > 0;
   }
 
   async markAllAsRead(userId: string, executor: QueryExecutor = db): Promise<number> {
-    const result = await executor.query(
+    const directResult = await executor.query(
       `
       UPDATE notifications
       SET is_read = TRUE
-      WHERE (user_id = $1 OR user_id IS NULL) AND is_read = FALSE
+      WHERE user_id = $1 AND is_read = FALSE
       `,
       [userId]
     );
-    return result.rowCount ?? 0;
+
+    const broadcastResult = await executor.query(
+      `
+      INSERT INTO notification_reads (notification_id, user_id)
+      SELECT n.id, $1
+      FROM notifications n
+      LEFT JOIN notification_reads nr
+        ON nr.notification_id = n.id AND nr.user_id = $1
+      WHERE n.user_id IS NULL AND nr.notification_id IS NULL
+      ON CONFLICT (notification_id, user_id) DO NOTHING
+      `,
+      [userId]
+    );
+
+    return (directResult.rowCount ?? 0) + (broadcastResult.rowCount ?? 0);
   }
 }

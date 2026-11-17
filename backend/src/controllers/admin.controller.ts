@@ -30,7 +30,7 @@ export class AdminController {
             const { page, limit, status } = req.query;
             const result = await this.adminService.getBlockers({
                 page: page ? Number(page) : 1,
-                limit: limit ? Number(limit) : 20,
+                limit: limit ? Number(limit) : 100,
                 status: typeof status === 'string' ? status : undefined,
             });
             return res.status(200).json(result);
@@ -41,12 +41,28 @@ export class AdminController {
         }
     };
 
+    getBlockerHistory = async (req: Request, res: Response) => {
+        try {
+            const { page, limit } = req.query;
+            const result = await this.adminService.getBlockers({
+                page: page ? Number(page) : 1,
+                limit: limit ? Number(limit) : 100,
+            });
+            const history = (result.data || []).filter((b: any) => b.status !== 'PENDING');
+            return res.status(200).json({ ...result, data: history });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve blocker history'
+            });
+        }
+    };
+
     getListings = async (req: Request, res: Response) => {
         try {
             const { page, limit, status } = req.query;
             const result = await this.adminService.getListings({
                 page: page ? Number(page) : 1,
-                limit: limit ? Number(limit) : 20,
+                limit: limit ? Number(limit) : 100,
                 status: typeof status === 'string' ? status : undefined,
             });
             return res.status(200).json(result);
@@ -57,12 +73,28 @@ export class AdminController {
         }
     };
 
+    getListingHistory = async (req: Request, res: Response) => {
+        try {
+            const { page, limit } = req.query;
+            const result = await this.adminService.getListings({
+                page: page ? Number(page) : 1,
+                limit: limit ? Number(limit) : 100,
+            });
+            const history = (result.data || []).filter((l: any) => l.status !== 'PENDING');
+            return res.status(200).json({ ...result, data: history });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : 'Failed to retrieve listing history'
+            });
+        }
+    };
+
     getSubscriptions = async (req: Request, res: Response) => {
         try {
             const { page, limit, status } = req.query;
             const result = await this.adminService.getSubscriptions({
                 page: page ? Number(page) : 1,
-                limit: limit ? Number(limit) : 20,
+                limit: limit ? Number(limit) : 100,
                 status: typeof status === 'string' ? status : undefined,
             });
             return res.status(200).json(result);

@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import {
   formatStatus,
   listingLocationLine,
+  listingPrice,
   listingTitle,
 } from "../../utils/listing";
 import {
@@ -14,9 +15,16 @@ import {
   Building2,
 } from "lucide-react";
 
-export const MyPropertiesTab = ({ listings, onNavigate }) => {
+export const MyPropertiesTab = ({ listings, subscription, onNavigate }) => {
   const approved = listings.filter((l) => l.status === "APPROVED" || !l.status).length;
   const pending = listings.filter((l) => l.status === "PENDING").length;
+
+  const blockerSub = subscription?.blockerSubscription;
+  const subActive = Boolean(blockerSub?.isActive);
+  const subExpiresAt =
+    blockerSub?.subscription?.expires_at ||
+    blockerSub?.subscription?.expiresAt ||
+    null;
 
   return (
     <div className="space-y-6">
@@ -76,7 +84,7 @@ export const MyPropertiesTab = ({ listings, onNavigate }) => {
           </div>
         </Card>
 
-        {/* Column 4: Subscription status card — equal height with other stat cards */}
+        {/* Column 4: Subscription status card, equal height with other stat cards */}
         <Card className="rounded-[9px] border-brand-line bg-white shadow-xs min-h-[148px] p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs sm:text-sm font-extrabold text-brand-ink tracking-tight block">
@@ -85,25 +93,35 @@ export const MyPropertiesTab = ({ listings, onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate("subscription")}
-              className="text-xs font-bold text-brand-green bg-brand-green/10 hover:underline cursor-pointer"
+              className="text-xs font-bold text-brand-green bg-brand-green/10 hover:underline cursor-pointer px-2 py-0.5 rounded-[5px]"
             >
-              change plan
+              {subActive ? "manage" : "subscribe"}
             </button>
           </div>
 
           <div className="my-auto py-1 text-center">
-            <span className="inline-flex items-center text-xs font-bold text-brand-green bg-brand-green/10">
-              Active
+            <span
+              className={`inline-flex items-center text-xs font-bold px-2.5 py-0.5 rounded-[5px] ${
+                subActive
+                  ? "text-brand-green bg-brand-green/10"
+                  : "text-amber-700 bg-amber-50"
+              }`}
+            >
+              {subActive ? "Active" : "Inactive"}
             </span>
           </div>
 
           <div className="w-full pb-1 flex items-center justify-center text-xs text-brand-ink-soft">
-            <span className="font-medium text-brand-ink-soft">Monthly renews 05 Oct</span>
+            <span className="font-medium text-brand-ink-soft">
+              {subActive && subExpiresAt
+                ? `Valid until ${new Date(subExpiresAt).toLocaleDateString()}`
+                : "Subscribe to unlock Pro features"}
+            </span>
           </div>
         </Card>
       </div>
 
-      {/* Add New Property — full-width CTA below stats row */}
+      {/* Add New Property full-width CTA below stats row */}
       <div className="flex justify-end">
         <Button
           onClick={() => onNavigate("add")}
@@ -143,13 +161,13 @@ export const MyPropertiesTab = ({ listings, onNavigate }) => {
                     {listingTitle(item)}
                   </td>
                   <td className="py-1 px-1 capitalize text-brand-ink-soft text-xs font-semibold">
-                    {item.type || "Plot"}
+                    {(item.type || "Plot").toLowerCase()}
                   </td>
                   <td className="py-3 px-4 text-brand-ink-soft text-xs">
-                    {listingLocationLine(item)}
+                    {listingLocationLine(item) || " "}
                   </td>
                   <td className="py-3 px-4 font-bold text-brand-green">
-                    {Number(item.priceRwf || item.price || 0).toLocaleString()} RWF
+                    {listingPrice(item).toLocaleString()} RWF
                   </td>
                   <td className="py-3 px-4">
                     <span
@@ -177,7 +195,7 @@ export const MyPropertiesTab = ({ listings, onNavigate }) => {
                     </span>
                   </td>
                   <td className="py-1 px-1 text-xs font-semibold text-brand-ink-soft">
-                    2
+                    {Number(item.unlock_count ?? item.unlockCount ?? 0)}
                   </td>
                 </tr>
               ))}

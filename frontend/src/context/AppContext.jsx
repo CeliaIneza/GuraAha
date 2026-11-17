@@ -5,8 +5,8 @@ import { settingsApi } from '../api/settings';
 const AppContext = createContext();
 
 const DEFAULT_SETTINGS = {
-  blockerUnlockFee: 100,
-  ownerUnlockFee: 200,
+  blockerUnlockFee: 500,
+  ownerUnlockFee: 1000,
   blockerProWeekly: 1500,
   blockerProMonthly: 5000,
   unlockPassWeekly: 1000,
@@ -39,27 +39,53 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => { localStorage.setItem('guraaha_lang', lang); }, [lang]);
 
-  useEffect(() => {
-    let isMounted = true;
-    settingsApi.getAll()
+  const refreshSettings = React.useCallback(() => {
+    return settingsApi.getPublic()
       .then((res) => {
-        const list = Array.isArray(res?.data) ? res.data : [];
-        if (isMounted && list.length > 0) {
-          setSettings((prev) => {
-            const next = { ...prev };
-            list.forEach((item) => {
+        if (!res?.data) return;
+        const data = res.data;
+
+        setSettings((prev) => {
+          const next = { ...prev };
+
+          if (Array.isArray(data)) {
+            data.forEach((item) => {
               const key = SETTINGS_MAP[item.key] || item.key;
               const num = Number(item.value);
               next[key] = isNaN(num) ? item.value : num;
             });
-            return next;
-          });
-        }
+          } else if (typeof data === 'object') {
+            const unlockPrices = data.contact_unlock_prices_rwf;
+            if (unlockPrices && typeof unlockPrices === 'object') {
+              if (typeof unlockPrices.BLOCKER === 'number') next.blockerUnlockFee = unlockPrices.BLOCKER;
+              if (typeof unlockPrices.OWNER === 'number') next.ownerUnlockFee = unlockPrices.OWNER;
+            }
+            const plans = data.subscription_plans;
+            if (plans && typeof plans === 'object') {
+              if (plans.BLOCKER_PRO_WEEKLY?.priceRwf) next.blockerProWeekly = Number(plans.BLOCKER_PRO_WEEKLY.priceRwf);
+              if (plans.BLOCKER_PRO_MONTHLY?.priceRwf) next.blockerProMonthly = Number(plans.BLOCKER_PRO_MONTHLY.priceRwf);
+              if (plans.UNLOCK_PASS_WEEKLY?.priceRwf) next.unlockPassWeekly = Number(plans.UNLOCK_PASS_WEEKLY.priceRwf);
+              if (plans.UNLOCK_PASS_MONTHLY?.priceRwf) next.unlockPassMonthly = Number(plans.UNLOCK_PASS_MONTHLY.priceRwf);
+              if (plans.VIP_ROOM_WEEKLY?.priceRwf) next.vipRoomWeekly = Number(plans.VIP_ROOM_WEEKLY.priceRwf);
+              if (plans.VIP_ROOM_MONTHLY?.priceRwf) next.vipRoomMonthly = Number(plans.VIP_ROOM_MONTHLY.priceRwf);
+            }
+            Object.entries(SETTINGS_MAP).forEach(([rawKey, mappedKey]) => {
+              if (data[rawKey] !== undefined) {
+                const num = Number(data[rawKey]);
+                next[mappedKey] = isNaN(num) ? data[rawKey] : num;
+              }
+            });
+          }
+          return next;
+        });
       })
       .catch(() => {})
-      .finally(() => { if (isMounted) setSettingsLoaded(true); });
-    return () => { isMounted = false; };
+      .finally(() => { setSettingsLoaded(true); });
   }, []);
+
+  useEffect(() => {
+    refreshSettings();
+  }, [refreshSettings]);
 
   const notifyUnlock = () => setUnlockTimestamp(Date.now());
   const notifySubscription = () => setSubscriptionTimestamp(Date.now());
@@ -70,7 +96,7 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{
       lang, setLang, t,
-      settings, settingsLoaded,
+      settings, settingsLoaded, refreshSettings,
       momoModal, openMoMo, closeMoMo,
       unlockTimestamp, notifyUnlock,
       subscriptionTimestamp, notifySubscription,

@@ -49,6 +49,9 @@ const emptyForm = {
   upiNumber: "",
   ownerName: "",
   ownerPhone: "",
+  isVip: false,
+  vipWasPriceRwf: "",
+  vipReason: "",
   coverPhoto: null,
   extraPhotos: [],
 };
@@ -115,7 +118,6 @@ export function useAddPropertyForm(onSuccess) {
     if (!formData.coverPhoto) {
       e.coverPhoto = "A cover photo is required";
     }
-    // ownerPhone is optional — if provided, buyers pay to unlock it
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -151,6 +153,9 @@ export function useAddPropertyForm(onSuccess) {
         upiNumber: formData.upiNumber || undefined,
         ownerName: formData.ownerName || undefined,
         ownerPhone: formData.ownerPhone || undefined,
+        isVip: Boolean(formData.isVip),
+        vipWasPriceRwf: formData.isVip && formData.vipWasPriceRwf ? Number(formData.vipWasPriceRwf) : undefined,
+        vipReason: formData.isVip && formData.vipReason ? formData.vipReason : undefined,
       });
 
       if (formData.coverPhoto) {
@@ -470,6 +475,43 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
             </div>
           </Field>
 
+          {/* VIP Exclusive Deal Option */}
+          <div className="p-4 rounded-[9px] bg-amber-50/50 border border-amber-200/80 space-y-4">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(formData.isVip)}
+                onChange={(e) => updateField("isVip", e.target.checked)}
+                className="w-4 h-4 rounded accent-brand-green"
+              />
+              <span className="text-xs font-bold text-brand-ink uppercase tracking-wider">
+                Submit as VIP Room Exclusive Deal (7-day early access for VIP subscribers)
+              </span>
+            </label>
+
+            {formData.isVip && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <Field label="Original Market Value (RWF)" hint="(before discount)">
+                  <Input
+                    type="number"
+                    value={formData.vipWasPriceRwf}
+                    onChange={(e) => updateField("vipWasPriceRwf", e.target.value)}
+                    placeholder="e.g. 20000000"
+                    className="rounded-[9px] h-11 pl-3 text-sm bg-white"
+                  />
+                </Field>
+                <Field label="Reason for Discount / VIP Tag">
+                  <Input
+                    value={formData.vipReason}
+                    onChange={(e) => updateField("vipReason", e.target.value)}
+                    placeholder="e.g. Urgent relocation sale"
+                    className="rounded-[9px] h-11 pl-3 text-sm bg-white"
+                  />
+                </Field>
+              </div>
+            )}
+          </div>
+
           {/* Owner contact */}
           <div className="p-4 rounded-[9px] bg-brand-bg-soft/40 border border-brand-line space-y-4">
             <div className="flex items-center gap-2">
@@ -489,7 +531,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                 />
               </Field>
 
-              <Field label="Owner Phone Number" hint="(optional — buyers pay to unlock)" error={errors.ownerPhone}>
+              <Field label="Owner Phone Number" hint="(optional, buyers pay to unlock)" error={errors.ownerPhone}>
                 <Input
                   type="tel"
                   value={formData.ownerPhone}

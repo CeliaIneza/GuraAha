@@ -8,6 +8,7 @@ async function main() {
         console.log("Migrations completed successfully.");
     } catch (error) {
         console.error("Error running migrations:", error);
+        process.exitCode = 1;
     } finally {
         await db.end();
     }

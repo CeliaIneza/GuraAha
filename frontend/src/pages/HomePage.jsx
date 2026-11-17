@@ -99,7 +99,7 @@ export const HomePage = () => {
     listingsApi
       .listApproved({ pageSize: 4 })
       .then(({ data }) => {
-        const real = (data || []).filter((listing) => listing.vip === false);
+        const real = (data || []).filter((listing) => !listing.is_vip && !listing.vip);
         if (real.length > 0) setListings(real.slice(0, 4));
       })
       .catch((err) => {

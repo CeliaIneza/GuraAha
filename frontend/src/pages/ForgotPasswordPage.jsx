@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { authApi } from '../api/auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -17,13 +18,7 @@ export const ForgotPasswordPage = () => {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.message || 'Request failed');
+      await authApi.forgotPassword(email.trim().toLowerCase());
       setSubmitted(true);
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');

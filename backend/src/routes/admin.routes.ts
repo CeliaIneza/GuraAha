@@ -24,7 +24,9 @@ const adminController = new AdminController(adminService);
 router.post('/setup', validate(createAdminSchema), adminController.createAdmin);
 
 router.get('/blockers', authenticate, requireRole('ADMIN'), adminController.getBlockers);
+router.get('/blockers/history', authenticate, requireRole('ADMIN'), adminController.getBlockerHistory);
 router.get('/listings', authenticate, requireRole('ADMIN'), adminController.getListings);
+router.get('/listings/history', authenticate, requireRole('ADMIN'), adminController.getListingHistory);
 router.get('/subscriptions', authenticate, requireRole('ADMIN'), adminController.getSubscriptions);
 
 export default router;

@@ -61,6 +61,12 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanConfig> 
     durationDays: 30,
   },
 
+  WEEKLY: {
+    type: 'BLOCKER_PRO',
+    period: 'WEEK',
+    priceRwf: 1500,
+    durationDays: 7,
+  },
   MONTHLY: {
     type: 'BLOCKER_PRO',
     period: 'MONTH',
@@ -69,7 +75,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanConfig> 
   },
   QUARTERLY: {
     type: 'BLOCKER_PRO',
-    period: 'MONTH',
+    period: 'QUARTER',
     priceRwf: 25000,
     durationDays: 90,
   },

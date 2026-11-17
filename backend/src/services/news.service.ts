@@ -1,7 +1,7 @@
 import { NewsRepository, CreateNewsArticleInput, NewsArticleRow } from "../repositories/news.repository";
 import { NotificationRepository } from "../repositories/notification.repository";
 import { AlertSubscriptionRepository } from "../repositories/alert-subscription.repository";
-import { SmsNotificationService } from "./sms.service";
+import { EmailService } from "./email.service";
 
 export interface PublishAndNotifyInput {
   topic: string;
@@ -15,7 +15,7 @@ export interface PublishAndNotifyInput {
   imageUrl?: string | null;
   readTime?: string;
   targetDistricts?: string[] | null;
-  channels?: string[]; // ['IN_APP', 'SMS', 'WHATSAPP', 'NEWS_PAGE']
+  channels?: string[]; // ['IN_APP', 'EMAIL', 'NEWS_PAGE']
   audience?: 'Everyone' | 'Alert subscribers only' | 'VIP subscribers only' | 'Blockers only';
 }
 
@@ -24,7 +24,7 @@ export class NewsService {
     private readonly newsRepository: NewsRepository = new NewsRepository(),
     private readonly notificationRepository: NotificationRepository = new NotificationRepository(),
     private readonly alertSubscriptionRepository: AlertSubscriptionRepository = new AlertSubscriptionRepository(),
-    private readonly smsService: SmsNotificationService = new SmsNotificationService()
+    private readonly emailService: EmailService = new EmailService()
   ) {}
 
   async getPublishedArticles(filters: { topic?: string; district?: string; page?: number; limit?: number }) {
@@ -59,7 +59,7 @@ export class NewsService {
   async adminPublishAndNotify(input: PublishAndNotifyInput): Promise<{
     article: NewsArticleRow;
     inAppNotified: boolean;
-    smsRecipientsCount: number;
+    emailRecipientsCount: number;
   }> {
     const article = await this.newsRepository.create({
       topic: input.topic,
@@ -76,9 +76,9 @@ export class NewsService {
       isPublished: true,
     });
 
-    const channels = input.channels ?? ['IN_APP', 'NEWS_PAGE'];
+    const channels = input.channels ?? ['IN_APP', 'EMAIL', 'NEWS_PAGE'];
     let inAppNotified = false;
-    let smsRecipientsCount = 0;
+    let emailRecipientsCount = 0;
 
     if (channels.includes('IN_APP')) {
       const headline = input.titleEn || input.titleRw || input.titleFr || input.summary;
@@ -98,29 +98,33 @@ export class NewsService {
       inAppNotified = true;
     }
 
-    // 2. Outward SMS / WhatsApp fan-out to matching alert subscribers
-    if (channels.includes('SMS') || channels.includes('WHATSAPP')) {
+    // 2. Outward Email fan-out to matching alert subscribers
+    if (channels.includes('EMAIL') || channels.includes('SMS') || channels.includes('WHATSAPP')) {
       const subscribers = await this.alertSubscriptionRepository.findMatchingSubscribers(
         input.topic,
         input.targetDistricts
       );
 
-      const phoneNumbers = subscribers
-        .filter((s) => s.channels.includes('SMS') || s.channels.includes('WHATSAPP'))
-        .map((s) => s.phone);
+      const emails = subscribers
+        .map((s) => s.email)
+        .filter((e): e is string => Boolean(e));
 
-      if (phoneNumbers.length > 0) {
+      if (emails.length > 0) {
         const headline = input.titleEn || input.titleRw || input.titleFr || 'GuraAha Update';
-        const smsBody = `[GuraAha Alert] ${headline}: ${input.summary}`;
-        await this.smsService.sendBulkSms(phoneNumbers, smsBody);
-        smsRecipientsCount = phoneNumbers.length;
+        await this.emailService.sendBulkAlertEmails(
+          emails,
+          `[GuraAha Alert] ${headline}`,
+          headline,
+          input.summary
+        );
+        emailRecipientsCount = emails.length;
       }
     }
 
     return {
       article,
       inAppNotified,
-      smsRecipientsCount,
+      emailRecipientsCount,
     };
   }
 }

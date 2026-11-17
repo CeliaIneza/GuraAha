@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { listingsApi } from "../api/listings";
@@ -63,15 +63,9 @@ export const DashboardPage = () => {
   const { subscriptionTimestamp } = useApp();
 
   const [activeTab, setActiveTab] = useState("listings");
-  const [myListings, setMyListings] = useState(DUMMY_LISTINGS);
-  const [application, setApplication] = useState({
-    status: "APPROVED",
-    verificationCode: "K7X2PM",
-  });
-  const [subscription, setSubscription] = useState({
-    active: true,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  });
+  const [myListings, setMyListings] = useState([]);
+  const [application, setApplication] = useState(null);
+  const [subscription, setSubscription] = useState(null);
   const [error, setError] = useState("");
   const [submittedMsg, setSubmittedMsg] = useState("");
 
@@ -87,7 +81,7 @@ export const DashboardPage = () => {
           await syncRole();
           return;
         }
-        if (user?.role === "BLOCKER") {
+        if (user?.role === "BLOCKER" || appRes.data?.status === "APPROVED") {
           const { data } = await listingsApi.getMine();
           if (!cancelled) setMyListings(data || []);
         }
@@ -103,12 +97,12 @@ export const DashboardPage = () => {
 
   // Subscription status
   useEffect(() => {
-    if (user?.role !== "BLOCKER") return;
+    if (!user) return;
     subscriptionsApi
       .getStatus()
       .then(({ data }) => setSubscription(data || null))
       .catch(() => setSubscription(null));
-  }, [user?.role, subscriptionTimestamp]);
+  }, [user, subscriptionTimestamp]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -129,7 +123,16 @@ export const DashboardPage = () => {
   ];
 
   const verificationCode =
-    application?.verification_code || application?.verificationCode;
+    application?.verification_code || application?.verificationCode || null;
+
+  const blockerSub = subscription?.blockerSubscription;
+  const subActive = Boolean(blockerSub?.isActive);
+  const subExpiresAt =
+    blockerSub?.subscription?.expires_at ||
+    blockerSub?.subscription?.expiresAt ||
+    subscription?.expires_at ||
+    subscription?.expiresAt ||
+    null;
 
   return (
     <SidebarProvider defaultOpen={true} className="h-full min-h-0">
@@ -139,7 +142,7 @@ export const DashboardPage = () => {
           activeTab={activeTab}
           setActiveTab={handleTabChange}
           customNavItems={blockerNav}
-          verificationCode={verificationCode || "K7X2PM"}
+          verificationCode={verificationCode || "PENDING"}
         />
 
         <SidebarInset className="flex-1 flex flex-col h-full min-w-0 overflow-y-auto bg-dashboard">
@@ -153,23 +156,37 @@ export const DashboardPage = () => {
               </span>
             </div>
 
-            <div className="hidden md:flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-[6px] bg-brand-pale text-brand-green border border-brand-green/20">
-              <Calendar className="w-3.5 h-3.5 text-brand-green shrink-0" />
-              <span>
-                Subscription Active until{" "}
-                {new Date(
-                  subscription?.expires_at || subscription?.expiresAt || Date.now() + 2592000000
-                ).toLocaleDateString()}
-              </span>
-            </div>
+            {subActive && subExpiresAt ? (
+              <div className="hidden md:flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-[6px] bg-brand-pale text-brand-green border border-brand-green/20">
+                <Calendar className="w-3.5 h-3.5 text-brand-green shrink-0" />
+                <span>
+                  Subscription Active until {new Date(subExpiresAt).toLocaleDateString()}
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleTabChange("subscription")}
+                className="hidden md:flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-[6px] bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span>No Active Pro Subscription · Subscribe</span>
+              </button>
+            )}
 
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-brand-pale text-brand-green border border-brand-green/20">
-                Verified Blocker
+                {application?.status === "APPROVED" || user?.role === "BLOCKER"
+                  ? "Verified Blocker"
+                  : application?.status === "PENDING"
+                  ? "Verification Pending"
+                  : "Applicant"}
               </span>
-              <span className="text-xs font-mono font-bold text-brand-ink-soft hidden sm:inline">
-                {verificationCode || "BLK002"}
-              </span>
+              {verificationCode && (
+                <span className="text-xs font-mono font-bold text-brand-ink-soft hidden sm:inline">
+                  {verificationCode}
+                </span>
+              )}
             </div>
           </header>
 
@@ -189,7 +206,11 @@ export const DashboardPage = () => {
             )}
 
             {activeTab === "listings" && (
-              <MyPropertiesTab listings={myListings} onNavigate={handleTabChange} />
+              <MyPropertiesTab
+                listings={myListings}
+                subscription={subscription}
+                onNavigate={handleTabChange}
+              />
             )}
 
             {activeTab === "add" && (

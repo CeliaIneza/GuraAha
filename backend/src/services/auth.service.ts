@@ -65,4 +65,12 @@ export class AuthService {
         const tokens = await this.tokenService.issuePair(user.id, user.role);
         return { ... tokens, user: toAuthUserView(user, user.role) };
     }
+
+    async getMe(userId: string) {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+        return toAuthUserView(user, user.role);
+    }
 }

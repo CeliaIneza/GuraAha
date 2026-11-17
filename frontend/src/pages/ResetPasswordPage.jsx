@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { authApi } from '../api/auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { PasswordInput } from '../components/PasswordInput';
@@ -24,13 +25,7 @@ export const ResetPasswordPage = () => {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.message || 'Failed to reset password');
+      await authApi.resetPassword({ token, password });
       setDone(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {

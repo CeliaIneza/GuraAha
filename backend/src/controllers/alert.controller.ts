@@ -10,6 +10,7 @@ export class AlertController {
       const subscription = await this.alertService.subscribe({
         userId,
         phone: req.body.phone,
+        email: req.body.email,
         topics: req.body.topics,
         districts: req.body.districts,
         channels: req.body.channels,

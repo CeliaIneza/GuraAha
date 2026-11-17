@@ -16,8 +16,8 @@ import {
 
 export const SubscriptionsTab = ({ subscriptions, loading, onRefresh }) => {
   const activeCount = subscriptions.filter(isSubActive).length;
-  const weekly = subscriptions.filter((s) => s.plan === "weekly").length;
-  const monthly = subscriptions.filter((s) => s.plan === "monthly").length;
+  const weekly = subscriptions.filter((s) => (s.plan || "").toUpperCase().includes("WEEK") || s.period === "WEEK").length;
+  const monthly = subscriptions.filter((s) => (s.plan || "").toUpperCase().includes("MONTH") || s.period === "MONTH").length;
 
   return (
     <Panel
@@ -47,7 +47,7 @@ export const SubscriptionsTab = ({ subscriptions, loading, onRefresh }) => {
           <table className={`${tableClass} min-w-[720px]`}>
             <thead className={theadClass}>
               <tr>
-                <th className="py-3 px-4">Blocker</th>
+                <th className="py-3 px-4">Subscriber</th>
                 <th className="py-3 px-4">Plan</th>
                 <th className="py-3 px-4">Paid (RWF)</th>
                 <th className="py-3 px-4">Starts</th>
@@ -65,7 +65,7 @@ export const SubscriptionsTab = ({ subscriptions, loading, onRefresh }) => {
                   <td className="py-3 px-4">
                     <span
                       className={`px-2.5 py-0.5 rounded-[6px] text-xs font-bold ${
-                        s.plan === "monthly"
+                        (s.plan || "").toUpperCase().includes("MONTH")
                           ? "bg-blue-100 text-blue-800"
                           : "bg-purple-100 text-purple-800"
                       }`}

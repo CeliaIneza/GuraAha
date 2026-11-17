@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BlockerService } from '../services/blocker.service.js';
+import { BlockerService } from '../services/blocker.service';
 
 export class BlockerController {
     constructor(
@@ -111,7 +111,7 @@ export class BlockerController {
                 await this.blockerService.reject(
                     String(req.params.id),
                     req.user.id,
-                    req.body.rejectionReason
+                    req.body.rejectionReason || req.body.adminNote || 'Rejected by admin'
                 );
 
             return res.status(200).json({
@@ -125,6 +125,51 @@ export class BlockerController {
                     error instanceof Error
                         ? error.message
                         : 'Failed to reject application',
+            });
+        }
+    };
+
+    revise = async (
+        req: Request,
+        res: Response
+    ) => {
+        try {
+            const result =
+                await this.blockerService.revise(
+                    String(req.params.id),
+                    req.user.id,
+                    req.body?.adminNote || req.body?.rejectionReason || 'Revision requested by admin'
+                );
+
+            return res.status(200).json({
+                message: 'Revision requested on blocker application',
+                data: result,
+            });
+        } catch (error) {
+            return res.status(400).json({
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to request revision',
+            });
+        }
+    };
+
+    delete = async (
+        req: Request,
+        res: Response
+    ) => {
+        try {
+            await this.blockerService.delete(String(req.params.id));
+            return res.status(200).json({
+                message: 'Blocker application deleted successfully',
+            });
+        } catch (error) {
+            return res.status(400).json({
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to delete blocker application',
             });
         }
     };
