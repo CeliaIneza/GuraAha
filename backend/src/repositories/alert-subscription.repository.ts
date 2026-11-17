@@ -6,6 +6,7 @@ export interface AlertSubscriptionRow {
   id: string;
   user_id: string | null;
   phone: string;
+  email: string | null;
   topics: string[];
   districts: string[] | null;
   channels: string[];
@@ -17,24 +18,26 @@ export interface AlertSubscriptionRow {
 export interface UpsertAlertSubscriptionInput {
   userId?: string | null;
   phone: string;
+  email?: string | null;
   topics: string[];
   districts?: string[] | null;
   channels?: string[];
 }
 
 const ALERT_SUBSCRIPTION_COLUMNS = `
-  id, user_id, phone, topics, districts, channels, is_active, created_at, updated_at
+  id, user_id, phone, email, topics, districts, channels, is_active, created_at, updated_at
 `;
 
 export class AlertSubscriptionRepository {
   async upsert(input: UpsertAlertSubscriptionInput, executor: QueryExecutor = db): Promise<AlertSubscriptionRow> {
     const result = await executor.query(
       `
-      INSERT INTO alert_subscriptions (user_id, phone, topics, districts, channels, is_active, updated_at)
-      VALUES ($1, $2, $3, $4, $5, TRUE, NOW())
+      INSERT INTO alert_subscriptions (user_id, phone, email, topics, districts, channels, is_active, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
       ON CONFLICT (phone) DO UPDATE
       SET
         user_id = COALESCE(EXCLUDED.user_id, alert_subscriptions.user_id),
+        email = COALESCE(EXCLUDED.email, alert_subscriptions.email),
         topics = EXCLUDED.topics,
         districts = EXCLUDED.districts,
         channels = EXCLUDED.channels,
@@ -45,9 +48,10 @@ export class AlertSubscriptionRepository {
       [
         input.userId ?? null,
         input.phone,
+        input.email ?? null,
         input.topics,
         input.districts ?? null,
-        input.channels ?? ['IN_APP', 'SMS'],
+        input.channels ?? ['IN_APP', 'EMAIL'],
       ]
     );
     return result.rows[0];
@@ -79,15 +83,26 @@ export class AlertSubscriptionRepository {
 
     if (districts && districts.length > 0) {
       params.push(districts);
-      districtCondition = `AND (districts IS NULL OR districts && $${params.length}::text[])`;
+      districtCondition = `AND (a.districts IS NULL OR a.districts && $${params.length}::text[])`;
     }
 
     const result = await executor.query(
       `
-      SELECT ${ALERT_SUBSCRIPTION_COLUMNS}
-      FROM alert_subscriptions
-      WHERE is_active = TRUE
-        AND $1 = ANY(topics)
+      SELECT
+        a.id,
+        a.user_id,
+        a.phone,
+        COALESCE(a.email, u.email) AS email,
+        a.topics,
+        a.districts,
+        a.channels,
+        a.is_active,
+        a.created_at,
+        a.updated_at
+      FROM alert_subscriptions a
+      LEFT JOIN users u ON u.id = a.user_id OR u.phone = a.phone
+      WHERE a.is_active = TRUE
+        AND $1 = ANY(a.topics)
         ${districtCondition}
       `,
       params

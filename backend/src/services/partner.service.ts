@@ -64,8 +64,10 @@ export class PartnerService {
 
         const totalPages = Math.ceil(total / limit) || 1;
 
+        const mapped = items.map(toPartnerView);
         return {
-            items: items.map(toPartnerView),
+            items: mapped,
+            data: mapped,
             pagination: {
                 page,
                 limit,

@@ -192,9 +192,9 @@ export const BrowsePage = () => {
 
   const load = async (params) => {
     setError("");
-    setListings(dummyFiltered(params));
 
     if (USE_DUMMY_ONLY) {
+      setListings(dummyFiltered(params));
       setLoading(false);
       return;
     }
@@ -207,9 +207,15 @@ export const BrowsePage = () => {
         maxPriceRwf: params.price || undefined,
         pageSize: 50,
       });
-      if (data && data.length > 0) setListings(data);
+      const hasActiveFilter = Boolean(params.locationId || params.type || params.price);
+      if (Array.isArray(data) && (data.length > 0 || hasActiveFilter)) {
+        setListings(data);
+      } else {
+        setListings(dummyFiltered(params));
+      }
     } catch (err) {
       console.warn("Backend not ready – using dummy listings:", err.message);
+      setListings(dummyFiltered(params));
     } finally {
       setLoading(false);
     }

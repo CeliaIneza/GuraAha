@@ -16,11 +16,14 @@ const envSchema = z.object({
 
     ADMIN_SETUP_SECRET: z.string().min(3),
 
-    INTOUCHPAY_BASE_URL: z.string().url().default('https://developer.intouchpay.co.rw/api/v1/sandbox/requestpayment/'),
+    INTOUCHPAY_BASE_URL: z.string().url().min(1),
+    INTOUCHPAY_DEPOSIT_URL: z.string().url().optional(),
+    INTOUCHPAY_STATUS_URL: z.string().url().optional(),
     INTOUCHPAY_PARTNER_PASSWORD: z.string().min(1),
     INTOUCHPAY_USERNAME: z.string().min(1),
     INTOUCHPAY_ACCOUNT_NO: z.string().min(1),
     INTOUCHPAY_CALLBACK_URL: z.string().url().min(1),
+    INTOUCHPAY_LOCAL_CALLBACK_FALLBACK_URL: z.string().url().optional(),
 
     EMAIL_HOST: z.string().optional().default('smtp-relay.brevo.com'),
     EMAIL_PORT: z.coerce.number().int().optional().default(587),

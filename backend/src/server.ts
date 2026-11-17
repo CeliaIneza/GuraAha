@@ -1,12 +1,14 @@
 import app from './app';
 import {env} from './config/env';
 import {db} from './config/database';
+import runMigrations from './config/migrations';
 import {seedLocations} from './scripts/seed-locations';
 import {seedDev} from './scripts/seed-dev';
 
 
 async function bootstrap() {
     try {
+        await runMigrations();
         await db.query('SELECT 1');
 
         console.log('Database connection established successfully.');

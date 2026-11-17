@@ -6,7 +6,7 @@ import { UserRepository } from '../repositories/user.repository';
 import { LottoRepository } from '../repositories/lotto.repository';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { IntouchPayProvider } from '../provider/intouchpay.provider';
-import { PaymentService } from '../services/payment.service.js';
+import { PaymentService } from '../services/payment.service';
 import { ContactUnlockService } from '../services/contact-unlock.service';
 import { ContactUnlockController } from '../controllers/contact-unlock.controller';
 

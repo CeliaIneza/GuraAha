@@ -91,8 +91,8 @@ export const NotificationBell = () => {
     if (notif.action_type === 'VIP_DEAL' && notif.action_id) {
       navigate(`/listing/${notif.action_id}`);
       setOpen(false);
-    } else if (notif.action_type === 'NEWS' && notif.action_id) {
-      navigate(`/news/${notif.action_id}`);
+    } else if ((notif.action_type === 'NEWS' || notif.action_type === 'ARTICLE') && notif.action_id) {
+      navigate('/browse');
       setOpen(false);
     }
   };
@@ -173,10 +173,10 @@ export const NotificationBell = () => {
           {/* Footer */}
           <div className="border-t border-gray-100 px-4 py-2.5 text-center">
             <button
-              onClick={() => { navigate('/notifications'); setOpen(false); }}
+              onClick={() => { navigate('/vip-room'); setOpen(false); }}
               className="text-xs font-semibold text-green-700 hover:underline"
             >
-              See all news &amp; alerts
+              Explore VIP Room &amp; deals
             </button>
           </div>
         </div>

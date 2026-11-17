@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
+import bcrypt from "bcrypt";
+import { randomUUID, createHash } from "crypto";
 import { AuthService } from "../services/auth.service";
 import { TokenService } from "../services/token.service";
 import { VerificationService } from "../services/verification.service";
 import { decodeAuthToken } from "../utils/jwt.util";
 import { db } from "../config/database";
+import { env } from "../config/env";
 import { EmailService } from "../services/email.service";
-import { randomUUID } from "crypto";
 
 export class AuthController {
   constructor(
@@ -13,6 +15,21 @@ export class AuthController {
     private readonly tokenService: TokenService,
     private readonly verificationService: VerificationService = new VerificationService(),
   ) {}
+
+  me = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      const user = await this.authService.getMe(userId);
+      return res.status(200).json({ data: user });
+    } catch (error) {
+      return res.status(404).json({
+        message: error instanceof Error ? error.message : "User not found",
+      });
+    }
+  };
 
   register = async (req: Request, res: Response) => {
     try {
@@ -153,9 +170,10 @@ export class AuthController {
 
   forgotPassword = async (req: Request, res: Response) => {
     try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ message: "Email is required" });
-      const { db } = await import("../config/database.js");
+      const { email } = req.body || {};
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ message: "Email is required" });
+      }
       const { rows } = await db.query(
         "SELECT id, first_name, last_name, email FROM users WHERE lower(email) = lower($1) AND status = 'ACTIVE'",
         [email.trim()]
@@ -164,16 +182,14 @@ export class AuthController {
         return res.status(200).json({ message: "If that email is registered, a reset link has been sent." });
       }
       const user = rows[0];
-      const { randomUUID } = await import("crypto");
-      const token = randomUUID();
+      const rawToken = randomUUID();
+      const tokenHash = createHash("sha256").update(rawToken).digest("hex");
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
       await db.query(
         `INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET token = $2, expires_at = $3`,
-        [user.id, token, expiresAt]
+        [user.id, tokenHash, expiresAt]
       );
-      const { env } = await import("../config/env.js");
-      const resetLink = `${env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${token}`;
-      const { EmailService } = await import("../services/email.service.js");
+      const resetLink = `${env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${rawToken}`;
       const svc = new EmailService();
       await svc.sendPasswordResetEmail(user.email, resetLink, `${user.first_name} ${user.last_name}`);
       return res.status(200).json({ message: "If that email is registered, a reset link has been sent." });
@@ -185,19 +201,26 @@ export class AuthController {
 
   resetPassword = async (req: Request, res: Response) => {
     try {
-      const { token, password } = req.body;
-      if (!token || !password) return res.status(400).json({ message: "Token and password are required" });
-      if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters" });
-      const { db } = await import("../config/database.js");
+      const { token, password } = req.body || {};
+      if (!token || typeof token !== "string" || !password || typeof password !== "string") {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+      const tokenHash = createHash("sha256").update(token.trim()).digest("hex");
       const { rows } = await db.query(
-        "SELECT user_id FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()",
-        [token]
+        "SELECT user_id FROM password_reset_tokens WHERE (token = $1 OR token = $2) AND expires_at > NOW()",
+        [tokenHash, token.trim()]
       );
-      if (rows.length === 0) return res.status(400).json({ message: "Invalid or expired reset token" });
-      const bcrypt = await import("bcrypt");
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+      const userId = rows[0].user_id;
       const hash = await bcrypt.hash(password, 12);
-      await db.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, rows[0].user_id]);
-      await db.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [rows[0].user_id]);
+      await db.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [hash, userId]);
+      await db.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
+      await this.tokenService.logoutAll(userId);
       return res.status(200).json({ message: "Password reset successfully. You can now log in." });
     } catch (error) {
       console.error("resetPassword error:", error);

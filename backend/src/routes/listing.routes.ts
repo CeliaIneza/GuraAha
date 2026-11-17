@@ -1,25 +1,26 @@
 import { Router, Request, Response, NextFunction } from 'express';
 
-import { ListingRepository } from '../repositories/listing.repository.js';
-import { ListingPhotoRepository } from '../repositories/listingphoto.repository.js';
-import { BlockerRepository } from '../repositories/blocker.repository.js';
-import { LocationRepository } from '../repositories/location.repository.js';
-import { ListingService } from '../services/listing.service.js';
-import { ListingController } from '../controllers/listing.controller.js';
+import { ListingRepository } from '../repositories/listing.repository';
+import { ListingPhotoRepository } from '../repositories/listingphoto.repository';
+import { BlockerRepository } from '../repositories/blocker.repository';
+import { LocationRepository } from '../repositories/location.repository';
+import { ListingService } from '../services/listing.service';
+import { ListingController } from '../controllers/listing.controller';
 
-import { authenticate } from '../middleware/authenticate.js';
-import { requireRole, requireFreshRole } from '../middleware/authorize.js';
-import { validate } from '../middleware/validate.js';
+import { authenticate, optionalAuthenticate } from '../middleware/authenticate';
+import { requireRole, requireFreshRole } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
 
 import {
     createListingSchema,
+    updateListingSchema,
     rejectListingSchema,
     addListingPhotoSchema,
-} from '../validators/listing.validator.js';
+} from '../validators/listing.validator';
 import {
     createImageUploader,
     handleUploadErrors,
-} from '../middleware/upload.js';
+} from '../middleware/upload';
 
 const router = Router();
 
@@ -39,15 +40,11 @@ const listingService = new ListingService(
 
 const listingController = new ListingController(listingService);
 
-// PUBLIC
-// PUBLIC
-router.get('/', listingController.getApproved);
+// PUBLIC / OPTIONAL AUTH
+router.get('/', optionalAuthenticate, listingController.getApproved);
 router.get('/vip-deals', authenticate, listingController.getVipDeals);
+router.get('/vip/deals', authenticate, listingController.getVipDeals);
 
-router.get('/:id/photos', listingController.getPhotos);
-router.get('/:id', listingController.getById);
-
-// BLOCKER
 // BLOCKER
 router.post(
     '/',
@@ -64,6 +61,21 @@ router.get(
     listingController.getMine
 );
 
+// ADMIN (placed before /:id so /admin/* does not match /:id)
+router.get(
+    '/admin/pending',
+    authenticate,
+    requireRole('ADMIN'),
+    listingController.getPending
+);
+
+router.get(
+    '/admin/pending-vip',
+    authenticate,
+    requireRole('ADMIN'),
+    listingController.getPendingVip
+);
+
 // Photo upload: use multer middleware so req.file is populated,
 // then inject filePath into req.body before the controller runs.
 router.post(
@@ -73,12 +85,9 @@ router.post(
     handleUploadErrors(listingPhotoUploader.single('photo')),
     (req: Request, _res: Response, next: NextFunction) => {
         if (req.file) {
-            // Store the relative path (relative to UPLOAD_ROOT) so the DB
-            // value can be served via /uploads/<path>.
             const relativePath = `listings/${req.file.filename}`;
             req.body.filePath = relativePath;
         }
-        // sortOrder may come in as a string from FormData coerce to number
         if (req.body.sortOrder !== undefined) {
             req.body.sortOrder = Number(req.body.sortOrder);
         }
@@ -95,12 +104,22 @@ router.delete(
     listingController.removePhoto
 );
 
-// ADMIN
-router.get(
-    '/admin/pending',
+router.get('/:id/photos', listingController.getPhotos);
+router.get('/:id', optionalAuthenticate, listingController.getById);
+
+router.patch(
+    '/:id',
     authenticate,
-    requireRole('ADMIN'),
-    listingController.getPending
+    requireRole('BLOCKER'),
+    validate(updateListingSchema),
+    listingController.update
+);
+
+router.patch(
+    '/:id/toggle-disabled',
+    authenticate,
+    requireRole('BLOCKER', 'ADMIN'),
+    listingController.toggleDisabled
 );
 
 router.patch(
@@ -111,11 +130,32 @@ router.patch(
 );
 
 router.patch(
+    '/:id/approve-vip',
+    authenticate,
+    requireFreshRole('ADMIN'),
+    listingController.approveVip
+);
+
+router.patch(
     '/:id/reject',
     authenticate,
     requireFreshRole('ADMIN'),
     validate(rejectListingSchema),
     listingController.reject
+);
+
+router.patch(
+    '/:id/revise',
+    authenticate,
+    requireFreshRole('ADMIN'),
+    listingController.revise
+);
+
+router.delete(
+    '/:id',
+    authenticate,
+    requireRole('BLOCKER', 'ADMIN'),
+    listingController.delete
 );
 
 export default router;

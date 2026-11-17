@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 
-import { LottoRepository } from '../repositories/lotto.repository.js';
-import { authenticate } from '../middleware/authenticate.js';
-import { requireRole } from '../middleware/authorize.js';
+import { LottoRepository } from '../repositories/lotto.repository';
+import { authenticate } from '../middleware/authenticate';
+import { requireRole } from '../middleware/authorize';
 
 // No service/controller layer here deliberately there is no lotto
 // BUSINESS LOGIC to speak of yet (no draw mechanism, no prize structure,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 import { blockersApi } from "../api/blockers";
 import { listingsApi } from "../api/listings";
 import { settingsApi } from "../api/settings";
@@ -39,6 +40,7 @@ const TAB_TITLES = {
 
 export const AdminDashboardPage = () => {
   const { user } = useAuth();
+  const { refreshSettings } = useApp();
 
   const [activeTab, setActiveTab] = useState("blockers");
   const [allBlockers, setAllBlockers] = useState([]);
@@ -115,6 +117,16 @@ export const AdminDashboardPage = () => {
     refreshAll();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === "blockers" || activeTab === "listings") {
+      loadData();
+    } else if (activeTab === "subscriptions") {
+      loadSubscriptions();
+    } else if (activeTab === "settings") {
+      loadSettings();
+    }
+  }, [activeTab]);
+
   /* ---------- Blocker actions ---------- */
   const handleApproveBlocker = async (id) => {
     try {
@@ -129,11 +141,14 @@ export const AdminDashboardPage = () => {
   };
 
   const handleRejectBlocker = async (id) => {
-    const reason = window.prompt("Rejection reason:", "Incomplete application");
+    const reason = window.prompt(
+      "Reason for rejecting / removing blocker from public:",
+      "Removed by administrator"
+    );
     if (!reason) return;
     try {
       await blockersApi.reject(id, reason);
-      showToast("Blocker rejected.");
+      showToast("Blocker removed from active status.");
       loadData();
     } catch (err) {
       showToast(err.message);
@@ -152,6 +167,23 @@ export const AdminDashboardPage = () => {
     }
   };
 
+  const handleDeleteBlocker = async (id) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete this blocker and all their listings? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      await blockersApi.delete(id);
+      showToast("Blocker deleted permanently.");
+      loadData();
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
   /* ---------- Listing actions ---------- */
   const handleApproveListing = async (id) => {
     try {
@@ -164,11 +196,14 @@ export const AdminDashboardPage = () => {
   };
 
   const handleRejectListing = async (id) => {
-    const reason = window.prompt("Rejection reason:", "Please re-upload clearer photos");
+    const reason = window.prompt(
+      "Reason for rejecting / unpublishing listing:",
+      "Removed from public view by admin"
+    );
     if (!reason) return;
     try {
       await listingsApi.reject(id, reason);
-      showToast("Listing rejected.");
+      showToast("Listing removed from public view.");
       loadData();
     } catch (err) {
       showToast(err.message);
@@ -187,22 +222,55 @@ export const AdminDashboardPage = () => {
     }
   };
 
+  const handleToggleListingDisabled = async (id) => {
+    try {
+      const { data } = await listingsApi.toggleDisabled(id);
+      showToast(
+        data?.is_disabled
+          ? "Listing hidden from public view."
+          : "Listing restored to public view."
+      );
+      loadData();
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
+  const handleDeleteListing = async (id) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete this listing? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      await listingsApi.delete(id);
+      showToast("Listing deleted permanently.");
+      loadData();
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
   /* ---------- Settings action ---------- */
-  const handleUpdateSetting = async (key) => {
-    const value = editingSettings[key];
-    if (value === undefined || value === "") {
+  const handleUpdateSetting = async (key, explicitValue, friendlyLabel) => {
+    const value = explicitValue !== undefined ? String(explicitValue) : String(editingSettings[key] ?? "");
+    if (value === undefined || value.trim() === "") {
       showToast("Value cannot be empty");
       return;
     }
     setSavingKey(key);
     try {
       await settingsApi.update(key, value);
-      showToast(`Setting "${key}" updated.`);
+      showToast(`${friendlyLabel || "Setting"} saved successfully!`);
+      setEditingSettings((prev) => ({ ...prev, [key]: value }));
       setSettingsList((prev) =>
         prev.map((item) => (item.key === key ? { ...item, value } : item))
       );
+      refreshSettings?.();
     } catch (err) {
-      showToast(err.message || `Failed to update ${key}`);
+      showToast(err.message || `Failed to update setting`);
     } finally {
       setSavingKey(null);
     }
@@ -323,6 +391,7 @@ export const AdminDashboardPage = () => {
                 onApprove={handleApproveBlocker}
                 onReject={handleRejectBlocker}
                 onRevise={handleReviseBlocker}
+                onDelete={handleDeleteBlocker}
               />
             )}
 
@@ -334,6 +403,8 @@ export const AdminDashboardPage = () => {
                 onApprove={handleApproveListing}
                 onReject={handleRejectListing}
                 onRevise={handleReviseListing}
+                onToggleDisabled={handleToggleListingDisabled}
+                onDelete={handleDeleteListing}
               />
             )}
 

@@ -14,10 +14,10 @@ const intouchPayProvider = new IntouchPayProvider();
 const paymentService = new PaymentService(paymentRepository, intouchPayProvider);
 const paymentController = new PaymentController(paymentService);
 
-// Deliberately NO `authenticate` here IntouchPay calls this directly as a
-// server-to-server webhook, with no access token of ours. We will restrict access by using the ip address of intouch's server.
-
-router.post('/webhook/intouchpay', paymentController.webhook);
+// Public IntouchPay webhook/callback endpoints (no authentication blocking IntouchPay)
+router.all('/webhook/intouchpay', paymentController.webhook);
+router.all('/callback', paymentController.webhook);
+router.all('/intouch', paymentController.webhook);
 
 router.get('/mine', authenticate, paymentController.getMine);
 router.get('/:id', authenticate, paymentController.getById);

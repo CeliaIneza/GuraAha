@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
 export class EmailService {
@@ -10,21 +9,27 @@ export class EmailService {
 
   private initTransporter() {
     if (env.EMAIL_HOST && env.EMAIL_HOST_USER && env.EMAIL_HOST_PASSWORD) {
-      const port = Number(env.EMAIL_PORT) || 587;
-      const isSecure = port === 465;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const nodemailer = require('nodemailer');
+        const port = Number(env.EMAIL_PORT) || 587;
+        const isSecure = port === 465;
 
-      this.transporter = nodemailer.createTransport({
-        host: env.EMAIL_HOST,
-        port,
-        secure: isSecure,
-        auth: {
-          user: env.EMAIL_HOST_USER,
-          pass: env.EMAIL_HOST_PASSWORD,
-        },
-        tls: {
-          rejectUnauthorized: env.NODE_ENV === 'production',
-        },
-      });
+        this.transporter = nodemailer.createTransport({
+          host: env.EMAIL_HOST,
+          port,
+          secure: isSecure,
+          auth: {
+            user: env.EMAIL_HOST_USER,
+            pass: env.EMAIL_HOST_PASSWORD,
+          },
+          tls: {
+            rejectUnauthorized: env.NODE_ENV === 'production',
+          },
+        });
+      } catch {
+        console.warn('[EmailService] nodemailer module not installed; using console/dev email dispatch.');
+      }
     } else {
       console.warn(
         '[EmailService] Email credentials (EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD) not fully set. Outbound emails will be logged to console in dev mode.'
@@ -102,7 +107,7 @@ export class EmailService {
     resetLink: string,
     recipientName = 'Valued User'
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = process.env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>';
+    const fromAddress = env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>';
     const subject = 'GuraAha – Reset Your Password';
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
       <h2 style="color:#0F2C26;">GuraAha – Password Reset</h2>
@@ -139,7 +144,7 @@ export class EmailService {
       <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
     </div>`;
     if (!this.transporter) { console.log(`[MOCK EMAIL] Blocker application received: ${to}`); return; }
-    try { await this.transporter.sendMail({ from: process.env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>', to, subject: 'GuraAha – Blocker Application Received', html }); }
+    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>', to, subject: 'GuraAha – Blocker Application Received', html }); }
     catch (e) { console.error('[EmailService] sendBlockerApplicationEmail failed:', e); }
   }
 
@@ -157,7 +162,53 @@ export class EmailService {
       <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
     </div>`;
     if (!this.transporter) { console.log(`[MOCK EMAIL] Blocker approved: ${to} | Code: ${verificationCode}`); return; }
-    try { await this.transporter.sendMail({ from: process.env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>', to, subject: '🎉 GuraAha – Your Blocker Application is Approved!', html }); }
+    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>', to, subject: '🎉 GuraAha – Your Blocker Application is Approved!', html }); }
     catch (e) { console.error('[EmailService] sendBlockerApprovalEmail failed:', e); }
+  }
+
+  async sendAlertEmail(
+    to: string,
+    subject: string,
+    title: string,
+    summary: string
+  ): Promise<{ success: boolean; messageId?: string }> {
+    const fromAddress = env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>';
+    const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
+      <h2 style="color:#0F2C26;margin-top:0;">${title}</h2>
+      <p style="font-size:14px;line-height:1.6;color:#374151;">${summary}</p>
+      <div style="margin:24px 0;">
+        <a href="${env.FRONTEND_URL || 'http://localhost:5173'}" style="background:#007A66;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">View on GuraAha</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
+      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
+    </div>`;
+
+    if (!this.transporter) {
+      console.log(`[MOCK ALERT EMAIL] To: ${to} | Subject: ${subject} | Summary: ${summary}`);
+      return { success: true, messageId: 'mock-console-id' };
+    }
+
+    try {
+      const info = await this.transporter.sendMail({ from: fromAddress, to, subject, text: `${title}\n\n${summary}`, html });
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('[EmailService] sendAlertEmail failed:', error);
+      return { success: false };
+    }
+  }
+
+  async sendBulkAlertEmails(
+    recipients: string[],
+    subject: string,
+    title: string,
+    summary: string
+  ): Promise<{ total: number; sent: number }> {
+    const uniqueEmails = Array.from(new Set(recipients.map((e) => e.trim()).filter(Boolean)));
+    let sent = 0;
+    for (const email of uniqueEmails) {
+      const res = await this.sendAlertEmail(email, subject, title, summary);
+      if (res.success) sent++;
+    }
+    return { total: uniqueEmails.length, sent };
   }
 }

@@ -18,8 +18,12 @@ export const MembershipPage = () => {
         listingId: null,
       });
     } else {
-      // Unlock Pass - not yet implemented as subscription, show coming soon
-      alert('Unlock Pass subscription coming soon!');
+      openMoMo({
+        kind: `subscription-unlock_pass_${period === 'week' ? 'weekly' : 'monthly'}`,
+        amount,
+        title: `Unlock Pass (${period === 'week' ? 'Weekly' : 'Monthly'})`,
+        listingId: null,
+      });
     }
   };
 

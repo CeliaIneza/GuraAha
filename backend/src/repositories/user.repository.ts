@@ -27,7 +27,7 @@ const USER_COLUMNS_NO_HASH = `
 
 export class UserRepository {
   async findById(userId: string, executor: QueryExecutor = db) {
-    const result = await db.query(
+    const result = await executor.query(
       `
             SELECT
                 u.id,
@@ -108,7 +108,7 @@ export class UserRepository {
   }
 
   async findRoleByName(roleName: string, executor: QueryExecutor = db) {
-    const result = await db.query(
+    const result = await executor.query(
       `
             SELECT id
             FROM roles WHERE name = $1

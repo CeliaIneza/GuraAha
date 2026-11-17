@@ -81,6 +81,11 @@ export class SubscriptionRepository {
     return active !== null;
   }
 
+  async hasActiveUnlockPass(userId: string, executor: QueryExecutor = db): Promise<boolean> {
+    const active = await this.findActiveByUserAndType(userId, 'UNLOCK_PASS', executor);
+    return active !== null;
+  }
+
   async findLatest(blockerId: string, executor: QueryExecutor = db) {
     const result = await executor.query(
       `
@@ -140,7 +145,7 @@ export class SubscriptionRepository {
     const result = await executor.query(
       `
       UPDATE subscriptions
-      SET status = 'CANCELLED'
+      SET status = 'CANCELLED', cancelled_at = NOW(), updated_at = NOW()
       WHERE id = $1 AND user_id = $2 AND status = 'ACTIVE'
       RETURNING ${SUBSCRIPTION_COLUMNS}
       `,

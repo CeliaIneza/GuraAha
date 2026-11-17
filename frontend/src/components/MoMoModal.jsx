@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { paymentsApi } from '../api/payments';
@@ -17,13 +17,20 @@ export const MoMoModal = () => {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const isSubscription = momoModal.kind?.startsWith('subscription-') || momoModal.kind?.startsWith('subscription-vip_room');
-  const subscriptionPlan = isSubscription
+  const isSubscription = momoModal.kind?.startsWith('subscription-');
+  const rawPlan = isSubscription
     ? momoModal.kind
         .replace('subscription-vip_room_', 'VIP_ROOM_')
+        .replace('subscription-unlock_pass_', 'UNLOCK_PASS_')
         .replace('subscription-', '')
         .toUpperCase()
     : null;
+  const subscriptionPlan =
+    rawPlan === 'WEEKLY'
+      ? 'BLOCKER_PRO_WEEKLY'
+      : rawPlan === 'MONTHLY'
+      ? 'BLOCKER_PRO_MONTHLY'
+      : rawPlan;
   const unlockType = momoModal.kind === 'blocker' ? 'BLOCKER' : 'OWNER';
 
   useEffect(() => {
@@ -39,7 +46,7 @@ export const MoMoModal = () => {
 
   if (!momoModal.isOpen) return null;
 
-  // â”€â”€ Initiate payment (send MoMo push) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Initiate payment (send MoMo push) ───────────────────────────────────
   const handleInitiate = async () => {
     if (!momoPhone.trim()) {
       setError('Please enter your MoMo phone number');
@@ -49,10 +56,9 @@ export const MoMoModal = () => {
     setLoading(true);
     try {
       if (isSubscription) {
-        // POST /subscriptions/initiate  body: { phone, plan }
         const res = await subscriptionsApi.initiate({
           phone: momoPhone.trim(),
-          plan: subscriptionPlan, // 'WEEKLY' | 'MONTHLY'
+          plan: subscriptionPlan,
         });
         setInstructions(
           res?.message ||
@@ -65,11 +71,14 @@ export const MoMoModal = () => {
           setLoading(false);
           return;
         }
-        // POST /listings/:listingId/contact/unlock  body: { type, phone }
         const res = await paymentsApi.initiateUnlock(momoModal.listingId, {
           type: unlockType,
           phone: momoPhone.trim(),
         });
+        if (res?.data?.status === 'UNLOCKED' || res?.data?.isVipFree || res?.data?.isUnlockPassFree) {
+          await handleCheckStatus();
+          return;
+        }
         setInstructions(
           res?.message ||
             'Approve the USSD prompt on your phone, then tap "Check Status" below.'
@@ -77,7 +86,6 @@ export const MoMoModal = () => {
         setStage('pending');
       }
     } catch (err) {
-      // If already unlocked, go straight to revealed state by checking status
       if (err?.message?.toLowerCase().includes('already unlocked') || err?.message?.toLowerCase().includes('already')) {
         await handleCheckStatus();
       } else {
@@ -88,24 +96,30 @@ export const MoMoModal = () => {
     }
   };
 
-  // â”€â”€ Check status (poll after user approved MoMo push) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Check status (poll after user approved MoMo push) ───────────────────
   const handleCheckStatus = async () => {
     setError('');
     setChecking(true);
     try {
       if (isSubscription) {
-        // GET /subscriptions/status works for both blocker and VIP subscriptions
         const res = await subscriptionsApi.getStatus();
         const data = res?.data;
         const isVipKind = subscriptionPlan?.startsWith('VIP_ROOM');
+        const isUnlockPassKind = subscriptionPlan?.startsWith('UNLOCK_PASS');
         const sub = isVipKind
           ? data?.vipSubscription
+          : isUnlockPassKind
+          ? data?.unlockPassSubscription
           : data?.blockerSubscription;
         if (sub && sub.isActive) {
           const exp = sub.subscription?.expires_at || sub.subscription?.expiresAt;
-          const planLabel = subscriptionPlan?.startsWith('VIP_ROOM')
+          const planLabel = isVipKind
             ? 'VIP Room'
-            : subscriptionPlan === 'MONTHLY' ? 'Monthly' : 'Weekly';
+            : isUnlockPassKind
+            ? 'Unlock Pass'
+            : subscriptionPlan?.includes('MONTHLY')
+            ? 'Monthly'
+            : 'Weekly';
           setContact({
             name: `${planLabel} plan activated!`,
             phone: exp ? `Valid until ${new Date(exp).toLocaleDateString()}` : 'Active',
@@ -118,7 +132,6 @@ export const MoMoModal = () => {
           );
         }
       } else {
-        // GET /listings/:listingId/contact
         const res = await paymentsApi.getRevealedContact(momoModal.listingId);
         const data = res?.data;
 
@@ -157,7 +170,7 @@ export const MoMoModal = () => {
   const headerTitle = isSubscription
     ? stage === 'revealed'
       ? 'Subscription Activated!'
-      : `Subscribe ${subscriptionPlan === 'MONTHLY' ? 'Monthly' : subscriptionPlan === 'QUARTERLY' ? 'Quarterly' : 'Yearly'}`
+      : momoModal.title || 'Subscribe'
     : stage === 'idle'
       ? `Unlock ${unlockType === 'BLOCKER' ? 'Agent' : 'Owner'} Contact`
       : stage === 'pending'
@@ -221,7 +234,7 @@ export const MoMoModal = () => {
             </div>
           )}
 
-          {/* â”€â”€ STAGE: idle â”€â”€ */}
+          {/* ── STAGE: idle ── */}
           {stage === 'idle' && (
             <div className="mt-4 space-y-4">
               {!isSubscription && (
@@ -261,17 +274,17 @@ export const MoMoModal = () => {
                 {loading ? 'Sending...' : `Pay ${Number(momoModal.amount).toLocaleString()} RWF via MoMo`}
               </button>
               <p className="text-xs text-center text-brand-ink-soft">
-                Secured payment Â· Powered by MTN Mobile Money
+                Secured payment · Powered by MTN Mobile Money
               </p>
             </div>
           )}
 
-          {/* â”€â”€ STAGE: pending (waiting for MoMo push approval) â”€â”€ */}
+          {/* ── STAGE: pending (waiting for MoMo push approval) ── */}
           {stage === 'pending' && (
             <div className="mt-4 space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="text-sm font-semibold text-amber-800 mb-1">
-                  ðŸ“± Action required on your phone
+                  📱 Action required on your phone
                 </p>
                 <p className="text-sm text-amber-700 leading-relaxed">{instructions}</p>
               </div>
@@ -291,18 +304,18 @@ export const MoMoModal = () => {
                 ) : (
                   <RefreshCw className="w-4 h-4" />
                 )}
-                {checking ? 'Checking...' : "I've Approved â€” Check Status"}
+                {checking ? 'Checking...' : "I've Approved, Check Status"}
               </button>
               <button
                 onClick={() => setStage('idle')}
                 className="w-full text-xs text-brand-ink-soft hover:text-brand-ink underline"
               >
-                â† Change phone number
+                ← Change phone number
               </button>
             </div>
           )}
 
-          {/* â”€â”€ STAGE: revealed â”€â”€ */}
+          {/* ── STAGE: revealed ── */}
           {stage === 'revealed' && contact && (
             <div className="mt-4 space-y-4">
               <div className="bg-[#E4F1EC] border border-[#007A66]/30 rounded-xl p-5 text-center">
@@ -310,8 +323,8 @@ export const MoMoModal = () => {
                   {isSubscription
                     ? 'Subscription Status'
                     : unlockType === 'BLOCKER'
-                      ? 'ðŸ  Agent Contact'
-                      : 'ðŸ‘¤ Owner Contact'}
+                      ? '🏠 Agent Contact'
+                      : '👤 Owner Contact'}
                 </p>
                 {contact.name && (
                   <p className="font-bold text-brand-ink text-lg mb-1">{contact.name}</p>

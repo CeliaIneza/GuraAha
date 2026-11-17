@@ -162,6 +162,14 @@ export const BecomeBlockerPage = () => {
     );
   }
 
+  const toItems = (list, placeholder) => {
+    const map = { '': placeholder };
+    (list || []).forEach((item) => {
+      map[item.id] = item.name;
+    });
+    return map;
+  };
+
   // Already applied
   if (existingApp && !isSubmitted) {
     const statusColors = {
@@ -171,6 +179,7 @@ export const BecomeBlockerPage = () => {
       NEEDS_REVISION: 'text-blue-600 bg-blue-50 border-blue-200',
     };
     const color = statusColors[existingApp.status] || statusColors.PENDING;
+    const canResubmit = existingApp.status === 'REJECTED' || Boolean(existingApp.rejection_reason);
     return (
       <div className="min-h-[85vh] bg-dashboard py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
@@ -186,7 +195,24 @@ export const BecomeBlockerPage = () => {
               </div>
               {existingApp.rejection_reason && (
                 <div className="text-left p-3 rounded-[9px] bg-red-50 border border-red-200 text-sm text-red-700">
-                  <strong>Reason:</strong> {existingApp.rejection_reason}
+                  <strong>Admin Note:</strong> {existingApp.rejection_reason}
+                </div>
+              )}
+              {canResubmit && (
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setFormData((p) => ({
+                        ...p,
+                        nationalId: existingApp.national_id || p.nationalId,
+                      }));
+                      setExistingApp(null);
+                    }}
+                    className="rounded-[9px]"
+                  >
+                    Update &amp; Re-submit Application
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -256,29 +282,46 @@ export const BecomeBlockerPage = () => {
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* Province */}
-                    <Select value={selectedProvince} onValueChange={handleProvinceChange}>
-                      <SelectTrigger className="h-11 rounded-[9px] text-sm border-brand-line">
+                    <Select
+                      value={selectedProvince}
+                      onValueChange={(v) => handleProvinceChange(v ?? '')}
+                      items={toItems(provinces, 'Province')}
+                    >
+                      <SelectTrigger className="w-full h-11 rounded-[9px] text-sm border-brand-line">
                         <SelectValue placeholder="Province" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[9px] max-h-60">
+                      <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="rounded-[9px] max-h-60">
+                        <SelectItem value="">Province</SelectItem>
                         {provinces.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {/* District */}
-                    <Select value={selectedDistrict} onValueChange={handleDistrictChange} disabled={!districts.length}>
-                      <SelectTrigger className="h-11 rounded-[9px] text-sm border-brand-line disabled:opacity-50">
+                    <Select
+                      value={selectedDistrict}
+                      onValueChange={(v) => handleDistrictChange(v ?? '')}
+                      items={toItems(districts, 'District')}
+                      disabled={!districts.length}
+                    >
+                      <SelectTrigger className="w-full h-11 rounded-[9px] text-sm border-brand-line disabled:opacity-50">
                         <SelectValue placeholder="District" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[9px] max-h-60">
+                      <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="rounded-[9px] max-h-60">
+                        <SelectItem value="">District</SelectItem>
                         {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {/* Sector */}
-                    <Select value={selectedSector} onValueChange={handleSectorChange} disabled={!sectors.length}>
-                      <SelectTrigger className="h-11 rounded-[9px] text-sm border-brand-line disabled:opacity-50">
+                    <Select
+                      value={selectedSector}
+                      onValueChange={(v) => handleSectorChange(v ?? '')}
+                      items={toItems(sectors, 'Sector')}
+                      disabled={!sectors.length}
+                    >
+                      <SelectTrigger className="w-full h-11 rounded-[9px] text-sm border-brand-line disabled:opacity-50">
                         <SelectValue placeholder="Sector" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[9px] max-h-60">
+                      <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="rounded-[9px] max-h-60">
+                        <SelectItem value="">Sector</SelectItem>
                         {sectors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                       </SelectContent>
                     </Select>

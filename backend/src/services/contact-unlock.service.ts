@@ -8,6 +8,7 @@ import { SettingService } from './setting.service';
 import { onPaymentCompleted, CompletedPayment } from '../provider/payment.event';
 import { ContactUnlockType } from '../config/payment-config';
 import { db } from '../config/database';
+import { env } from '../config/env';
 
 function isContactUnlockType(value: unknown): value is ContactUnlockType {
   return value === 'OWNER' || value === 'BLOCKER';
@@ -41,6 +42,9 @@ export class ContactUnlockService {
     if (listing.is_disabled) {
       throw new Error('This listing is currently disabled or on hold');
     }
+    if (type === 'OWNER' && !(listing.owner_phone && String(listing.owner_phone).trim())) {
+      throw new Error('Owner contact is not provided for this listing. Please unlock the Blocker contact instead.');
+    }
 
     const existing = await this.contactUnlockRepository.findByUserAndListing(userId, listingId, type);
     if (existing) {
@@ -49,14 +53,16 @@ export class ContactUnlockService {
 
     const now = new Date();
     const isVipExclusive = Boolean(listing.is_vip && (!listing.vip_expires_at || new Date(listing.vip_expires_at) > now));
+    const [isVipUser, hasUnlockPass] = await Promise.all([
+      this.subscriptionRepository.hasActiveVip(userId),
+      this.subscriptionRepository.hasActiveUnlockPass(userId),
+    ]);
 
-    if (isVipExclusive) {
-      const isVipUser = await this.subscriptionRepository.hasActiveVip(userId);
-      if (!isVipUser) {
-        throw new Error('This is a VIP Room exclusive deal. Active VIP subscription required to access contacts.');
-      }
+    if (isVipExclusive && !isVipUser) {
+      throw new Error('This is a VIP Room exclusive deal. Active VIP subscription required to access contacts.');
+    }
 
-      // VIP Subscriber Perk: Free contact unlocks (0 RWF) + Double Lotto entries (2 entries)
+    if (isVipUser || hasUnlockPass) {
       const client = await db.connect();
       try {
         await client.query('BEGIN');
@@ -72,16 +78,18 @@ export class ContactUnlockService {
           client
         );
 
-        // Double lotto entry for VIP unlocks
-        await this.lottoRepository.create(userId, unlock.id, client);
-        await this.lottoRepository.create(userId, unlock.id, client);
+        const entriesToGrant = isVipUser ? 2 : 1;
+        for (let i = 0; i < entriesToGrant; i++) {
+          await this.lottoRepository.create(userId, unlock.id, client);
+        }
 
         await client.query('COMMIT');
 
         return {
           status: 'UNLOCKED',
-          isVipFree: true,
-          lottoEntriesGranted: 2,
+          isVipFree: isVipUser,
+          isUnlockPassFree: !isVipUser && hasUnlockPass,
+          lottoEntriesGranted: entriesToGrant,
           unlock,
         };
       } catch (err) {
@@ -141,6 +149,8 @@ export class ContactUnlockService {
   };
 
   async getRevealedContact(userId: string, listingId: string) {
+    await this.paymentService.getMine(userId).catch(() => {});
+
     const listing = await this.listingRepository.findByIdWithOwner(listingId);
     if (!listing) {
       throw new Error('Listing not found');

@@ -13,7 +13,7 @@ export class ListingPhotoRepository {
         const result = await executor.query(
             `
             INSERT INTO listing_photos (listing_id, file_path, sort_order)
-            VALUES {$1, $2, $3}
+            VALUES ($1, $2, $3)
             RETURNING id, listing_id, file_path, sort_order, created_at
             `,
             [input.listingId, input.filePath, input.sortOrder ?? 0]

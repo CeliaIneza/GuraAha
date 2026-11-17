@@ -24,9 +24,18 @@ export const listingsApi = {
     return api(`/listings/${id}/photos`, { method: 'POST', body: form, form: true, auth: true });
   },
   getPending: () => api('/listings/admin/pending', { auth: true }),
+  getPendingVip: () => api('/listings/admin/pending-vip', { auth: true }),
   approve: (id) => api(`/listings/${id}/approve`, { method: 'PATCH', auth: true }),
+  approveVip: (id, earlyAccessDays = 7) =>
+    api(`/listings/${id}/approve-vip`, { method: 'PATCH', body: { earlyAccessDays }, auth: true }),
   reject: (id, rejectionReason) =>
     api(`/listings/${id}/reject`, { method: 'PATCH', body: { rejectionReason }, auth: true }),
+  update: (id, payload) =>
+    api(`/listings/${id}`, { method: 'PATCH', body: payload, auth: true }),
+  toggleDisabled: (id) =>
+    api(`/listings/${id}/toggle-disabled`, { method: 'PATCH', auth: true }),
+  delete: (id) =>
+    api(`/listings/${id}`, { method: 'DELETE', auth: true }),
   removePhoto: (photoId) => api(`/listings/photos/${photoId}`, { method: 'DELETE', auth: true }),
   // VIP-only deals: requires active VIP_ROOM subscription on the backend
   getVipDeals: (params = {}) => {

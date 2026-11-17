@@ -4,6 +4,7 @@ import { PaymentService } from './payment.service';
 import { SettingService } from './setting.service';
 import { onPaymentCompleted, CompletedPayment } from '../provider/payment.event';
 import { SubscriptionType } from '../config/payment-config';
+import { env } from '../config/env';
 
 export class SubscriptionService {
   constructor(
@@ -20,12 +21,21 @@ export class SubscriptionService {
   }
 
   async initiate(userId: string, phone: string, plan: string) {
-    const planConfig = await this.settingService.getSubscriptionPlan(plan);
+    const normalizedPlan =
+      plan.toUpperCase() === 'WEEKLY'
+        ? 'BLOCKER_PRO_WEEKLY'
+        : plan.toUpperCase() === 'MONTHLY'
+        ? 'BLOCKER_PRO_MONTHLY'
+        : plan.toUpperCase();
+
+    const planConfig = (await this.settingService.getSubscriptionPlan(normalizedPlan)) ??
+      (await this.settingService.getSubscriptionPlan(plan));
+
     if (!planConfig) {
       throw new Error(`Unknown subscription plan "${plan}"`);
     }
 
-    const upperPlan = plan.toUpperCase();
+    const upperPlan = normalizedPlan;
     let subscriptionType: SubscriptionType = 'BLOCKER_PRO';
     if (planConfig.type) {
       subscriptionType = planConfig.type;
@@ -102,7 +112,12 @@ export class SubscriptionService {
     return this.subscriptionRepository.findByUserId(userId);
   }
 
+  private async autoCompleteLocalPendingSubscriptions(userId: string) {
+    await this.paymentService.getMine(userId).catch(() => {});
+  }
+
   async getVipStatus(userId: string) {
+    await this.autoCompleteLocalPendingSubscriptions(userId);
     const active = await this.subscriptionRepository.findActiveByUserAndType(userId, 'VIP_ROOM');
     if (!active) {
       return { isActive: false, subscription: null, remainingDays: 0 };
@@ -120,12 +135,16 @@ export class SubscriptionService {
   }
 
   async getCurrentStatus(userId: string) {
+    await this.autoCompleteLocalPendingSubscriptions(userId);
     const blockerProfile = await this.blockerRepository.findByUserId(userId);
     let blockerActive = null;
     if (blockerProfile) {
       blockerActive = await this.subscriptionRepository.findCurrentActive(blockerProfile.id);
     }
-    const vipActive = await this.subscriptionRepository.findActiveByUserAndType(userId, 'VIP_ROOM');
+    const [vipActive, unlockPassActive] = await Promise.all([
+      this.subscriptionRepository.findActiveByUserAndType(userId, 'VIP_ROOM'),
+      this.subscriptionRepository.findActiveByUserAndType(userId, 'UNLOCK_PASS'),
+    ]);
 
     return {
       blockerSubscription: {
@@ -135,6 +154,10 @@ export class SubscriptionService {
       vipSubscription: {
         isActive: Boolean(vipActive),
         subscription: vipActive,
+      },
+      unlockPassSubscription: {
+        isActive: Boolean(unlockPassActive),
+        subscription: unlockPassActive,
       },
     };
   }

@@ -30,25 +30,33 @@ export class BlockerService {
 
         const existingProfile = await this.blockerRepository.findByUserId(userId);
         
-        if(existingProfile) {
-            throw new Error('Blocker profile already exists for this user');
+        if(existingProfile && existingProfile.status === 'APPROVED') {
+            throw new Error('Your Blocker account is already approved');
         }
 
-        const application = await this.blockerRepository.create({
-            userId,
-            nationalId: input.nationalId,
-            operatingLocationId: input.operatingLocationId,
-            agreementDocumentPath: input.agreementDocumentPath,
-        });
-
-        // Send confirmation email to applicant
+        let application;
         try {
-            const emailService = new EmailService();
-            if (user.email) {
-                await emailService.sendBlockerApplicationEmail(user.email, `${user.first_name} ${user.last_name}`);
+            application = await this.blockerRepository.create({
+                userId,
+                nationalId: input.nationalId,
+                operatingLocationId: input.operatingLocationId,
+                agreementDocumentPath: input.agreementDocumentPath,
+            });
+        } catch (dbErr: any) {
+            if (dbErr?.code === '23505' && String(dbErr?.constraint || '').includes('national_id')) {
+                throw new Error('This National ID is already registered with another blocker application');
             }
-        } catch (emailErr) {
-            console.error('Failed to send blocker application email:', emailErr);
+            throw dbErr;
+        }
+
+        // Send confirmation email to applicant asynchronously so apply responds immediately
+        if (user.email) {
+            const emailService = new EmailService();
+            emailService
+                .sendBlockerApplicationEmail(user.email, `${user.first_name} ${user.last_name}`)
+                .catch((emailErr) => {
+                    console.error('Failed to send blocker application email:', emailErr);
+                });
         }
 
         return application;
@@ -89,15 +97,38 @@ export class BlockerService {
             throw new Error("Blocker application not found");
         }
 
-        if(application.status !== "PENDING") {
-            throw new Error("Only pending applications can be rejected");
-        }
+        const userRoleId = await this.userRepository.findRoleByName('USER');
+        const client = await db.connect();
 
-        return this.blockerRepository.reject(
-            blockerId,
-            adminId,
-            rejectionReason
-        )
+        try {
+            await client.query('BEGIN');
+
+            const updatedProfile = await this.blockerRepository.reject(
+                blockerId,
+                adminId,
+                rejectionReason,
+                client
+            );
+
+            // If this blocker was previously APPROVED, downgrade role back to USER and unpublish their listings
+            const userInfo = await this.userRepository.findById(application.user_id, client);
+            if (userInfo && userInfo.role === 'BLOCKER' && userRoleId) {
+                await this.userRepository.updateRole(application.user_id, userRoleId, client);
+            }
+
+            await client.query(
+                `UPDATE listings SET is_disabled = TRUE, updated_at = NOW() WHERE blocker_id = $1`,
+                [blockerId]
+            );
+
+            await client.query('COMMIT');
+            return updatedProfile;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     async approve(
@@ -110,8 +141,8 @@ export class BlockerService {
             throw new Error("Blocker application not found");
         }
 
-        if(application.status !== "PENDING") {
-            throw new Error("Only pending applications can be rejected");
+        if(application.status === "APPROVED") {
+            return application;
         }
 
         const blockerRoleId = await this.userRepository.findRoleByName('BLOCKER');
@@ -120,6 +151,7 @@ export class BlockerService {
             throw new Error('BLOCKER role is not configured in the roles table');
         }
 
+        const verificationCode = crypto.randomBytes(3).toString('hex').toUpperCase();
         const client = await db.connect();
 
         try {
@@ -128,11 +160,12 @@ export class BlockerService {
             const updatedProfile = await this.blockerRepository.approve(
                 blockerId,
                 adminId,
+                verificationCode,
                 client
             );
 
             if(!updatedProfile) {
-                throw new Error('Application is longer pending');
+                throw new Error('Failed to approve blocker application');
             }
 
             await this.userRepository.updateRole(
@@ -148,13 +181,85 @@ export class BlockerService {
                 const userInfo = await this.userRepository.findById(updatedProfile.user_id);
                 if (userInfo && userInfo.email) {
                     const emailService = new EmailService();
-                    await emailService.sendBlockerApprovalEmail(userInfo.email, `${userInfo.first_name} ${userInfo.last_name}`, updatedProfile.verification_code);
+                    await emailService.sendBlockerApprovalEmail(
+                        userInfo.email,
+                        `${userInfo.first_name} ${userInfo.last_name}`,
+                        updatedProfile.verification_code || verificationCode
+                    );
                 }
             } catch (emailErr) {
                 console.error('Failed to send blocker approval email:', emailErr);
             }
 
             return updatedProfile;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async revise(
+        blockerId: string,
+        adminId: string,
+        adminNote: string
+    ) {
+        const application = await this.blockerRepository.findById(blockerId);
+        if (!application) {
+            throw new Error('Blocker application not found');
+        }
+        return this.blockerRepository.revise(
+            blockerId,
+            adminId,
+            adminNote || 'Revision requested by admin'
+        );
+    }
+
+    async delete(blockerId: string) {
+        const application = await this.blockerRepository.findById(blockerId);
+        if (!application) {
+            throw new Error('Blocker application not found');
+        }
+
+        const userRoleId = await this.userRepository.findRoleByName('USER');
+        const client = await db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const userInfo = await this.userRepository.findById(application.user_id, client);
+            if (userInfo && userInfo.role === 'BLOCKER' && userRoleId) {
+                await this.userRepository.updateRole(application.user_id, userRoleId, client);
+            }
+
+            // Clean up dependent records on listings owned by this blocker
+            await client.query(
+                `DELETE FROM lotto_entries WHERE contact_unlock_id IN (
+                    SELECT id FROM contact_unlocks WHERE listing_id IN (
+                        SELECT id FROM listings WHERE blocker_id = $1
+                    )
+                )`,
+                [blockerId]
+            );
+            await client.query(
+                `DELETE FROM contact_unlocks WHERE listing_id IN (
+                    SELECT id FROM listings WHERE blocker_id = $1
+                )`,
+                [blockerId]
+            );
+            await client.query(
+                `DELETE FROM listing_photos WHERE listing_id IN (
+                    SELECT id FROM listings WHERE blocker_id = $1
+                )`,
+                [blockerId]
+            );
+            await client.query(`DELETE FROM listings WHERE blocker_id = $1`, [blockerId]);
+            await client.query(`DELETE FROM subscriptions WHERE blocker_id = $1`, [blockerId]);
+
+            const deleted = await this.blockerRepository.deleteById(blockerId, client);
+            await client.query('COMMIT');
+            return deleted;
         } catch (error) {
             await client.query('ROLLBACK');
             throw error;

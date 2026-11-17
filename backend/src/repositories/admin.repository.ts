@@ -61,6 +61,7 @@ export class AdminRepository {
         bp.national_id,
         bp.operating_location_id,
         bp.verification_code,
+        bp.agreement_document_path,
         bp.status,
         bp.rejection_reason,
         bp.reviewed_by,
@@ -72,12 +73,20 @@ export class AdminRepository {
         u.email,
         u.first_name,
         u.last_name,
-        loc.name AS operating_location_name
+        loc.name AS operating_location_name,
+        loc.level AS operating_location_level,
+        loc_parent.name AS operating_parent_name,
+        loc_grandparent.name AS operating_grandparent_name,
+        CONCAT_WS(' → ', loc_grandparent.name, loc_parent.name, loc.name) AS operating_location_path
       FROM blocker_profiles bp
       INNER JOIN users u ON u.id = bp.user_id
       LEFT JOIN locations loc ON loc.id = bp.operating_location_id
+      LEFT JOIN locations loc_parent ON loc_parent.id = loc.parent_id
+      LEFT JOIN locations loc_grandparent ON loc_grandparent.id = loc_parent.parent_id
       ${whereClause}
-      ORDER BY bp.created_at DESC
+      ORDER BY
+        CASE WHEN bp.status = 'PENDING' THEN 0 ELSE 1 END ASC,
+        bp.created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
       `,
       values
@@ -136,17 +145,31 @@ export class AdminRepository {
         l.blocker_id,
         l.village_id,
         l.type,
+        l.category,
+        l.sub_type,
+        l.condition,
         COALESCE(l.title_en, l.title_rw, l.title_fr) AS title,
         l.title_en,
         l.title_rw,
         l.title_fr,
+        l.description_en,
+        l.description_rw,
+        l.description_fr,
         l.price_rwf,
         l.size_value,
         l.size_unit,
         l.upi_number,
         l.owner_name,
         l.owner_phone,
+        l.ownership_document_path,
         l.status,
+        l.is_disabled,
+        l.is_vip,
+        l.vip_was_price_rwf,
+        l.vip_discount_percent,
+        l.vip_reason,
+        l.vip_early_access_days,
+        l.vip_expires_at,
         l.rejection_reason,
         l.reviewed_by,
         l.reviewed_at,
@@ -154,12 +177,40 @@ export class AdminRepository {
         l.updated_at,
         u.first_name AS blocker_first_name,
         u.last_name AS blocker_last_name,
-        u.phone AS blocker_phone
+        u.phone AS blocker_phone,
+        u.email AS blocker_email,
+        bp.verification_code AS blocker_verification_code,
+        (
+          SELECT lp.file_path
+          FROM listing_photos lp
+          WHERE lp.listing_id = l.id
+          ORDER BY lp.sort_order ASC, lp.created_at ASC
+          LIMIT 1
+        ) AS cover_photo_path,
+        (
+          SELECT COALESCE(jsonb_agg(lp.file_path ORDER BY lp.sort_order ASC, lp.created_at ASC), '[]'::jsonb)
+          FROM listing_photos lp
+          WHERE lp.listing_id = l.id
+        ) AS photos,
+        jsonb_build_object(
+          'village', loc_vil.name,
+          'cell', loc_cel.name,
+          'sector', loc_sec.name,
+          'district', loc_dis.name,
+          'province', loc_pro.name
+        ) AS location
       FROM listings l
       INNER JOIN blocker_profiles bp ON bp.id = l.blocker_id
       INNER JOIN users u ON u.id = bp.user_id
+      LEFT JOIN locations loc_vil ON loc_vil.id = l.village_id
+      LEFT JOIN locations loc_cel ON loc_cel.id = loc_vil.parent_id
+      LEFT JOIN locations loc_sec ON loc_sec.id = loc_cel.parent_id
+      LEFT JOIN locations loc_dis ON loc_dis.id = loc_sec.parent_id
+      LEFT JOIN locations loc_pro ON loc_pro.id = loc_dis.parent_id
       ${whereClause}
-      ORDER BY l.created_at DESC
+      ORDER BY
+        CASE WHEN l.status = 'PENDING' THEN 0 ELSE 1 END ASC,
+        l.created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
       `,
       values
@@ -198,8 +249,8 @@ export class AdminRepository {
       `
       SELECT COUNT(*)::int AS total
       FROM subscriptions s
-      INNER JOIN blocker_profiles bp ON bp.id = s.blocker_id
-      INNER JOIN users u ON u.id = bp.user_id
+      LEFT JOIN blocker_profiles bp ON bp.id = s.blocker_id
+      INNER JOIN users u ON u.id = COALESCE(s.user_id, bp.user_id)
       ${whereClause}
       `,
       values
@@ -215,7 +266,10 @@ export class AdminRepository {
       `
       SELECT
         s.id,
+        s.user_id,
         s.blocker_id,
+        s.subscription_type,
+        s.period,
         s.plan,
         s.status,
         s.starts_at,
@@ -223,12 +277,15 @@ export class AdminRepository {
         s.cancelled_at,
         s.created_at,
         s.updated_at,
+        COALESCE(p.amount_rwf, 0)::int AS amount_rwf,
         u.first_name,
         u.last_name,
-        u.phone
+        u.phone,
+        u.email
       FROM subscriptions s
-      INNER JOIN blocker_profiles bp ON bp.id = s.blocker_id
-      INNER JOIN users u ON u.id = bp.user_id
+      LEFT JOIN blocker_profiles bp ON bp.id = s.blocker_id
+      INNER JOIN users u ON u.id = COALESCE(s.user_id, bp.user_id)
+      LEFT JOIN payments p ON p.id = s.payment_id
       ${whereClause}
       ORDER BY s.created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}

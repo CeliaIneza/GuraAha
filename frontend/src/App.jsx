@@ -21,6 +21,7 @@ import { Layers, Search, ShieldCheck, Code2, LogIn, UserCheck, Shield, LayoutDas
 import { AdminDashboardPage } from './pages/AdminPage.jsx';
 import { MoMoModal } from './components/MoMoModal.jsx';
 import { Footer } from './components/Footer.jsx';
+import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 
 function DashboardPlaceholder({ title, description, badge }) {
   const { user } = useAuth();
@@ -107,10 +108,21 @@ function MainLayout() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin"
-              element={<AdminDashboardPage />}
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              }
             />
             <Route path="*" element={<HomePage />} />
           </Routes>

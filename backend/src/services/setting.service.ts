@@ -117,18 +117,22 @@ export class SettingService {
             if (row && row.value) {
                 const parsed = JSON.parse(row.value);
                 if (typeof parsed === 'object' && parsed !== null) {
-                    const normalized: Record<string, SubscriptionPlanConfig> = {};
+                    const normalized: Record<string, SubscriptionPlanConfig> = {
+                        ...DEFAULT_SUBSCRIPTION_PLANS,
+                    };
                     for (const [key, val] of Object.entries(parsed)) {
                         if (val && typeof val === 'object' && 'priceRwf' in val && 'durationDays' in val) {
-                            normalized[key.toUpperCase()] = {
+                            const upperKey = key.toUpperCase();
+                            const fallback = DEFAULT_SUBSCRIPTION_PLANS[upperKey];
+                            normalized[upperKey] = {
+                                type: (val as any).type ?? fallback?.type,
+                                period: (val as any).period ?? fallback?.period,
                                 priceRwf: Number((val as any).priceRwf),
                                 durationDays: Number((val as any).durationDays),
                             };
                         }
                     }
-                    if (Object.keys(normalized).length > 0) {
-                        return normalized;
-                    }
+                    return normalized;
                 }
             }
         } catch (err) {

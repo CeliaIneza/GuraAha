@@ -1,14 +1,14 @@
 import { NotificationRepository, CreateNotificationInput, NotificationRow } from "../repositories/notification.repository";
 import { AlertSubscriptionRepository } from "../repositories/alert-subscription.repository";
 import { SubscriptionRepository } from "../repositories/subscription.repository";
-import { SmsNotificationService } from "./sms.service";
+import { EmailService } from "./email.service";
 
 export class NotificationService {
   constructor(
     private readonly notificationRepository: NotificationRepository = new NotificationRepository(),
     private readonly alertSubscriptionRepository: AlertSubscriptionRepository = new AlertSubscriptionRepository(),
     private readonly subscriptionRepository: SubscriptionRepository = new SubscriptionRepository(),
-    private readonly smsService: SmsNotificationService = new SmsNotificationService()
+    private readonly emailService: EmailService = new EmailService()
   ) {}
 
   async getUserNotifications(userId: string, limit: number = 20, offset: number = 0): Promise<NotificationRow[]> {
@@ -38,12 +38,12 @@ export class NotificationService {
     discountPercent?: number;
     priceRwf: number;
     daysLeft?: number;
-  }): Promise<{ notificationsSent: number; smsSent: number }> {
+  }): Promise<{ notificationsSent: number; emailsSent: number }> {
     const summary = `${deal.title} is listed ${deal.discountPercent ? `${deal.discountPercent}% below market` : 'at exclusive VIP pricing'}. Early access for ${deal.daysLeft ?? 7} days.`;
 
     // 1. In-app notification for VIP members
     await this.notificationRepository.create({
-      userId: null, 
+      userId: null,
       icon: '⭐',
       title: `New VIP Deal${deal.district ? ` in ${deal.district}` : ''}`,
       summary,
@@ -51,24 +51,25 @@ export class NotificationService {
       actionId: deal.listingId,
     });
 
-    // 2. Dispatches SMS to matching alert subscribers
+    // 2. Dispatches email to matching alert subscribers
     const subscribers = await this.alertSubscriptionRepository.findMatchingSubscribers(
       'VIP deals',
       deal.district ? [deal.district] : undefined
     );
 
-    const smsRecipients = subscribers
-      .filter((s) => s.channels.includes('SMS') || s.channels.includes('WHATSAPP'))
-      .map((s) => s.phone);
+    const emailRecipients = subscribers
+      .map((s) => s.email)
+      .filter((e): e is string => Boolean(e));
 
-    if (smsRecipients.length > 0) {
-      const smsMessage = `[GuraAha VIP] New exclusive deal${deal.district ? ` in ${deal.district}` : ''}: ${deal.title} (${deal.priceRwf.toLocaleString()} RWF). View early in VIP Room!`;
-      await this.smsService.sendBulkSms(smsRecipients, smsMessage);
+    if (emailRecipients.length > 0) {
+      const title = `New VIP Deal${deal.district ? ` in ${deal.district}` : ''}: ${deal.title}`;
+      const emailBody = `${deal.title} (${deal.priceRwf.toLocaleString()} RWF) is now available in the VIP Room. ${summary}`;
+      await this.emailService.sendBulkAlertEmails(emailRecipients, `[GuraAha VIP] ${title}`, title, emailBody);
     }
 
     return {
       notificationsSent: 1,
-      smsSent: smsRecipients.length,
+      emailsSent: emailRecipients.length,
     };
   }
 }

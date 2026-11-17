@@ -15,4 +15,13 @@ export const paymentsApi = {
   // Get all contact unlocks for the logged-in user
   getMyUnlocks: () =>
     api('/contact-unlocks/mine', { auth: true }),
+
+  getPrices: () =>
+    api('/contact-unlocks/prices'),
+
+  getPaymentById: (paymentId) =>
+    api(`/payments/${paymentId}`, { auth: true }),
+
+  getMyPayments: () =>
+    api('/payments/mine', { auth: true }),
 };

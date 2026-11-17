@@ -6,12 +6,23 @@ export class PaymentController {
     constructor(private readonly paymentService: PaymentService) {}
 
     webhook = async (req: Request, res: Response) => {
+        const body = req.body as any;
+        const fallbackRequestId =
+            body?.jsonpayload?.requesttransactionid ||
+            body?.requesttransactionid ||
+            body?.jsonpayload?.transactionid ||
+            body?.transactionid ||
+            'acknowledged';
+
         try {
-            const payment = await this.paymentService.handleWebhook(req.body, req.headers as Record<string, string | string[] | undefined>);
-            return res.status(200).json(buildIntouchPayCallbackAck(payment.id));
+            const payment = await this.paymentService.handleWebhook(
+                req.body,
+                req.headers as Record<string, string | string[] | undefined>
+            );
+            return res.status(200).json(buildIntouchPayCallbackAck(payment?.id || String(fallbackRequestId)));
         } catch (error) {
             console.error('IntouchPay webhook handling failed:', error);
-            return res.status(200).json(buildIntouchPayCallbackAck('unknown'));
+            return res.status(200).json(buildIntouchPayCallbackAck(String(fallbackRequestId)));
         }
     };
 

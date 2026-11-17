@@ -174,7 +174,7 @@ export const VipRoomPage = () => {
   // Weekly plan price
   const weeklyPlan = Array.isArray(plans)
     ? plans.find((p) => p.type === 'VIP_ROOM' && (p.period === 'WEEK' || (p.name && p.name.toLowerCase().includes('week'))))
-    : null;
+    : plans?.VIP_ROOM_WEEKLY || null;
   const weeklyPrice = (weeklyPlan && weeklyPlan.priceRwf) || (settings && settings.vipRoomWeekly) || 2500;
 
   const handleJoin = () => {

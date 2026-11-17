@@ -42,7 +42,8 @@ export const PartnersPage = () => {
       try {
         const res = await partnersApi.getAll();
         if (isMounted) {
-          setPartners(Array.isArray(res?.data) ? res.data : []);
+          const list = Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+          setPartners(list);
         }
       } catch (err) {
         if (isMounted) {

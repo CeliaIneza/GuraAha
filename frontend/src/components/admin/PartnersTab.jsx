@@ -24,14 +24,14 @@ import {
   rowClass,
 } from "./AdminShared";
 
-const PARTNER_TYPES = ["surveyor", "notary", "engineer", "valuer", "legal"];
+const PARTNER_TYPES = ["SURVEYOR", "NOTARY", "ENGINEER", "VALUER", "LEGAL_ADVISOR", "BROKER", "OTHER"];
 const typeItems = Object.fromEntries(
-  PARTNER_TYPES.map((t) => [t, t.charAt(0).toUpperCase() + t.slice(1)])
+  PARTNER_TYPES.map((t) => [t, t.replace("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())])
 );
 
 const emptyForm = {
   name: "",
-  type: "surveyor",
+  type: "SURVEYOR",
   phone: "",
   email: "",
   descriptionEn: "",
@@ -59,7 +59,8 @@ export const PartnersTab = ({ showToast }) => {
     setLoading(true);
     try {
       const res = await partnersApi.getAll();
-      setPartners(Array.isArray(res?.data) ? res.data : []);
+      const list = Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+      setPartners(list);
     } catch (err) {
       showToast(err.message || "Failed to load partners");
     } finally {
@@ -81,7 +82,7 @@ export const PartnersTab = ({ showToast }) => {
     setEditingPartner(p);
     setForm({
       name: p.name || "",
-      type: p.type || "surveyor",
+      type: (p.type || "SURVEYOR").toUpperCase(),
       phone: p.phone || "",
       email: p.email || "",
       descriptionEn: p.description_en || p.descriptionEn || "",
@@ -96,7 +97,7 @@ export const PartnersTab = ({ showToast }) => {
     try {
       const payload = {
         name: form.name.trim(),
-        type: form.type,
+        type: (form.type || "SURVEYOR").toUpperCase(),
         phone: form.phone.trim() || undefined,
         email: form.email.trim() || undefined,
         descriptionEn: form.descriptionEn.trim() || undefined,
