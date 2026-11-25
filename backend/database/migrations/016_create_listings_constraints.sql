@@ -29,4 +29,4 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_check_listing_village_level
     BEFORE INSERT OR UPDATE OF village_id ON listings
-    FOR EACH ROW EXECUTE FUNCTION check_listing_village_level();
+    FOR EACH ROW EXECUTE PROCEDURE check_listing_village_level();
