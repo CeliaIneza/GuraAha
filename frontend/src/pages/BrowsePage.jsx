@@ -1,165 +1,55 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ListingCard } from "../components/ListingCard";
-import { Button } from "../components/ui/button";
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ListingCard } from '../components/ListingCard';
+import { useApp } from '../context/AppContext';
+import { listingsApi } from '../api/listings';
+import { locationsApi } from '../api/locations';
+import { initialListings } from '../data/mockData';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { listingsApi } from "../api/listings";
-import { locationsApi } from "../api/locations";
-import { initialListings } from "../data/mockData";
-import { Filter, RotateCcw, Search } from "lucide-react";
+  isFeaturedListing,
+  isRentListing,
+  listingCategory,
+  listingPrice,
+  listingSubType,
+} from '../utils/listing';
+import { Filter, RotateCcw, Search, ChevronDown, ChevronUp } from 'lucide-react';
 
-/**
- * Flip to false once the backend integration is ready.
- * true  -> listings AND locations come only from local mock data (no network calls)
- * false -> mock data is shown first, then replaced by API data when it returns
- */
-const USE_DUMMY_ONLY = false;
-
-const LEVELS = ["Province", "District", "Sector", "Cell", "Village"];
-
-// ---- Mock locations (UI visualization only) ----
-const MOCK_PROVINCES = [
-  { id: "kigali", name: "Kigali City" },
-  { id: "northern", name: "Northern Province" },
-  { id: "southern", name: "Southern Province" },
-  { id: "eastern", name: "Eastern Province" },
-  { id: "western", name: "Western Province" },
-];
-
-const MOCK_CHILDREN = {
-  kigali: [
-    { id: "gasabo", name: "Gasabo" },
-    { id: "kicukiro", name: "Kicukiro" },
-    { id: "nyarugenge", name: "Nyarugenge" },
-  ],
-  northern: [
-    { id: "musanze", name: "Musanze" },
-    { id: "burera", name: "Burera" },
-    { id: "gicumbi", name: "Gicumbi" },
-  ],
-  southern: [
-    { id: "huye", name: "Huye" },
-    { id: "muhanga", name: "Muhanga" },
-    { id: "nyanza", name: "Nyanza" },
-  ],
-  eastern: [
-    { id: "rwamagana", name: "Rwamagana" },
-    { id: "kayonza", name: "Kayonza" },
-    { id: "bugesera", name: "Bugesera" },
-  ],
-  western: [
-    { id: "rubavu", name: "Rubavu" },
-    { id: "rusizi", name: "Rusizi" },
-    { id: "karongi", name: "Karongi" },
-  ],
-  gasabo: [
-    { id: "kacyiru", name: "Kacyiru" },
-    { id: "remera", name: "Remera" },
-    { id: "kimironko", name: "Kimironko" },
-  ],
-  kimironko: [
-    { id: "bibare", name: "Bibare" },
-    { id: "kibagabaga", name: "Kibagabaga" },
-    { id: "nyagatovu", name: "Nyagatovu" },
-  ],
-};
-
-const fetchProvinces = () =>
-  USE_DUMMY_ONLY
-    ? Promise.resolve({ data: MOCK_PROVINCES })
-    : locationsApi.provinces();
-
-const fetchChildren = (id) =>
-  USE_DUMMY_ONLY
-    ? Promise.resolve({ data: MOCK_CHILDREN[id] || [] })
-    : locationsApi.children(id);
-
-// ---- Filter option maps ----
-const typeItems = {
-  "": "All types",
-  LAND: "Land",
-  PLOT: "Plot",
-  HOUSE: "House",
-};
-
-const triggerClass =
-  "w-full h-11 rounded-[9px] text-sm font-medium border-brand-line bg-white hover:border-brand-green/70 focus-visible:border-brand-green focus-visible:ring-2 focus-visible:ring-brand-green/20 px-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-brand-bg-soft";
-
-const toItems = (list, placeholder) => {
-  const map = { "": placeholder };
-  (list || []).forEach((o) => {
-    map[o.id] = o.name;
-  });
-  return map;
-};
-
-const FilterSelect = ({
-  label,
-  value,
-  onChange,
-  items,
-  placeholder,
-  disabled,
-  children,
-}) => (
-  <div>
-    <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
-      {label}
-    </label>
-    <Select
-      value={value}
-      onValueChange={(v) => onChange(v ?? "")}
-      items={items}
-      disabled={disabled}
-    >
-      <SelectTrigger className={triggerClass} disabled={disabled}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent
-        alignItemWithTrigger={false}
-        align="start"
-        sideOffset={6}
-        className="rounded-[9px] max-h-64"
-      >
-        {children}
-      </SelectContent>
-    </Select>
-  </div>
-);
+const LEVELS = ['lbl_province', 'lbl_district', 'lbl_sector', 'lbl_cell', 'lbl_village'];
 
 export const BrowsePage = () => {
+  const { t, tCat, categories } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [listings, setListings] = useState([]);
+  const [rawListings, setRawListings] = useState(initialListings);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  // Location cascade: path[i] = selected id at level i, options[i] = choices at level i
+  // Location cascade
   const [path, setPath] = useState([]);
   const [options, setOptions] = useState([[]]);
 
-  const [typeFilter, setTypeFilter] = useState(searchParams.get("type") || "");
-  const [maxPriceFilter, setMaxPriceFilter] = useState(
-    searchParams.get("price") || ""
+  // Filters synced with URL query params
+  const [dealFilter, setDealFilter] = useState(searchParams.get('deal') || '');
+  const [catFilter, setCatFilter] = useState(searchParams.get('category') || '');
+  const [subTypeFilter, setSubTypeFilter] = useState(
+    searchParams.get('subType') || searchParams.get('type') || ''
   );
+  const [maxPriceFilter, setMaxPriceFilter] = useState(searchParams.get('price') || '');
+  const [sortOrder, setSortOrder] = useState(searchParams.get('sort') || 'default');
 
-  const locationId = useMemo(
-    () =>
-      [...path].reverse().find(Boolean) || searchParams.get("locationId") || "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path]
-  );
-
-  // Provinces (level 0)
   useEffect(() => {
-    fetchProvinces()
+    setDealFilter(searchParams.get('deal') || '');
+    setCatFilter(searchParams.get('category') || '');
+    setSubTypeFilter(searchParams.get('subType') || searchParams.get('type') || '');
+    setMaxPriceFilter(searchParams.get('price') || '');
+    if (searchParams.get('sort')) setSortOrder(searchParams.get('sort'));
+  }, [searchParams]);
+
+  // Load Provinces
+  useEffect(() => {
+    locationsApi
+      .provinces()
       .then(({ data }) => setOptions([data || []]))
-      .catch((err) => console.warn("Failed to load provinces:", err.message));
+      .catch(() => {});
   }, []);
 
   const handleLevelChange = async (level, id) => {
@@ -167,194 +57,421 @@ export const BrowsePage = () => {
     nextPath[level] = id;
     setPath(nextPath);
 
-    // drop every level below this one
     const nextOptions = options.slice(0, level + 1);
     setOptions(nextOptions);
 
     if (!id || level >= LEVELS.length - 1) return;
 
     try {
-      const { data } = await fetchChildren(id);
+      const { data } = await locationsApi.children(id);
       setOptions([...nextOptions, data || []]);
-    } catch (err) {
-      console.error(`Failed to load ${LEVELS[level + 1]}:`, err);
+    } catch {
+      // ignore
     }
   };
 
-  // Dummy listings, filtered by type and max price (location isn't modelled in mock data)
-  const dummyFiltered = (params) => {
-    let data = initialListings.filter((listing) => !listing.vip);
-    if (params.type) data = data.filter((l) => (l.type || '').toUpperCase() === (params.type || '').toUpperCase());
-    if (params.price)
-      data = data.filter((l) => l.price <= Number(params.price));
-    return data;
-  };
-
-  const load = async (params) => {
-    setError("");
-
-    if (USE_DUMMY_ONLY) {
-      setListings(dummyFiltered(params));
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data } = await listingsApi.listApproved({
-        locationId: params.locationId || undefined,
-        type: params.type || undefined,
-        maxPriceRwf: params.price || undefined,
-        pageSize: 50,
-      });
-      const hasActiveFilter = Boolean(params.locationId || params.type || params.price);
-      if (Array.isArray(data) && (data.length > 0 || hasActiveFilter)) {
-        setListings(data);
-      } else {
-        setListings(dummyFiltered(params));
-      }
-    } catch (err) {
-      console.warn("Backend not ready – using dummy listings:", err.message);
-      setListings(dummyFiltered(params));
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Fetch approved listings from backend and merge with prototype listings if needed
   useEffect(() => {
-    load({
-      locationId: searchParams.get("locationId") || "",
-      type: searchParams.get("type") || "",
-      price: searchParams.get("price") || "",
-    });
-  }, [searchParams]);
+    setLoading(true);
+    const locId =
+      [...path].reverse().find(Boolean) || searchParams.get('locationId') || undefined;
 
-  const applyFilters = () => {
+    listingsApi
+      .listApproved({
+        locationId: locId,
+        pageSize: 100,
+      })
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          if (locId) {
+            setRawListings(data);
+          } else {
+            const existingIds = new Set(data.map((d) => String(d.id)));
+            setRawListings([
+              ...data,
+              ...initialListings.filter((m) => !existingIds.has(String(m.id))),
+            ]);
+          }
+        } else if (locId) {
+          setRawListings([]);
+        } else {
+          setRawListings(initialListings);
+        }
+      })
+      .catch(() => {
+        setRawListings(initialListings);
+      })
+      .finally(() => setLoading(false));
+  }, [searchParams, path]);
+
+  const activeCategoryObj = useMemo(
+    () =>
+      categories.find(
+        (c) =>
+          String(c.slug).toLowerCase() === String(catFilter).toLowerCase() ||
+          String(c.name_en).toLowerCase() === String(catFilter).toLowerCase()
+      ),
+    [categories, catFilter]
+  );
+
+  const subTypesForSelectedCat = useMemo(
+    () => activeCategoryObj?.subtypes || activeCategoryObj?.subTypes || [],
+    [activeCategoryObj]
+  );
+
+  // Filter and sort listings client-side for instant responsiveness
+  const filteredListings = useMemo(() => {
+    let list = rawListings.filter((l) => !l.vip && !l.is_vip && !l.isVip);
+
+    if (dealFilter) {
+      const wantRent = dealFilter.toLowerCase() === 'rent';
+      list = list.filter((l) => isRentListing(l) === wantRent);
+    }
+
+    if (catFilter) {
+      const targetSlug = String(catFilter).toLowerCase();
+      const targetName = String(activeCategoryObj?.name_en || catFilter).toLowerCase();
+      list = list.filter((l) => {
+        const lCat = String(listingCategory(l) || '').toLowerCase();
+        return lCat === targetSlug || lCat === targetName;
+      });
+    }
+
+    if (subTypeFilter) {
+      const targetSub = String(subTypeFilter).toLowerCase();
+      list = list.filter((l) => {
+        const lSub = String(listingSubType(l) || '').toLowerCase();
+        const lType = String(l.type || '').toLowerCase();
+        return lSub === targetSub || lType === targetSub;
+      });
+    }
+
+    if (maxPriceFilter && !isNaN(Number(maxPriceFilter))) {
+      const maxP = Number(maxPriceFilter);
+      list = list.filter((l) => listingPrice(l) <= maxP);
+    }
+
+    // Apply Sort Order (Comment #5)
+    const sorted = [...list];
+    if (sortOrder === 'sale') {
+      sorted.sort((a, b) => (isRentListing(a) === isRentListing(b) ? 0 : isRentListing(a) ? 1 : -1));
+    } else if (sortOrder === 'rent') {
+      sorted.sort((a, b) => (isRentListing(a) === isRentListing(b) ? 0 : isRentListing(a) ? -1 : 1));
+    } else if (sortOrder === 'lo') {
+      sorted.sort((a, b) => listingPrice(a) - listingPrice(b));
+    } else if (sortOrder === 'hi') {
+      sorted.sort((a, b) => listingPrice(b) - listingPrice(a));
+    } else {
+      // default: Featured first
+      sorted.sort((a, b) =>
+        isFeaturedListing(a) === isFeaturedListing(b) ? 0 : isFeaturedListing(a) ? -1 : 1
+      );
+    }
+
+    return sorted;
+  }, [rawListings, dealFilter, catFilter, activeCategoryObj, subTypeFilter, maxPriceFilter, sortOrder]);
+
+  const updateUrlParams = (overrides = {}) => {
     const next = {};
-    if (locationId) next.locationId = locationId;
-    if (typeFilter) next.type = typeFilter;
-    if (maxPriceFilter) next.price = maxPriceFilter;
+    const locId = [...path].reverse().find(Boolean) || searchParams.get('locationId') || '';
+    const d = overrides.deal !== undefined ? overrides.deal : dealFilter;
+    const c = overrides.category !== undefined ? overrides.category : catFilter;
+    const s = overrides.subType !== undefined ? overrides.subType : subTypeFilter;
+    const p = overrides.price !== undefined ? overrides.price : maxPriceFilter;
+    const so = overrides.sort !== undefined ? overrides.sort : sortOrder;
+
+    if (locId) next.locationId = locId;
+    if (d) next.deal = d;
+    if (c) next.category = c;
+    if (s) next.subType = s;
+    if (p) next.price = p;
+    if (so && so !== 'default') next.sort = so;
     setSearchParams(next);
+  };
+
+  const handleDealTabClick = (dealVal) => {
+    setDealFilter(dealVal);
+    updateUrlParams({ deal: dealVal });
   };
 
   const handleReset = () => {
     setPath([]);
     setOptions((prev) => [prev[0] || []]);
-    setTypeFilter("");
-    setMaxPriceFilter("");
+    setDealFilter('');
+    setCatFilter('');
+    setSubTypeFilter('');
+    setMaxPriceFilter('');
+    setSortOrder('default');
     setSearchParams({});
   };
 
+  const activeFiltersCount = [
+    dealFilter,
+    catFilter,
+    subTypeFilter,
+    maxPriceFilter,
+    ...path.filter(Boolean),
+  ].filter(Boolean).length;
+
   return (
-    // 4rem = navbar height. Adjust if your navbar differs.
-    <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-4 py-4 md:h-[calc(100vh-4rem)] md:overflow-hidden">
-      <div className="flex flex-col md:flex-row gap-5 md:h-full">
-        {/* Filter sidebar – scrolls independently */}
-        <aside className="w-full md:w-72 md:shrink-0 bg-white border border-brand-line rounded-[9px] p-5 shadow-sm md:h-full md:overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-lg text-brand-ink flex items-center gap-2">
+    <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 py-5">
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Filter Sidebar (Collapsible on mobile - Comment #2) */}
+        <aside className="w-full md:w-72 md:shrink-0 bg-white border border-brand-line rounded-[14px] p-4 sm:p-5 shadow-xs md:sticky md:top-20">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-base sm:text-lg text-brand-ink flex items-center gap-2">
               <Filter className="w-4 h-4 text-brand-green" />
-              Filter
+              <span>{t('filter_title')}</span>
+              {activeFiltersCount > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand-green text-white text-xs font-bold">
+                  {activeFiltersCount}
+                </span>
+              )}
             </h3>
-            <button
-              onClick={handleReset}
-              className="text-xs text-brand-green font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Reset
-            </button>
+
+            <div className="flex items-center gap-2">
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="text-xs text-brand-green font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  {t('reset_btn')}
+                </button>
+              )}
+
+              {/* Mobile Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen((o) => !o)}
+                className="md:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-brand-line text-xs font-semibold text-brand-ink cursor-pointer"
+              >
+                <span>{t('filter_title')}</span>
+                {mobileFilterOpen ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            {LEVELS.map((label, i) => {
-              // show a level only once its parent is chosen (province always shown)
+          <div className={`${mobileFilterOpen ? 'block' : 'hidden'} md:block space-y-3.5 mt-4`}>
+            {/* Administrative Cascade: Province -> District -> Sector -> Cell -> Village */}
+            {LEVELS.map((labelKey, i) => {
               if (i > 0 && !path[i - 1]) return null;
               const list = options[i] || [];
               if (i > 0 && list.length === 0) return null;
               return (
-                <FilterSelect
-                  key={label}
-                  label={label}
-                  value={path[i] || ""}
-                  onChange={(id) => handleLevelChange(i, id)}
-                  items={toItems(list, label)}
-                  placeholder={label}
-                >
-                  <SelectItem value="">{label}</SelectItem>
-                  {list.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </FilterSelect>
+                <div key={labelKey}>
+                  <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
+                    {t(labelKey)}
+                  </label>
+                  <select
+                    value={path[i] || ''}
+                    onChange={(e) => handleLevelChange(i, e.target.value)}
+                    className="w-full h-10 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+                  >
+                    <option value="">All</option>
+                    {list.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               );
             })}
 
-            <FilterSelect
-              label="Type"
-              value={typeFilter}
-              onChange={setTypeFilter}
-              items={typeItems}
-              placeholder="All types"
-            >
-              <SelectItem value="">All types</SelectItem>
-              <SelectItem value="LAND">Land</SelectItem>
-              <SelectItem value="PLOT">Plot</SelectItem>
-              <SelectItem value="HOUSE">House</SelectItem>
-            </FilterSelect>
-
+            {/* Listing Type: All / For sale / For rent */}
             <div>
               <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
-                Max price (RWF)
+                {t('filter_listing_type')}
+              </label>
+              <select
+                value={dealFilter}
+                onChange={(e) => {
+                  setDealFilter(e.target.value);
+                  updateUrlParams({ deal: e.target.value });
+                }}
+                className="w-full h-10 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+              >
+                <option value="">{t('deal_all')}</option>
+                <option value="sale">{t('deal_sale')}</option>
+                <option value="rent">{t('deal_rent')}</option>
+              </select>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
+                {t('filter_category')}
+              </label>
+              <select
+                value={catFilter}
+                onChange={(e) => {
+                  setCatFilter(e.target.value);
+                  setSubTypeFilter('');
+                  updateUrlParams({ category: e.target.value, subType: '' });
+                }}
+                className="w-full h-10 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+              >
+                <option value="">{t('all_categories')}</option>
+                {categories.map((c) => (
+                  <option key={c.slug || c.id} value={c.slug || c.name_en}>
+                    {tCat(c.slug || c.name_en)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sub-type (shown when selected category has sub-types) */}
+            {subTypesForSelectedCat.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
+                  {t('filter_subtype')}
+                </label>
+                <select
+                  value={subTypeFilter}
+                  onChange={(e) => {
+                    setSubTypeFilter(e.target.value);
+                    updateUrlParams({ subType: e.target.value });
+                  }}
+                  className="w-full h-10 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+                >
+                  <option value="">{t('all_subtypes')}</option>
+                  {subTypesForSelectedCat.map((s) => (
+                    <option key={s.slug || s.id} value={s.slug || s.name_en}>
+                      {tCat(s.slug || s.name_en)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Max Price (RWF) */}
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink-soft mb-1">
+                {t('filter_max_price')}
               </label>
               <input
                 type="number"
                 value={maxPriceFilter}
                 onChange={(e) => setMaxPriceFilter(e.target.value)}
                 placeholder="e.g. 20000000"
-                className="w-full p-2.5 border-1.5 border-brand-line rounded-xl text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+                className="w-full h-10 px-3 border border-brand-line rounded-[9px] text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
               />
             </div>
 
-            <Button
-              variant="default"
-              onClick={applyFilters}
-              className="w-full h-11 rounded-[9px] font-semibold text-sm sm:text-base flex items-center justify-center gap-2 shadow-sm"
+            <button
+              type="button"
+              onClick={() => {
+                updateUrlParams();
+                setMobileFilterOpen(false);
+              }}
+              className="w-full h-10 rounded-[9px] bg-brand-green hover:bg-brand-green-dark text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors"
             >
               <Search className="w-4 h-4" />
-              <span>Apply filters</span>
-            </Button>
+              <span>{t('apply_filters')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="w-full h-9 rounded-[9px] border border-brand-line text-brand-ink-soft hover:text-brand-ink font-semibold text-xs cursor-pointer transition-colors"
+            >
+              {t('reset_btn')}
+            </button>
           </div>
         </aside>
 
-        {/* Results – scrolls independently */}
-        <main className="flex-1 min-w-0 md:h-full md:overflow-y-auto md:pr-1">
-          <div className="flex items-center justify-between mb-5 pt-1 pb-2">
-            <h2 className="text-xl font-bold text-brand-ink">
-              Browse listings{" "}
-              <span className="text-sm font-semibold text-brand-ink-soft">
-                {loading ? "Loading…" : ` ${listings.length} results`}
+        {/* Results Main Section */}
+        <main className="flex-1 min-w-0 w-full">
+          {/* Top Bar: Title + Deal Segmented Tabs + Sort Select (Comment #5) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <h2 className="text-xl sm:text-2xl font-bold text-brand-ink">
+              {t('nav_browse')}{' '}
+              <span className="text-sm font-normal text-brand-ink-soft">
+                {loading ? 'Loading…' : `(${filteredListings.length} ${t('results_lbl')})`}
               </span>
             </h2>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Segmented Tabs: All | For sale | For rent */}
+              <div className="inline-flex bg-white border border-brand-line rounded-[10px] p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleDealTabClick('')}
+                  className={`px-3 py-1.5 rounded-[7px] text-xs font-bold cursor-pointer transition-colors ${
+                    !dealFilter
+                      ? 'bg-brand-green text-white'
+                      : 'text-brand-ink-soft hover:text-brand-ink'
+                  }`}
+                >
+                  {t('deal_all')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDealTabClick('sale')}
+                  className={`px-3 py-1.5 rounded-[7px] text-xs font-bold cursor-pointer transition-colors ${
+                    dealFilter === 'sale'
+                      ? 'bg-brand-green text-white'
+                      : 'text-brand-ink-soft hover:text-brand-ink'
+                  }`}
+                >
+                  🏷️ {t('deal_sale')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDealTabClick('rent')}
+                  className={`px-3 py-1.5 rounded-[7px] text-xs font-bold cursor-pointer transition-colors ${
+                    dealFilter === 'rent'
+                      ? 'bg-[#2B4C7E] text-white'
+                      : 'text-brand-ink-soft hover:text-brand-ink'
+                  }`}
+                >
+                  🔑 {t('deal_rent')}
+                </button>
+              </div>
+
+              {/* Sort Dropdown */}
+              <select
+                value={sortOrder}
+                onChange={(e) => {
+                  setSortOrder(e.target.value);
+                  updateUrlParams({ sort: e.target.value });
+                }}
+                aria-label="Sort listings"
+                className="h-9 rounded-[10px] border border-brand-line bg-white px-3 text-xs sm:text-[13px] font-semibold text-brand-ink focus:outline-none focus:border-brand-green"
+              >
+                <option value="default">{t('sort_default')}</option>
+                <option value="sale">{t('sort_sale')}</option>
+                <option value="rent">{t('sort_rent')}</option>
+                <option value="lo">{t('sort_price_lo')}</option>
+                <option value="hi">{t('sort_price_hi')}</option>
+              </select>
+            </div>
           </div>
 
-          {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
-
-          {!loading && listings.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-6">
-              {listings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  className="rounded-[9px]!"
-                />
+          {!loading && filteredListings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-8">
+              {filteredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
               ))}
             </div>
           ) : !loading ? (
-            <div className="bg-brand-bg-soft rounded-[9px] p-12 text-center border border-brand-line">
-              <p className="text-brand-ink-soft text-base">
+            <div className="bg-white rounded-[14px] p-12 text-center border border-brand-line">
+              <p className="text-brand-ink-soft text-base mb-4">
                 No listings match these filters yet.
               </p>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-4 py-2 rounded-[9px] bg-brand-green text-white text-sm font-semibold cursor-pointer"
+              >
+                {t('reset_btn')}
+              </button>
             </div>
           ) : null}
         </main>

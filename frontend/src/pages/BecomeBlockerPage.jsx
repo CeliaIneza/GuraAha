@@ -1,96 +1,70 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 import { blockersApi } from '../api/blockers';
-import { locationsApi } from '../api/locations';
-import { ShieldCheck, Upload, FileText, CheckCircle2, X, AlertCircle, Loader2 } from 'lucide-react';
+import { sectorsByDistrict } from '../data/mockData';
+import { CheckCircle2, AlertCircle, Upload, FileText, X, Loader2 } from 'lucide-react';
+
+const DISTRICTS = Object.keys(sectorsByDistrict);
 
 export const BecomeBlockerPage = () => {
-  const { user } = useAuth();
+  const { t } = useApp();
   const navigate = useNavigate();
 
-  const [existingApp, setExistingApp] = useState(null);
-  const [checkingApp, setCheckingApp] = useState(true);
+  const [selectedDistrict, setSelectedDistrict] = useState('Gasabo');
+  const [selectedSector, setSelectedSector] = useState('Kimironko');
 
   const [formData, setFormData] = useState({
+    fullName: '',
+    phone: '',
     nationalId: '',
-    operatingLocationId: '',
+    areaText: 'Kimironko, Gasabo',
+    username: '',
+    password: '',
+    confirmPassword: '',
     agreementFile: null,
     acceptedTerms: false,
   });
-  const [provinces, setProvinces] = useState([]);
-  const [districts, setDistricts] = useState([]);
-  const [sectors, setSectors] = useState([]);
-  const [selectedProvince, setSelectedProvince] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedSector, setSelectedSector] = useState('');
 
-  const [errors, setErrors] = useState({});
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submittedEmail, setSubmittedEmail] = useState('');
+  const [submittedData, setSubmittedData] = useState(null);
 
-  // Check if user already applied
   useEffect(() => {
-    if (!user) {
-      setCheckingApp(false);
-      return;
-    }
-    blockersApi.me()
-      .then((res) => {
-        if (res && res.data) setExistingApp(res.data);
-      })
-      .catch(() => {})
-      .finally(() => setCheckingApp(false));
-  }, [user]);
+    const sectors = sectorsByDistrict[selectedDistrict] || [];
+    const nextSec = sectors.includes(selectedSector) ? selectedSector : sectors[0] || '';
+    setSelectedSector(nextSec);
+    setFormData((prev) => ({
+      ...prev,
+      areaText: [nextSec, selectedDistrict].filter(Boolean).join(', '),
+    }));
+  }, [selectedDistrict]);
 
-  // Load provinces
-  useEffect(() => {
-    locationsApi.provinces()
-      .then((res) => setProvinces(res.data || []))
-      .catch(() => {});
-  }, []);
-
-  const handleProvinceChange = async (id) => {
-    setSelectedProvince(id);
-    setSelectedDistrict('');
-    setSelectedSector('');
-    setDistricts([]);
-    setSectors([]);
-    setFormData(p => ({ ...p, operatingLocationId: '' }));
-    if (!id) return;
-    const res = await locationsApi.children(id).catch(() => ({ data: [] }));
-    setDistricts(res.data || []);
-  };
-
-  const handleDistrictChange = async (id) => {
-    setSelectedDistrict(id);
-    setSelectedSector('');
-    setSectors([]);
-    setFormData(p => ({ ...p, operatingLocationId: id }));
-    if (!id) return;
-    const res = await locationsApi.children(id).catch(() => ({ data: [] }));
-    setSectors(res.data || []);
-  };
-
-  const handleSectorChange = (id) => {
-    setSelectedSector(id);
-    setFormData(p => ({ ...p, operatingLocationId: id }));
+  const handleSectorChange = (sec) => {
+    setSelectedSector(sec);
+    setFormData((prev) => ({
+      ...prev,
+      areaText: [sec, selectedDistrict].filter(Boolean).join(', '),
+    }));
   };
 
   const updateField = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setError('');
+  };
+
+  const handleFullNameBlur = () => {
+    if (!formData.username && formData.fullName.trim()) {
+      const parts = formData.fullName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, '')
+        .split(/\s+/);
+      const suggested = parts[0] + (parts[1] ? '.' + parts[1][0] : '');
+      if (suggested) {
+        setFormData((prev) => ({ ...prev, username: suggested }));
+      }
+    }
   };
 
   const handleFileChange = (e) => {
@@ -98,301 +72,343 @@ export const BecomeBlockerPage = () => {
     if (file) updateField('agreementFile', file);
   };
 
-  const validate = () => {
-    const e = {};
-    if (!user) { e.form = 'You must be logged in to apply'; return e; }
-    if (!formData.nationalId.trim() || formData.nationalId.replace(/\s/g, '').length < 16) {
-      e.nationalId = 'National ID must be 16 digits';
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const fullName = formData.fullName.trim();
+    const phone = formData.phone.trim();
+    const nationalId = formData.nationalId.trim();
+    const areaText = formData.areaText.trim() || `${selectedSector}, ${selectedDistrict}`;
+    const username = formData.username.trim().toLowerCase().replace(/\s+/g, '');
+    const password = formData.password;
+    const confirmPassword = formData.confirmPassword;
+
+    if (!fullName || !phone || !nationalId || !areaText) {
+      setError('Please fill in your full name, phone (MoMo), National ID and primary area.');
+      return;
     }
-    if (!formData.operatingLocationId) {
-      e.operatingLocationId = 'Please select your operating sector';
+    if (!username || username.length < 3) {
+      setError('Please choose a username (at least 3 characters, no spaces).');
+      return;
+    }
+    if (!password || password.length < 4) {
+      setError('Please choose a password of at least 4 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('The two passwords do not match.');
+      return;
     }
     if (!formData.acceptedTerms) {
-      e.acceptedTerms = 'You must accept the GuraAha Blocker Agreement to continue';
+      setError('Please accept the Guraaha Blocker Agreement to submit your application.');
+      return;
     }
-    return e;
-  };
-
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    if (!user) { navigate('/login'); return; }
-
-    const errs = validate();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        nationalId: formData.nationalId.replace(/\s/g, ''),
-        operatingLocationId: formData.operatingLocationId,
-      };
-      await blockersApi.apply(payload);
-      setSubmittedEmail(user.email || '');
-      setIsSubmitted(true);
+      const res = await blockersApi.applyPublic({
+        fullName,
+        phone,
+        nationalId,
+        areaText,
+        username,
+        password,
+      });
+
+      const createdUsername = res?.data?.user?.username || username;
+      setSubmittedData({
+        fullName,
+        username: createdUsername,
+        phone,
+        areaText,
+      });
     } catch (err) {
-      setErrors({ form: err.message || 'Failed to submit application' });
+      setError(err.message || 'Failed to submit application. Please check your details and try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (checkingApp) {
-    return (
-      <div className="min-h-[85vh] bg-dashboard flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-green" />
-      </div>
-    );
-  }
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    return (
-      <div className="min-h-[85vh] bg-dashboard py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
-            <CardContent className="p-8 text-center space-y-4">
-              <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-              <h3 className="text-lg font-bold text-brand-ink">Login Required</h3>
-              <p className="text-sm text-brand-ink-soft">You need to be logged in to apply as a Blocker.</p>
-              <Button onClick={() => navigate('/login')} className="rounded-[9px]">Log in to apply</Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  const toItems = (list, placeholder) => {
-    const map = { '': placeholder };
-    (list || []).forEach((item) => {
-      map[item.id] = item.name;
-    });
-    return map;
-  };
-
-  // Already applied
-  if (existingApp && !isSubmitted) {
-    const statusColors = {
-      PENDING: 'text-amber-600 bg-amber-50 border-amber-200',
-      APPROVED: 'text-green-700 bg-green-50 border-green-200',
-      REJECTED: 'text-red-600 bg-red-50 border-red-200',
-      NEEDS_REVISION: 'text-blue-600 bg-blue-50 border-blue-200',
-    };
-    const color = statusColors[existingApp.status] || statusColors.PENDING;
-    const canResubmit = existingApp.status === 'REJECTED' || Boolean(existingApp.rejection_reason);
-    return (
-      <div className="min-h-[85vh] bg-dashboard py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
-            <CardContent className="p-8 text-center space-y-4">
-              <ShieldCheck className="w-12 h-12 text-brand-green mx-auto" />
-              <h3 className="text-xl font-bold text-brand-ink">Application Already Submitted</h3>
-              <p className="text-sm text-brand-ink-soft">
-                You have already submitted a Blocker application. Our team will review it and contact you.
-              </p>
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold ${color}`}>
-                Status: {existingApp.status}
-              </div>
-              {existingApp.rejection_reason && (
-                <div className="text-left p-3 rounded-[9px] bg-red-50 border border-red-200 text-sm text-red-700">
-                  <strong>Admin Note:</strong> {existingApp.rejection_reason}
-                </div>
-              )}
-              {canResubmit && (
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setFormData((p) => ({
-                        ...p,
-                        nationalId: existingApp.national_id || p.nationalId,
-                      }));
-                      setExistingApp(null);
-                    }}
-                    className="rounded-[9px]"
-                  >
-                    Update &amp; Re-submit Application
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-[85vh] bg-dashboard py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
-          <CardHeader className="p-4 sm:p-6 text-center flex flex-col items-center">
-            <CardTitle className="text-2xl font-bold text-brand-ink">
-              Become a Blocker
-            </CardTitle>
-            <CardDescription className="text-sm text-brand-ink-soft leading-relaxed mt-1 max-w-md">
-              Earn commissions by listing land &amp; houses in your area. Every blocker is verified before going live.
-            </CardDescription>
-          </CardHeader>
+    <div className="min-h-[85vh] bg-[#F6F5F0] py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white border border-brand-line rounded-[14px] p-6 sm:p-8 shadow-xs">
+          <h2 className="text-2xl sm:text-3xl font-bold text-brand-ink">
+            {t('blocker_title')}
+          </h2>
+          <p className="text-sm sm:text-base text-brand-ink-soft mt-1.5 leading-relaxed">
+            {t('blocker_sub')}
+          </p>
 
-          {isSubmitted ? (
-            <CardContent className="p-6 sm:p-8 text-center space-y-4 pt-2">
-              <div className="w-14 h-14 bg-brand-pale text-brand-green rounded-full flex items-center justify-center mx-auto shadow-xs">
-                <CheckCircle2 className="w-8 h-8 stroke-[2.2]" />
+          {submittedData ? (
+            <div className="mt-6 p-6 rounded-[14px] bg-[#E0F2EE] border border-brand-green/30 text-center space-y-4">
+              <div className="w-14 h-14 bg-white text-brand-green rounded-full flex items-center justify-center mx-auto shadow-xs">
+                <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-brand-ink">Application Submitted for Verification</h3>
-              <p className="text-sm text-brand-ink-soft max-w-md mx-auto leading-relaxed">
-                Thank you, <strong>{user.firstName || user.first_name}</strong>. Our compliance team will review your National ID and sector registration.
-                {submittedEmail
-                  ? <> You will receive an email confirmation at <strong>{submittedEmail}</strong>.</>
-                  : <> You will be notified once reviewed.</>
-                }
+              <h3 className="text-xl font-bold text-brand-ink">
+                ✅ Application received!
+              </h3>
+              <p className="text-sm text-brand-ink leading-relaxed max-w-lg mx-auto">
+                Thank you, <strong>{submittedData.fullName}</strong>. Your application is now{' '}
+                <strong>Pending validation</strong> by the Guraaha Admin.
               </p>
-            </CardContent>
+              <div className="bg-white rounded-[10px] p-4 border border-brand-line max-w-md mx-auto text-left text-xs sm:text-sm space-y-1.5">
+                <div>
+                  <span className="text-brand-ink-soft">Chosen username: </span>
+                  <code className="font-mono font-bold text-brand-green-dark">
+                    {submittedData.username}
+                  </code>
+                </div>
+                <div>
+                  <span className="text-brand-ink-soft">Phone (MoMo): </span>
+                  <span className="font-semibold text-brand-ink">{submittedData.phone}</span>
+                </div>
+                <div>
+                  <span className="text-brand-ink-soft">Primary area: </span>
+                  <span className="font-semibold text-brand-ink">{submittedData.areaText}</span>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-brand-ink-soft max-w-md mx-auto">
+                Once approved by our team, you will receive your unique 6-character Blocker code via WhatsApp / Email and can log in using your username{' '}
+                <strong>{submittedData.username}</strong> and password.
+              </p>
+              <div className="pt-2 flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="px-5 py-2.5 rounded-[9px] bg-brand-green hover:bg-brand-green-dark text-white font-semibold text-sm cursor-pointer transition-colors"
+                >
+                  Go to Log in →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="px-5 py-2.5 rounded-[9px] border border-brand-line bg-white text-brand-ink font-semibold text-sm cursor-pointer"
+                >
+                  Back to Home
+                </button>
+              </div>
+            </div>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <CardContent className="p-6 sm:p-8 pt-2 space-y-4">
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              {error && (
+                <div className="flex items-start gap-2.5 p-3.5 rounded-[9px] bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm font-medium">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
 
-                {errors.form && (
-                  <div className="flex items-start gap-2.5 p-3.5 rounded-[9px] bg-red-50/90 border border-red-200 text-red-700 text-sm font-medium">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{errors.form}</span>
-                  </div>
-                )}
-
-                {/* National ID */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-brand-ink">
-                    National ID <span className="text-red-500">*</span>
+              {/* Row 1: Full Name & Phone (MoMo) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    {t('blocker_fullname')} <span className="text-red-500">*</span>
                   </label>
-                  <Input
+                  <input
                     type="text"
+                    required
+                    value={formData.fullName}
+                    onChange={(e) => updateField('fullName', e.target.value)}
+                    onBlur={handleFullNameBlur}
+                    placeholder="Jean-Claude Niyonzima"
+                    className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    {t('blocker_phone')} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => updateField('phone', e.target.value)}
+                    placeholder="078..."
+                    className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: National ID & Primary Area (District & Sector) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    {t('blocker_nid')} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
                     value={formData.nationalId}
                     onChange={(e) => updateField('nationalId', e.target.value)}
                     placeholder="1 19xx x xxxxxxx x xx"
-                    className={`rounded-[9px] h-11 pl-3 text-sm font-mono ${errors.nationalId ? 'border-red-500 ring-1 ring-red-500/20' : ''}`}
+                    className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm font-mono text-brand-ink focus:outline-none focus:border-brand-green"
                   />
-                  {errors.nationalId && <p className="text-xs text-red-600 font-medium">{errors.nationalId}</p>}
                 </div>
-
-                {/* Location cascade */}
-                <div className="space-y-3">
-                  <label className="block text-xs font-semibold text-brand-ink">
-                    Operating Area (Province → District → Sector) <span className="text-red-500">*</span>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Primary area (District &amp; Sector) <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Province */}
-                    <Select
-                      value={selectedProvince}
-                      onValueChange={(v) => handleProvinceChange(v ?? '')}
-                      items={toItems(provinces, 'Province')}
-                    >
-                      <SelectTrigger className="w-full h-11 rounded-[9px] text-sm border-brand-line">
-                        <SelectValue placeholder="Province" />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="rounded-[9px] max-h-60">
-                        <SelectItem value="">Province</SelectItem>
-                        {provinces.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {/* District */}
-                    <Select
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
                       value={selectedDistrict}
-                      onValueChange={(v) => handleDistrictChange(v ?? '')}
-                      items={toItems(districts, 'District')}
-                      disabled={!districts.length}
+                      onChange={(e) => setSelectedDistrict(e.target.value)}
+                      className="w-full h-11 px-2.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
                     >
-                      <SelectTrigger className="w-full h-11 rounded-[9px] text-sm border-brand-line disabled:opacity-50">
-                        <SelectValue placeholder="District" />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="rounded-[9px] max-h-60">
-                        <SelectItem value="">District</SelectItem>
-                        {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {/* Sector */}
-                    <Select
+                      {DISTRICTS.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                    <select
                       value={selectedSector}
-                      onValueChange={(v) => handleSectorChange(v ?? '')}
-                      items={toItems(sectors, 'Sector')}
-                      disabled={!sectors.length}
+                      onChange={(e) => handleSectorChange(e.target.value)}
+                      className="w-full h-11 px-2.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
                     >
-                      <SelectTrigger className="w-full h-11 rounded-[9px] text-sm border-brand-line disabled:opacity-50">
-                        <SelectValue placeholder="Sector" />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="rounded-[9px] max-h-60">
-                        <SelectItem value="">Sector</SelectItem>
-                        {sectors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                      {(sectorsByDistrict[selectedDistrict] || []).map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  {errors.operatingLocationId && <p className="text-xs text-red-600 font-medium">{errors.operatingLocationId}</p>}
+                </div>
+              </div>
+
+              {/* Row 3: Choose login credentials box */}
+              <div className="bg-[#F6F5F0] border border-brand-line rounded-[12px] p-4 space-y-3">
+                <div className="font-bold text-xs sm:text-sm text-[#00594A]">
+                  🔐 {t('blocker_creds_title')}
                 </div>
 
-                {/* Upload agreement */}
-                <div className="space-y-1.5 pt-1">
-                  <label className="block text-xs font-semibold text-brand-ink">
-                    Upload signed agreement <span className="text-xs font-normal text-brand-ink-soft">(optional at this step)</span>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    {t('blocker_username')} <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-1.5 rounded-[9px] border border-brand-line bg-brand-bg-soft/30">
-                    <label className="cursor-pointer inline-flex items-center">
-                      <input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" onChange={handleFileChange} className="hidden" />
-                      <span className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-brand-ink bg-white border border-brand-line rounded-[9px] shadow-xs hover:border-brand-green hover:text-brand-green transition-all">
-                        <Upload className="w-3.5 h-3.5 text-brand-green" />
-                        Choose file
-                      </span>
-                    </label>
-                    <div className="flex-1 flex items-center justify-between text-xs text-brand-ink-soft min-w-0">
-                      {formData.agreementFile ? (
-                        <div className="flex items-center gap-2 truncate">
-                          <FileText className="w-4 h-4 text-brand-green shrink-0" />
-                          <span className="font-semibold text-brand-ink truncate">{formData.agreementFile.name}</span>
-                          <span className="text-[11px] shrink-0">({(formData.agreementFile.size / 1024).toFixed(0)} KB)</span>
-                        </div>
-                      ) : (
-                        <span className="italic">No file chosen</span>
-                      )}
-                      {formData.agreementFile && (
-                        <button type="button" onClick={() => updateField('agreementFile', null)} className="p-1 text-brand-ink-soft hover:text-red-600 rounded-[9px]" title="Remove">
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={(e) => updateField('username', e.target.value)}
+                    placeholder="e.g. jean.n"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
                 </div>
 
-                {/* Terms checkbox */}
-                <div className="pt-2">
-                  <label className="flex items-start gap-3 cursor-pointer select-none group">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-ink mb-1">
+                      {t('blocker_password')} <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={formData.acceptedTerms}
-                      onChange={(e) => updateField('acceptedTerms', e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded-[4px] border-brand-line text-brand-green accent-[#007A66] cursor-pointer"
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={(e) => updateField('password', e.target.value)}
+                      placeholder="At least 4 characters"
+                      className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
                     />
-                    <span className="text-xs sm:text-[12px] text-brand-ink-soft leading-relaxed group-hover:text-brand-ink transition-colors">
-                      I accept the <strong>GuraAha Blocker Agreement</strong>: I will only post properties I am authorised to represent, with truthful details and real photos, and I accept the commission &amp; conduct terms.
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-ink mb-1">
+                      {t('blocker_password2')} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={(e) => updateField('confirmPassword', e.target.value)}
+                      placeholder="Confirm password"
+                      className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Upload signed agreement (optional at this step) */}
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  {t('blocker_upload')}
+                </label>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-2 rounded-[9px] border border-brand-line bg-[#F6F5F0]/60">
+                  <label className="cursor-pointer inline-flex items-center">
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <span className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-brand-ink bg-white border border-brand-line rounded-[8px] shadow-2xs hover:border-brand-green hover:text-brand-green transition-all">
+                      <Upload className="w-3.5 h-3.5 text-brand-green" />
+                      Choose file
                     </span>
                   </label>
-                  {errors.acceptedTerms && <p className="text-xs text-red-600 font-medium mt-1 pl-7">{errors.acceptedTerms}</p>}
+                  <div className="flex-1 flex items-center justify-between text-xs text-brand-ink-soft min-w-0">
+                    {formData.agreementFile ? (
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText className="w-4 h-4 text-brand-green shrink-0" />
+                        <span className="font-semibold text-brand-ink truncate">
+                          {formData.agreementFile.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="italic">No file chosen</span>
+                    )}
+                    {formData.agreementFile && (
+                      <button
+                        type="button"
+                        onClick={() => updateField('agreementFile', null)}
+                        className="p-1 text-brand-ink-soft hover:text-red-600 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
+              </div>
 
-              <CardFooter className="p-6 sm:p-8 pt-0">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  variant="default"
-                  className="w-full h-11 rounded-[9px] font-semibold text-base shadow-sm active:translate-y-px"
-                >
-                  {isSubmitting ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-2" />Submitting verification...</>
-                  ) : 'Submit for verification'}
-                </Button>
-              </CardFooter>
+              {/* Row 5: Agreement Checkbox */}
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formData.acceptedTerms}
+                    onChange={(e) => updateField('acceptedTerms', e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-brand-line accent-[#007A66] cursor-pointer"
+                  />
+                  <span className="text-xs sm:text-[13px] text-brand-ink-soft leading-relaxed">
+                    {t('blocker_agree')}
+                  </span>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-11 rounded-[10px] bg-brand-green hover:bg-brand-green-dark text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors disabled:opacity-60"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Submitting…</span>
+                  </>
+                ) : (
+                  <span>{t('blocker_submit')}</span>
+                )}
+              </button>
+
+              <p className="text-center text-xs sm:text-sm text-brand-ink-soft pt-2">
+                {t('login_have_account') || 'Already have an account?'}{' '}
+                <Link to="/login" className="text-brand-green font-semibold hover:underline">
+                  {t('login_btn') || 'Log in'}
+                </Link>
+              </p>
             </form>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

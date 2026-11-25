@@ -42,14 +42,14 @@ const listingController = new ListingController(listingService);
 
 // PUBLIC / OPTIONAL AUTH
 router.get('/', optionalAuthenticate, listingController.getApproved);
-router.get('/vip-deals', authenticate, listingController.getVipDeals);
-router.get('/vip/deals', authenticate, listingController.getVipDeals);
+router.get('/vip-deals', optionalAuthenticate, listingController.getVipDeals);
+router.get('/vip/deals', optionalAuthenticate, listingController.getVipDeals);
 
-// BLOCKER
+// BLOCKER OR ADMIN
 router.post(
     '/',
     authenticate,
-    requireRole('BLOCKER'),
+    requireRole('BLOCKER', 'ADMIN'),
     validate(createListingSchema),
     listingController.create
 );
@@ -57,7 +57,7 @@ router.post(
 router.get(
     '/me/mine',
     authenticate,
-    requireRole('BLOCKER'),
+    requireRole('BLOCKER', 'ADMIN'),
     listingController.getMine
 );
 
@@ -76,12 +76,10 @@ router.get(
     listingController.getPendingVip
 );
 
-// Photo upload: use multer middleware so req.file is populated,
-// then inject filePath into req.body before the controller runs.
 router.post(
     '/:id/photos',
     authenticate,
-    requireRole('BLOCKER'),
+    requireRole('BLOCKER', 'ADMIN'),
     handleUploadErrors(listingPhotoUploader.single('photo')),
     (req: Request, _res: Response, next: NextFunction) => {
         if (req.file) {
@@ -100,7 +98,7 @@ router.post(
 router.delete(
     '/photos/:photoId',
     authenticate,
-    requireRole('BLOCKER'),
+    requireRole('BLOCKER', 'ADMIN'),
     listingController.removePhoto
 );
 
@@ -110,7 +108,7 @@ router.get('/:id', optionalAuthenticate, listingController.getById);
 router.patch(
     '/:id',
     authenticate,
-    requireRole('BLOCKER'),
+    requireRole('BLOCKER', 'ADMIN'),
     validate(updateListingSchema),
     listingController.update
 );
@@ -120,6 +118,13 @@ router.patch(
     authenticate,
     requireRole('BLOCKER', 'ADMIN'),
     listingController.toggleDisabled
+);
+
+router.patch(
+    '/:id/toggle-featured',
+    authenticate,
+    requireRole('ADMIN'),
+    listingController.toggleFeatured
 );
 
 router.patch(

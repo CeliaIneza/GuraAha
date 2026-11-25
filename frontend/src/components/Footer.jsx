@@ -4,7 +4,7 @@ import { MapPin, Phone, Mail, Facebook, Instagram, Twitter } from 'lucide-react'
 import { useApp } from '../context/AppContext';
 
 export const Footer = () => {
-  const { lang, setLang } = useApp();
+  const { lang, setLang, t } = useApp();
 
   return (
     <footer className="bg-[#0F2C26] text-[#CFE0D9] mt-auto">
@@ -12,14 +12,16 @@ export const Footer = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 bg-brand-green rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-base">G</span>
-              </div>
-              <span className="text-white font-bold text-xl">GuraAha</span>
+            <div className="flex items-center gap-2.5 mb-3">
+              <img
+                src="/guraaha-icon.png"
+                alt="Guraaha"
+                className="w-9 h-9 rounded-lg bg-white p-1 object-contain"
+              />
+              <span className="text-white font-bold text-xl">Guraaha</span>
             </div>
             <p className="text-sm text-[#8FAF9F] leading-relaxed mb-5">
-              Rwanda's trusted platform connecting buyers with verified land and house listings. Safe, transparent, local.
+              {t('hero_sub')}
             </p>
             <div className="flex items-center gap-3">
               <a href="https://wa.me/250788747764" target="_blank" rel="noopener noreferrer"
@@ -45,14 +47,16 @@ export const Footer = () => {
 
           {/* Explore links */}
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-4">Explore</h4>
-            <ul className="space-y-3">
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-4">{t('nav_browse')}</h4>
+            <ul className="space-y-2.5">
               {[
-                { to: '/', label: 'Home' },
-                { to: '/browse', label: 'Browse listings' },
-                { to: '/become-blocker', label: 'Become a Blocker' },
-                { to: '/partners', label: 'Certified Partners' },
-                { to: '/membership', label: 'Membership plans' },
+                { to: '/', label: t('nav_home') },
+                { to: '/browse', label: t('nav_browse') },
+                { to: '/vip-room', label: t('nav_vip') },
+                { to: '/membership', label: t('nav_membership') },
+                { to: '/partners', label: t('nav_partners') },
+                { to: '/news', label: t('nav_news') },
+                { to: '/become-blocker', label: t('nav_blocker') },
               ].map(({ to, label }) => (
                 <li key={to}>
                   <Link to={to} className="text-sm text-[#8FAF9F] hover:text-white transition-colors flex items-center gap-2">
@@ -66,7 +70,7 @@ export const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-4">Contact us</h4>
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-4">Guraaha Rwanda</h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <Phone className="w-4 h-4 text-brand-green mt-0.5 flex-shrink-0" />
@@ -81,7 +85,7 @@ export const Footer = () => {
                 <Mail className="w-4 h-4 text-brand-green mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-[#8FAF9F] mb-0.5">Email</p>
-                  <a href="mailto:info@guraaha.com" className="text-sm text-white hover:text-brand-green transition-colors font-medium">
+                  <a href="mailto:noreply@guraaha.com" className="text-sm text-white hover:text-brand-green transition-colors font-medium">
                     info@guraaha.com
                   </a>
                 </div>
@@ -100,7 +104,7 @@ export const Footer = () => {
               <span className="text-xs text-[#8FAF9F]">Lang:</span>
               {['rw', 'en', 'fr'].map((l) => (
                 <button key={l} onClick={() => setLang(l)}
-                  className={`text-xs px-2 py-1 rounded-lg font-semibold transition-colors ${lang === l ? 'bg-brand-green text-white' : 'text-[#8FAF9F] hover:text-white'}`}>
+                  className={`text-xs px-2 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${lang === l ? 'bg-brand-green text-white' : 'text-[#8FAF9F] hover:text-white'}`}>
                   {l.toUpperCase()}
                 </button>
               ))}
@@ -111,9 +115,9 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-[#1E4038] flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-[#8FAF9F]">
-            © {new Date().getFullYear()} GuraAha · All listings in Rwanda · Prices in RWF 🇷🇼
+            {t('footer_copy')}
           </p>
-          <p className="text-xs text-[#8FAF9F]">Built for Rwandan families</p>
+          <p className="text-xs text-[#8FAF9F]">{t('footer_tag')}</p>
         </div>
       </div>
     </footer>

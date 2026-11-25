@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
 import locationRoutes from './routes/location.routes';
 import listingRoutes from './routes/listing.routes';
+import categoryRoutes from './routes/category.routes';
 import contactUnlockRoutes from './routes/contact-unlock.routes';
 import paymentRoutes from './routes/payment.routes';
 import subscriptionRoutes from './routes/subscription.routes';
@@ -27,16 +28,23 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         env.NODE_ENV === 'development' ||
         !env.FRONTEND_URL ||
         origin === env.FRONTEND_URL ||
+        origin.includes('guraaha.com') ||
+        origin.includes('guraaha.rw') ||
         origin.endsWith('.run.app') ||
-        origin.includes('localhost');
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.netlify.app') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1');
 
     if (origin && isAllowed) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Vary', 'Origin');
+    } else if (!origin) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
     }
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-setup-secret');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, x-admin-setup-secret');
 
     if (req.method === 'OPTIONS') {
         return res.status(204).end();
@@ -74,6 +82,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/location', locationRoutes);
 app.use('/api/v1/listings', listingRoutes);
+app.use('/api/v1/categories', categoryRoutes);
 
 app.use('/api/v1', contactUnlockRoutes);
 
@@ -91,6 +100,24 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/alerts', alertRoutes);
 
+import fs from 'fs';
+import path from 'path';
+
+const frontendDistCandidates = [
+    path.resolve(__dirname, '../../frontend/dist'),
+    path.resolve(process.cwd(), '../frontend/dist'),
+    path.resolve(process.cwd(), 'public'),
+];
+const frontendDist = frontendDistCandidates.find((dir) =>
+    fs.existsSync(path.join(dir, 'index.html'))
+);
+
+if (frontendDist) {
+    app.use(express.static(frontendDist));
+    app.get(/^(?!\/(api|uploads|webhooks|health|docs\.json)).*$/, (_req: Request, res: Response) => {
+        res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+}
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ message: `No route for ${req.method} ${req.originalUrl}` });
@@ -102,3 +129,4 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 export default app;
+

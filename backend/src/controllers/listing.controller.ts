@@ -6,7 +6,11 @@ export class ListingController {
 
   create = async (req: Request, res: Response) => {
     try {
-      const listing = await this.listingService.create(req.user.id, req.body);
+      const listing = await this.listingService.create(
+        req.user.id,
+        req.body,
+        req.user.role
+      );
       return res.status(201).json({
         message: "Listing submitted successfully",
         data: listing,
@@ -21,10 +25,11 @@ export class ListingController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const listing = await this.listingService.getById(
-        String(req.params.id),
-        req.user,
-      );
+      const id = String(req.params.id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        return res.status(404).json({ message: "Listing not found" });
+      }
+      const listing = await this.listingService.getById(id, req.user);
       return res.status(200).json({ data: listing });
     } catch (error) {
       return res.status(404).json({
@@ -77,7 +82,22 @@ export class ListingController {
 
   getApproved = async (req: Request, res: Response) => {
     try {
-      const { villageId, locationId, type, maxPriceRwf, maxPrice, minPriceRwf, minPrice, page, pageSize } = req.query;
+      const {
+        villageId,
+        locationId,
+        type,
+        category,
+        subType,
+        deal,
+        featured,
+        sort,
+        maxPriceRwf,
+        maxPrice,
+        minPriceRwf,
+        minPrice,
+        page,
+        pageSize,
+      } = req.query;
       const maxP = maxPriceRwf ?? maxPrice;
       const minP = minPriceRwf ?? minPrice;
 
@@ -86,6 +106,11 @@ export class ListingController {
           villageId: typeof villageId === "string" && villageId ? villageId : undefined,
           locationId: typeof locationId === "string" && locationId ? locationId : undefined,
           type: typeof type === "string" && type ? type : undefined,
+          category: typeof category === "string" && category ? category : undefined,
+          subType: typeof subType === "string" && subType ? subType : undefined,
+          deal: typeof deal === "string" && deal ? deal : undefined,
+          isFeatured: featured === "true" ? true : featured === "false" ? false : undefined,
+          sort: typeof sort === "string" && sort ? sort : undefined,
           maxPriceRwf: maxP ? Number(maxP) : undefined,
           minPriceRwf: minP ? Number(minP) : undefined,
           page: page ? Number(page) : undefined,
@@ -202,7 +227,8 @@ export class ListingController {
       const listing = await this.listingService.update(
         String(req.params.id),
         req.user.id,
-        req.body
+        req.body,
+        req.user.role
       );
       return res.status(200).json({
         message: "Listing updated successfully",
@@ -234,6 +260,26 @@ export class ListingController {
     }
   };
 
+  toggleFeatured = async (req: Request, res: Response) => {
+    try {
+      const listing = await this.listingService.toggleFeatured(
+        String(req.params.id),
+        req.user.id
+      );
+      return res.status(200).json({
+        message: listing.is_featured
+          ? "Listing featured on homepage"
+          : "Listing removed from featured",
+        data: listing,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Failed to toggle featured status",
+      });
+    }
+  };
+
   delete = async (req: Request, res: Response) => {
     try {
       await this.listingService.delete(String(req.params.id), req.user);
@@ -255,6 +301,7 @@ export class ListingController {
         req.user.id,
         req.body.filePath,
         req.body.sortOrder,
+        req.user.role
       );
       return res.status(201).json({ message: "Photo added", data: photo });
     } catch (error) {
@@ -266,7 +313,11 @@ export class ListingController {
 
   getPhotos = async (req: Request, res: Response) => {
     try {
-      const photos = await this.listingService.getPhotos(String(req.params.id));
+      const id = String(req.params.id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        return res.status(200).json({ data: [] });
+      }
+      const photos = await this.listingService.getPhotos(id);
       return res.status(200).json({ data: photos });
     } catch (error) {
       return res.status(400).json({
@@ -278,7 +329,11 @@ export class ListingController {
 
   removePhoto = async (req: Request, res: Response) => {
     try {
-      await this.listingService.removePhoto(String(req.params.photoId), req.user.id);
+      await this.listingService.removePhoto(
+        String(req.params.photoId),
+        req.user.id,
+        req.user.role
+      );
       return res.status(200).json({ message: "Photo removed" });
     } catch (error) {
       return res.status(400).json({

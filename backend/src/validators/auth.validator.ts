@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-    phone: z.string().min(8).max(20),
-    email: z.string().email().optional(),
+    phone: z.string().min(8).max(30),
+    email: z.string().email().optional().or(z.literal("")),
+    username: z.string().min(3).max(50).optional(),
     password: z.string().min(8),
     firstName: z.string().min(1).max(100),
     lastName: z.string().min(1).max(100),
@@ -12,14 +13,23 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z
     .object({
-        phone: z.string().min(8).max(20).optional(),
-        email: z.string().email().optional(),
-        password: z.string().min(1)
+        identifier: z.string().trim().min(1).optional(),
+        username: z.string().trim().min(1).optional(),
+        phone: z.string().trim().min(1).optional(),
+        email: z.string().trim().min(1).optional(),
+        password: z.string().min(1),
     })
-    .refine((data) => Boolean(data.phone) || Boolean(data.email), {
-        message: 'Either phone or email is required',
-        path: ['phone'],
-    });
+    .refine(
+        (data) =>
+            Boolean(data.identifier) ||
+            Boolean(data.username) ||
+            Boolean(data.phone) ||
+            Boolean(data.email),
+        {
+            message: "Username, phone, or email is required",
+            path: ["identifier"],
+        }
+    );
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
@@ -45,7 +55,8 @@ export const verifyCodeSchema = z.object({
 export type VerifyCodeInput = z.infer<typeof verifyCodeSchema>;
 
 export const forgotPasswordSchema = z.object({
-    email: z.string().trim().email(),
+    email: z.string().trim().min(1).optional(),
+    identifier: z.string().trim().min(1).optional(),
 });
 
 export const resetPasswordSchema = z.object({

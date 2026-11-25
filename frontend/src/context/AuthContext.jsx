@@ -1,10 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { authApi } from '../api/auth';
 import {
+  ACCESS_KEY,
   REFRESH_KEY,
   clearSession,
   getStoredUser,
   refreshSession,
+  safeStorage,
   setSession,
 } from '../api/client';
 
@@ -25,7 +27,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const boot = async () => {
-      const token = localStorage.getItem('guraaha_access_token');
+      const token = safeStorage.getItem(ACCESS_KEY);
       if (!token) {
         setReady(true);
         return;
@@ -73,7 +75,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    const refreshToken = safeStorage.getItem(REFRESH_KEY);
     try {
       if (refreshToken) await authApi.logout(refreshToken);
     } catch {
@@ -86,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   const syncRole = useCallback(async () => {
     const { data } = await authApi.me();
     setSession({ user: data });
-    const token = localStorage.getItem('guraaha_access_token');
+    const token = safeStorage.getItem(ACCESS_KEY);
     if (data.role !== jwtRole(token)) {
       const refreshed = await refreshSession();
       setUser(refreshed.user);
@@ -97,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, ready, register, login, logout, syncRole }}>
+    <AuthContext.Provider value={{ user, setUser, ready, register, login, logout, syncRole }}>
       {children}
     </AuthContext.Provider>
   );

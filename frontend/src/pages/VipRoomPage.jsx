@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { subscriptionsApi } from '../api/subscriptions';
 import { listingsApi } from '../api/listings';
+import { listingCoverUrl, listingPrice } from '../utils/listing';
 import { Star, Lock, Zap, TrendingDown, Bell } from 'lucide-react';
-import { Button } from '../components/ui/button';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ function listingLocation(l) {
   if (l.location) {
     return [l.location.district, l.location.sector].filter(Boolean).join(', ');
   }
-  return [l.dist, l.sect].filter(Boolean).join(', ');
+  return [l.district_name || l.dist, l.sector_name || l.sect].filter(Boolean).join(', ');
 }
 
 function discountPct(l) {
@@ -35,7 +35,7 @@ function discountPct(l) {
 }
 
 function vipDaysLeft(l) {
-  return daysLeft(l.vip_expires_at || l.vipExpiresAt);
+  return daysLeft(l.vip_expires_at || l.vipExpiresAt || l.vip_until);
 }
 
 // ── VIP Deal Card ─────────────────────────────────────────────────────────────
@@ -45,8 +45,11 @@ function VipDealCard({ listing, isVipMember, onJoin }) {
   const days = vipDaysLeft(listing);
   const title = listingTitle(listing);
   const location = listingLocation(listing);
-  const typeLabel = listing.type
-    ? listing.type.charAt(0).toUpperCase() + listing.type.slice(1)
+  const coverUrl = listingCoverUrl(listing);
+  const price = listingPrice(listing);
+  const typeLabel = listing.category || listing.type
+    ? String(listing.category || listing.type).charAt(0).toUpperCase() +
+      String(listing.category || listing.type).slice(1)
     : 'Property';
 
   return (
@@ -69,6 +72,13 @@ function VipDealCard({ listing, isVipMember, onJoin }) {
 
       {/* Image / blurred preview */}
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#0F2C26]/30 to-amber-700/20">
+        {coverUrl && (
+          <img
+            src={coverUrl}
+            alt={isVipMember ? title : 'VIP Property Preview'}
+            className={`w-full h-full object-cover ${!isVipMember ? 'blur-md scale-110' : ''}`}
+          />
+        )}
         {!isVipMember && (
           <div className="absolute inset-0 backdrop-blur-sm bg-white/20 z-10" />
         )}
@@ -76,9 +86,18 @@ function VipDealCard({ listing, isVipMember, onJoin }) {
 
       {/* Content */}
       <div className="p-4">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-[#007A66] text-sm">🔒</span>
-          <span className="text-xs font-bold text-[#007A66]">VIP members only</span>
+        <div className="flex items-center justify-between gap-1.5 mb-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[#007A66] text-sm">{isVipMember ? '⭐' : '🔒'}</span>
+            <span className="text-xs font-bold text-[#007A66]">
+              {isVipMember ? 'VIP Exclusive' : 'VIP members only'}
+            </span>
+          </div>
+          {isVipMember && price > 0 && (
+            <span className="text-xs font-extrabold text-brand-ink">
+              {Number(price).toLocaleString()} RWF
+            </span>
+          )}
         </div>
 
         <p className="text-sm font-semibold text-gray-900 leading-snug mb-3 line-clamp-2">
@@ -91,7 +110,7 @@ function VipDealCard({ listing, isVipMember, onJoin }) {
           <>
             <button
               onClick={onJoin}
-              className="w-full py-2 bg-[#007A66] hover:bg-[#005a4d] text-white font-bold rounded-xl text-sm transition-colors"
+              className="w-full py-2 bg-[#007A66] hover:bg-[#005a4d] text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
             >
               Join to reveal
             </button>
@@ -113,22 +132,11 @@ function VipDealCard({ listing, isVipMember, onJoin }) {
   );
 }
 
-// ── Mock preview deals (shown to non-VIP users) ───────────────────────────────
-
-const MOCK_VIP_DEALS = [
-  { id: 'vip1', type: 'luxury', dist: 'Nyarugenge', sect: 'Kiyovu', vip_discount_percent: 18 },
-  { id: 'vip2', type: 'land', dist: 'Karongi', sect: 'Rutsiro', vip_discount_percent: 19 },
-  { id: 'vip3', type: 'commercial', dist: 'Gasabo', sect: 'Kimironko', vip_discount_percent: 15 },
-  { id: 'vip4', type: 'commercial', dist: 'Nyarugenge', sect: 'CBD', vip_discount_percent: 13 },
-  { id: 'vip5', type: 'house', dist: 'Gasabo', sect: 'Remera', vip_discount_percent: 12 },
-  { id: 'vip6', type: 'land', dist: 'Bugesera', sect: 'Rilima', vip_discount_percent: 13 },
-];
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export const VipRoomPage = () => {
   const { user } = useAuth();
-  const { openMoMo, settings } = useApp();
+  const { openMoMo, settings, subscriptionTimestamp } = useApp();
   const navigate = useNavigate();
 
   const [vipStatus, setVipStatus] = useState(null);
@@ -136,7 +144,7 @@ export const VipRoomPage = () => {
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState(null);
 
-  const isVipMember = Boolean(vipStatus && vipStatus.isActive);
+  const isVipMember = Boolean(vipStatus && vipStatus.isActive) || user?.role === 'ADMIN';
 
   // Load plans + VIP status
   useEffect(() => {
@@ -150,25 +158,22 @@ export const VipRoomPage = () => {
         .getVipStatus()
         .then((res) => { if (res && res.data) setVipStatus(res.data); })
         .catch(() => {});
+    } else {
+      setVipStatus(null);
     }
-  }, [user]);
+  }, [user, subscriptionTimestamp]);
 
-  // Load VIP deals
+  // Load real VIP deals from database
   useEffect(() => {
     setLoading(true);
-    if (isVipMember) {
-      listingsApi
-        .getVipDeals({ pageSize: 12 })
-        .then((res) => {
-          const data = res && res.data;
-          setDeals(data && data.length > 0 ? data : MOCK_VIP_DEALS);
-        })
-        .catch(() => setDeals(MOCK_VIP_DEALS))
-        .finally(() => setLoading(false));
-    } else {
-      setDeals(MOCK_VIP_DEALS);
-      setLoading(false);
-    }
+    listingsApi
+      .getVipDeals({ pageSize: 20 })
+      .then((res) => {
+        const data = Array.isArray(res?.data) ? res.data : [];
+        setDeals(data);
+      })
+      .catch(() => setDeals([]))
+      .finally(() => setLoading(false));
   }, [isVipMember]);
 
   // Weekly plan price
@@ -282,11 +287,11 @@ export const VipRoomPage = () => {
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="bg-gray-100 rounded-2xl h-64 animate-pulse" />
             ))}
           </div>
-        ) : (
+        ) : deals.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {deals.map((deal) => (
               <VipDealCard
@@ -296,6 +301,15 @@ export const VipRoomPage = () => {
                 onJoin={handleJoin}
               />
             ))}
+          </div>
+        ) : (
+          <div className="p-10 text-center bg-gray-50 border border-gray-200 rounded-2xl">
+            <p className="text-base font-bold text-gray-800 mb-1">
+              No active VIP deals right now
+            </p>
+            <p className="text-xs sm:text-sm text-gray-500">
+              New pre-launch and below-market VIP properties will appear here as soon as they are verified by our team.
+            </p>
           </div>
         )}
 

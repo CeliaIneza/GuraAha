@@ -11,6 +11,8 @@ export interface PartnerDbRow {
     location_id: string | null;
     location_name?: string | null;
     location_level?: string | null;
+    district_name?: string | null;
+    certification_number?: string | null;
     description_rw: string | null;
     description_en: string | null;
     description_fr: string | null;
@@ -26,6 +28,8 @@ export interface CreatePartnerInput {
     phone?: string | null;
     email?: string | null;
     locationId?: string | null;
+    districtName?: string | null;
+    certificationNumber?: string | null;
     descriptionRw?: string | null;
     descriptionEn?: string | null;
     descriptionFr?: string | null;
@@ -39,6 +43,8 @@ export interface UpdatePartnerInput {
     phone?: string | null;
     email?: string | null;
     locationId?: string | null;
+    districtName?: string | null;
+    certificationNumber?: string | null;
     descriptionRw?: string | null;
     descriptionEn?: string | null;
     descriptionFr?: string | null;
@@ -66,38 +72,29 @@ export class PartnerRepository {
                 phone,
                 email,
                 location_id,
+                district_name,
+                certification_number,
                 description_rw,
                 description_en,
                 description_fr,
                 is_certified,
                 is_active
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING
-                id,
-                type,
-                name,
-                phone,
-                email,
-                location_id,
-                description_rw,
-                description_en,
-                description_fr,
-                is_certified,
-                is_active,
-                created_at,
-                updated_at
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING *
             `,
             [
                 input.type,
                 input.name,
                 input.phone ?? null,
-                input.email ?? null,
+                input.email || null,
                 input.locationId ?? null,
+                input.districtName ?? null,
+                input.certificationNumber ?? null,
                 input.descriptionRw ?? null,
                 input.descriptionEn ?? null,
                 input.descriptionFr ?? null,
-                input.isCertified ?? false,
+                input.isCertified ?? true,
                 input.isActive ?? true,
             ]
         );
@@ -108,21 +105,9 @@ export class PartnerRepository {
         const result = await executor.query(
             `
             SELECT 
-                p.id,
-                p.type,
-                p.name,
-                p.phone,
-                p.email,
-                p.location_id,
-                l.name AS location_name,
-                l.level AS location_level,
-                p.description_rw,
-                p.description_en,
-                p.description_fr,
-                p.is_certified,
-                p.is_active,
-                p.created_at,
-                p.updated_at
+                p.*,
+                COALESCE(p.district_name, l.name) AS location_name,
+                l.level AS location_level
             FROM partners p
             LEFT JOIN locations l ON p.location_id = l.id
             WHERE p.id = $1
@@ -139,7 +124,7 @@ export class PartnerRepository {
 
         if (filters.type) {
             params.push(filters.type);
-            conditions.push(`p.type = $${params.length}`);
+            conditions.push(`UPPER(p.type) = UPPER($${params.length})`);
         }
 
         if (filters.locationId) {
@@ -160,7 +145,7 @@ export class PartnerRepository {
         if (filters.search) {
             params.push(`%${filters.search}%`);
             const pIdx = params.length;
-            conditions.push(`(p.name ILIKE $${pIdx} OR p.description_rw ILIKE $${pIdx} OR p.description_en ILIKE $${pIdx} OR p.description_fr ILIKE $${pIdx})`);
+            conditions.push(`(p.name ILIKE $${pIdx} OR p.description_rw ILIKE $${pIdx} OR p.description_en ILIKE $${pIdx} OR p.description_fr ILIKE $${pIdx} OR p.district_name ILIKE $${pIdx})`);
         }
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -176,21 +161,9 @@ export class PartnerRepository {
 
         const dataQuery = `
             SELECT 
-                p.id,
-                p.type,
-                p.name,
-                p.phone,
-                p.email,
-                p.location_id,
-                l.name AS location_name,
-                l.level AS location_level,
-                p.description_rw,
-                p.description_en,
-                p.description_fr,
-                p.is_certified,
-                p.is_active,
-                p.created_at,
-                p.updated_at
+                p.*,
+                COALESCE(p.district_name, l.name) AS location_name,
+                l.level AS location_level
             FROM partners p
             LEFT JOIN locations l ON p.location_id = l.id
             ${whereClause}
@@ -219,12 +192,20 @@ export class PartnerRepository {
             fields.push(`phone = $${params.length}`);
         }
         if (input.email !== undefined) {
-            params.push(input.email);
+            params.push(input.email || null);
             fields.push(`email = $${params.length}`);
         }
         if (input.locationId !== undefined) {
             params.push(input.locationId);
             fields.push(`location_id = $${params.length}`);
+        }
+        if (input.districtName !== undefined) {
+            params.push(input.districtName);
+            fields.push(`district_name = $${params.length}`);
+        }
+        if (input.certificationNumber !== undefined) {
+            params.push(input.certificationNumber);
+            fields.push(`certification_number = $${params.length}`);
         }
         if (input.descriptionRw !== undefined) {
             params.push(input.descriptionRw);
@@ -257,20 +238,7 @@ export class PartnerRepository {
             UPDATE partners
             SET ${fields.join(", ")}
             WHERE id = $1
-            RETURNING
-                id,
-                type,
-                name,
-                phone,
-                email,
-                location_id,
-                description_rw,
-                description_en,
-                description_fr,
-                is_certified,
-                is_active,
-                created_at,
-                updated_at
+            RETURNING *
         `;
 
         const result = await executor.query(query, params);

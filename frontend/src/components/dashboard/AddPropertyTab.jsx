@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -6,63 +6,51 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "../ui/card";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Button } from "../ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { LocationCascade } from "../LocationCascade";
-import { listingsApi } from "../../api/listings";
-import { Upload, X, Phone, ArrowRight, Loader2, AlertTriangle } from "lucide-react";
+} from '../ui/card';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Button } from '../ui/button';
+import { LocationCascade } from '../LocationCascade';
+import { listingsApi } from '../../api/listings';
+import { useApp } from '../../context/AppContext';
+import { Upload, X, Phone, ArrowRight, Loader2, AlertTriangle, FileText } from 'lucide-react';
 
-const typeItems = { land: "Land", plot: "Plot", house: "House" };
-const unitItems = {
-  sqm: "Square Meters (m²)",
-  ha: "Hectares (ha)",
-  ares: "Ares",
-};
-
-const selectTriggerClass =
-  "w-full h-11 rounded-[9px] text-sm font-medium border-brand-line bg-white hover:border-brand-green/70 focus-visible:border-brand-green focus-visible:ring-2 focus-visible:ring-brand-green/20 px-3";
-
-const errorInputClass = "border-red-500 ring-1 ring-red-500/20";
+const errorInputClass = 'border-red-500 ring-1 ring-red-500/20';
 
 const emptyForm = {
-  titleEn: "",
-  titleRw: "",
-  titleFr: "",
-  descriptionEn: "",
-  descriptionRw: "",
-  descriptionFr: "",
-  type: "land",
-  priceRwf: "",
-  sizeValue: "",
-  sizeUnit: "sqm",
-  villageId: "",
+  titleRw: '',
+  titleEn: '',
+  titleFr: '',
+  descriptionRw: '',
+  descriptionEn: '',
+  descriptionFr: '',
+  category: 'Residential',
+  subType: 'Houses',
+  condition: 'Finished',
+  deal: 'sale',
+  rentalTerms: '',
+  priceRwf: '',
+  sizeValue: '',
+  sizeUnit: 'sqm',
+  villageId: '',
   locationComplete: false,
-  upiNumber: "",
-  ownerName: "",
-  ownerPhone: "",
+  upiNumber: '',
+  ownershipDoc: null,
+  ownerName: '',
+  ownerPhone: '',
   isVip: false,
-  vipWasPriceRwf: "",
-  vipReason: "",
-  coverPhoto: null,
-  extraPhotos: [],
+  vipWasPriceRwf: '',
+  vipReason: '',
+  photos: [],
 };
 
-// Form hook: collects, validates and submits the new-property form
-export function useAddPropertyForm(onSuccess) {
+export const AddPropertyTab = ({ onCancel, onSuccess }) => {
+  const { categories, settings, tCat } = useApp();
   const [formData, setFormData] = useState(emptyForm);
+  const [langTab, setLangTab] = useState('en'); // 'rw' | 'en' | 'fr'
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [coverPreview, setCoverPreview] = useState(null);
-  const [extraPreviews, setExtraPreviews] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [cascadeKey, setCascadeKey] = useState(0);
 
   const clearError = (...keys) =>
@@ -76,7 +64,7 @@ export function useAddPropertyForm(onSuccess) {
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     clearError(field);
-    if (["titleEn", "titleRw", "titleFr"].includes(field)) clearError("title");
+    if (['titleEn', 'titleRw', 'titleFr'].includes(field)) clearError('title');
   };
 
   const setLocation = ({ locationId, selected }) => {
@@ -85,51 +73,60 @@ export function useAddPropertyForm(onSuccess) {
       villageId: locationId,
       locationComplete: !!selected?.village,
     }));
-    clearError("villageId");
+    clearError('villageId');
   };
 
-  const setCover = (file) => {
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-    setFormData((prev) => ({ ...prev, coverPhoto: file }));
-    setCoverPreview(file ? URL.createObjectURL(file) : null);
-    clearError("coverPhoto");
+  const handlePhotosSelect = (e) => {
+    const newFiles = Array.from(e.target.files || []);
+    if (newFiles.length === 0) return;
+    const combined = [...formData.photos, ...newFiles].slice(0, 8);
+    photoPreviews.forEach((u) => URL.revokeObjectURL(u));
+    setFormData((prev) => ({ ...prev, photos: combined }));
+    setPhotoPreviews(combined.map((f) => URL.createObjectURL(f)));
+    clearError('photos');
   };
 
-  const setExtras = (files) => {
-    extraPreviews.forEach((u) => URL.revokeObjectURL(u));
-    setFormData((prev) => ({ ...prev, extraPhotos: files }));
-    setExtraPreviews(files.map((f) => URL.createObjectURL(f)));
+  const removePhotoAt = (idx) => {
+    const nextFiles = formData.photos.filter((_, i) => i !== idx);
+    photoPreviews.forEach((u) => URL.revokeObjectURL(u));
+    setFormData((prev) => ({ ...prev, photos: nextFiles }));
+    setPhotoPreviews(nextFiles.map((f) => URL.createObjectURL(f)));
   };
+
+  const selectedCatObj = useMemo(
+    () =>
+      categories.find(
+        (c) => c.name_en === formData.category || c.slug === formData.category
+      ) || categories[0],
+    [categories, formData.category]
+  );
+
+  const subTypes = useMemo(
+    () => selectedCatObj?.subtypes || selectedCatObj?.subTypes || [],
+    [selectedCatObj]
+  );
+
+  const isRent = formData.deal === 'rent';
 
   const validate = () => {
     const e = {};
     if (!(formData.titleEn.trim() || formData.titleRw.trim() || formData.titleFr.trim())) {
-      e.title = "Add a title in at least one language";
+      e.title = 'Enter a property title in at least one language (RW / EN / FR)';
     }
     if (!formData.priceRwf || Number(formData.priceRwf) <= 0) {
-      e.priceRwf = "Enter a valid price";
+      e.priceRwf = 'Enter a valid price in RWF';
     }
     if (!formData.sizeValue || Number(formData.sizeValue) <= 0) {
-      e.sizeValue = "Enter a valid size";
+      e.sizeValue = 'Enter a valid size in m²';
     }
     if (!formData.villageId || !formData.locationComplete) {
-      e.villageId = "Select the location down to the village";
+      e.villageId = 'Select the location down to the Village level';
     }
-    if (!formData.coverPhoto) {
-      e.coverPhoto = "A cover photo is required";
+    if (!formData.photos || formData.photos.length < 3) {
+      e.photos = `Please upload at least 3 photos (${formData.photos?.length || 0}/3 selected)`;
     }
     setErrors(e);
     return Object.keys(e).length === 0;
-  };
-
-  const resetForm = () => {
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-    extraPreviews.forEach((u) => URL.revokeObjectURL(u));
-    setFormData(emptyForm);
-    setCoverPreview(null);
-    setExtraPreviews([]);
-    setErrors({});
-    setCascadeKey((n) => n + 1);
   };
 
   const handleSubmit = async (e) => {
@@ -138,424 +135,474 @@ export function useAddPropertyForm(onSuccess) {
 
     setIsSubmitting(true);
     try {
+      const catLower = String(formData.category || '').toLowerCase();
+      const legacyType = catLower.includes('land') ? 'land' : 'house';
+
       const { data } = await listingsApi.create({
         villageId: formData.villageId,
-        type: formData.type,
-        titleEn: formData.titleEn || undefined,
+        type: legacyType,
+        deal: formData.deal || 'sale',
+        category: formData.category || 'Residential',
+        subType: formData.subType || formData.category || 'Houses',
+        condition: formData.condition || undefined,
+        rentalTerms: isRent ? formData.rentalTerms || undefined : undefined,
+        titleEn: formData.titleEn || formData.titleRw || formData.titleFr || undefined,
         titleRw: formData.titleRw || undefined,
         titleFr: formData.titleFr || undefined,
-        descriptionEn: formData.descriptionEn || undefined,
+        descriptionEn:
+          formData.descriptionEn || formData.descriptionRw || formData.descriptionFr || undefined,
         descriptionRw: formData.descriptionRw || undefined,
         descriptionFr: formData.descriptionFr || undefined,
         priceRwf: Number(formData.priceRwf),
         sizeValue: Number(formData.sizeValue),
-        sizeUnit: formData.sizeUnit,
+        sizeUnit: 'sqm',
         upiNumber: formData.upiNumber || undefined,
         ownerName: formData.ownerName || undefined,
         ownerPhone: formData.ownerPhone || undefined,
         isVip: Boolean(formData.isVip),
-        vipWasPriceRwf: formData.isVip && formData.vipWasPriceRwf ? Number(formData.vipWasPriceRwf) : undefined,
+        vipWasPriceRwf:
+          formData.isVip && formData.vipWasPriceRwf
+            ? Number(formData.vipWasPriceRwf)
+            : undefined,
         vipReason: formData.isVip && formData.vipReason ? formData.vipReason : undefined,
       });
 
-      if (formData.coverPhoto) {
-        await listingsApi.addPhoto(data.id, formData.coverPhoto, 0);
-      }
       await Promise.all(
-        (formData.extraPhotos || []).map((file, idx) =>
-          listingsApi.addPhoto(data.id, file, idx + 1)
+        (formData.photos || []).map((file, idx) =>
+          listingsApi.addPhoto(data.id, file, idx)
         )
       );
 
       const { data: mine } = await listingsApi.getMine();
-      resetForm();
+      photoPreviews.forEach((u) => URL.revokeObjectURL(u));
+      setFormData(emptyForm);
+      setPhotoPreviews([]);
+      setCascadeKey((n) => n + 1);
       onSuccess?.(mine || []);
     } catch (err) {
-      setErrors({ form: err.message || "Failed to submit property listing." });
+      setErrors({ form: err.message || 'Failed to submit property listing.' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return {
-    formData,
-    errors,
-    isSubmitting,
-    coverPreview,
-    extraPreviews,
-    cascadeKey,
-    updateField,
-    setLocation,
-    setCover,
-    setExtras,
-    handleSubmit,
-  };
-}
-
-const Field = ({ label, required, hint, error, children }) => (
-  <div className="space-y-1.5">
-    <label className="block text-xs font-semibold text-brand-ink">
-      {label}
-      {required && <span className="text-red-500"> *</span>}
-      {hint && <span className="text-xs font-normal text-brand-ink-soft"> {hint}</span>}
-    </label>
-    {children}
-    {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
-  </div>
-);
-
-export const AddPropertyTab = ({ onCancel, onSuccess }) => {
-  const {
-    formData,
-    errors,
-    isSubmitting,
-    coverPreview,
-    extraPreviews,
-    cascadeKey,
-    updateField,
-    setLocation,
-    setCover,
-    setExtras,
-    handleSubmit,
-  } = useAddPropertyForm(onSuccess);
+  const ownerUnlockFee = settings?.ownerUnlockFee || 200;
 
   return (
-    <Card className="rounded-[9px] border-brand-line bg-white shadow-sm overflow-hidden">
-      <CardHeader className="p-4 sm:p-6 text-center flex flex-col items-center">
-        <CardTitle className="text-xl sm:text-2xl font-bold text-brand-ink">
-          Add Property Listing
+    <Card className="rounded-[12px] border-brand-line bg-white shadow-sm overflow-hidden">
+      <CardHeader className="p-5 sm:p-6 border-b border-brand-line">
+        <CardTitle className="text-xl font-bold text-brand-ink">
+          Post a new listing
         </CardTitle>
-        <CardDescription className="text-sm text-brand-ink-soft leading-relaxed mt-1">
-          Submit verified land or house information. Title deeds and owner contact will be
-          audited before publishing.
+        <CardDescription className="text-xs sm:text-sm text-brand-ink-soft mt-1">
+          Submit verified property details. Every listing goes to the Admin approval queue before going public.
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit} noValidate>
-        <CardContent className="p-6 sm:p-8 pt-2 space-y-6">
-          {/* Titles */}
-          <Field label="Property Titles" required error={errors.title}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <Input
-                  value={formData.titleEn}
-                  onChange={(e) => updateField("titleEn", e.target.value)}
-                  placeholder="Title in English"
-                  className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ""}`}
-                />
-                <span className="text-[11px] text-brand-ink-soft mt-1 block">English</span>
-              </div>
-              <div>
-                <Input
-                  value={formData.titleRw}
-                  onChange={(e) => updateField("titleRw", e.target.value)}
-                  placeholder="Umutwe mu Kinyarwanda"
-                  className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ""}`}
-                />
-                <span className="text-[11px] text-brand-ink-soft mt-1 block">Kinyarwanda</span>
-              </div>
-              <div>
-                <Input
-                  value={formData.titleFr}
-                  onChange={(e) => updateField("titleFr", e.target.value)}
-                  placeholder="Titre en Français"
-                  className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ""}`}
-                />
-                <span className="text-[11px] text-brand-ink-soft mt-1 block">Français</span>
+        <CardContent className="p-5 sm:p-7 space-y-5">
+          {/* 1. Title & Description (RW / EN / FR tabs) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-brand-ink">
+                Title (RW / EN / FR tabs) <span className="text-red-500">*</span>
+              </label>
+              <div className="inline-flex rounded-[8px] border border-brand-line bg-brand-bg-soft p-0.5 gap-0.5">
+                {[
+                  ['rw', '🇷🇼 RW'],
+                  ['en', '🇬🇧 EN'],
+                  ['fr', '🇫🇷 FR'],
+                ].map(([code, lbl]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLangTab(code)}
+                    className={`px-2.5 py-1 rounded-[6px] text-xs font-bold cursor-pointer transition-colors ${
+                      langTab === code
+                        ? 'bg-brand-green text-white'
+                        : 'text-brand-ink-soft hover:text-brand-ink'
+                    }`}
+                  >
+                    {lbl}
+                  </button>
+                ))}
               </div>
             </div>
-          </Field>
 
-          {/* Descriptions */}
-          <Field label="Property Descriptions">
-            <div className="space-y-3">
-              <Textarea
-                value={formData.descriptionEn}
-                onChange={(e) => updateField("descriptionEn", e.target.value)}
-                rows={2}
-                placeholder="Description in English"
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {langTab === 'rw' && (
+              <div className="space-y-2">
+                <Input
+                  value={formData.titleRw}
+                  onChange={(e) => updateField('titleRw', e.target.value)}
+                  placeholder="e.g. Ikibanza cyo guturamo kireba imisozi — Remera"
+                  className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ''}`}
+                />
                 <Textarea
                   value={formData.descriptionRw}
-                  onChange={(e) => updateField("descriptionRw", e.target.value)}
+                  onChange={(e) => updateField('descriptionRw', e.target.value)}
                   rows={2}
-                  placeholder="Ibisobanuro mu Kinyarwanda"
+                  placeholder="Ibisobanuro by'umutungo mu Kinyarwanda..."
+                />
+              </div>
+            )}
+
+            {langTab === 'en' && (
+              <div className="space-y-2">
+                <Input
+                  value={formData.titleEn}
+                  onChange={(e) => updateField('titleEn', e.target.value)}
+                  placeholder="e.g. Residential plot with mountain view — Remera"
+                  className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ''}`}
+                />
+                <Textarea
+                  value={formData.descriptionEn}
+                  onChange={(e) => updateField('descriptionEn', e.target.value)}
+                  rows={2}
+                  placeholder="Property description in English..."
+                />
+              </div>
+            )}
+
+            {langTab === 'fr' && (
+              <div className="space-y-2">
+                <Input
+                  value={formData.titleFr}
+                  onChange={(e) => updateField('titleFr', e.target.value)}
+                  placeholder="e.g. Parcelle résidentielle avec vue sur montagne — Remera"
+                  className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ''}`}
                 />
                 <Textarea
                   value={formData.descriptionFr}
-                  onChange={(e) => updateField("descriptionFr", e.target.value)}
+                  onChange={(e) => updateField('descriptionFr', e.target.value)}
                   rows={2}
-                  placeholder="Description en Français"
+                  placeholder="Description du bien en Français..."
                 />
               </div>
-            </div>
-          </Field>
+            )}
+            {errors.title && <p className="text-xs text-red-600 font-medium">{errors.title}</p>}
+          </div>
 
-          {/* Type & Price */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            <Field label="Property Type" required>
-              <Select
-                value={formData.type}
-                onValueChange={(v) => updateField("type", v ?? "land")}
-                items={typeItems}
+          {/* 2. Property type, Sub-type, Condition, Listing for */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Property type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => {
+                  const newCat = e.target.value;
+                  updateField('category', newCat);
+                  const found = categories.find(
+                    (c) => c.name_en === newCat || c.slug === newCat
+                  );
+                  const firstSub = (found?.subtypes || found?.subTypes || [])[0];
+                  updateField('subType', firstSub ? firstSub.name_en : newCat);
+                }}
+                className="w-full h-11 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
               >
-                <SelectTrigger className={selectTriggerClass}>
-                  <SelectValue placeholder="Land" />
-                </SelectTrigger>
-                <SelectContent
-                  alignItemWithTrigger={false}
-                  align="start"
-                  sideOffset={6}
-                  className="rounded-[9px]"
-                >
-                  <SelectItem value="land">Land</SelectItem>
-                  <SelectItem value="plot">Plot</SelectItem>
-                  <SelectItem value="house">House</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
+                {categories.map((c) => (
+                  <option key={c.slug || c.id} value={c.name_en}>
+                    {tCat(c.slug || c.name_en)}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <Field label="Price (RWF)" required error={errors.priceRwf}>
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Sub-type
+              </label>
+              <select
+                value={formData.subType}
+                onChange={(e) => updateField('subType', e.target.value)}
+                disabled={subTypes.length === 0}
+                className="w-full h-11 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green disabled:opacity-60 disabled:bg-brand-bg-soft"
+              >
+                {subTypes.length > 0 ? (
+                  subTypes.map((s) => (
+                    <option key={s.slug || s.id} value={s.name_en}>
+                      {tCat(s.slug || s.name_en)}
+                    </option>
+                  ))
+                ) : (
+                  <option value={formData.category}>—</option>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Condition
+              </label>
+              <select
+                value={formData.condition}
+                onChange={(e) => updateField('condition', e.target.value)}
+                className="w-full h-11 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+              >
+                <option value="Finished">Finished / Titled</option>
+                <option value="Under construction">Under construction</option>
+                <option value="Serviced plot">Serviced plot</option>
+                <option value="Auction (Cyamunara)">Auction (Cyamunara)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Listing for <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.deal}
+                onChange={(e) => updateField('deal', e.target.value)}
+                className="w-full h-11 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium text-brand-ink focus:outline-none focus:border-brand-green"
+              >
+                <option value="sale">🏷️ For sale</option>
+                <option value="rent">🔑 For rent</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 3. Rental terms (if for rent), Price (RWF · monthly rent if for rent), Size (m²) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            {isRent && (
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  Rental terms (if for rent)
+                </label>
+                <Input
+                  value={formData.rentalTerms}
+                  onChange={(e) => updateField('rentalTerms', e.target.value)}
+                  placeholder="e.g. 12-month lease · 2 months deposit"
+                  className="rounded-[9px] h-11 pl-3 text-sm"
+                />
+              </div>
+            )}
+
+            <div className={isRent ? '' : 'sm:col-span-2'}>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Price (RWF · monthly rent if for rent) <span className="text-red-500">*</span>
+              </label>
               <Input
                 type="number"
                 value={formData.priceRwf}
-                onChange={(e) => updateField("priceRwf", e.target.value)}
-                placeholder="e.g. 15000000"
+                onChange={(e) => updateField('priceRwf', e.target.value)}
+                placeholder={isRent ? 'e.g. 650000' : 'e.g. 18500000'}
                 className={`rounded-[9px] h-11 pl-3 text-sm font-semibold ${
-                  errors.priceRwf ? errorInputClass : ""
+                  errors.priceRwf ? errorInputClass : ''
                 }`}
               />
-            </Field>
-          </div>
+              {errors.priceRwf && (
+                <p className="text-xs text-red-600 font-medium mt-1">{errors.priceRwf}</p>
+              )}
+            </div>
 
-          {/* Size & Unit */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            <Field label="Measurement Size" required error={errors.sizeValue}>
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Size (m²) <span className="text-red-500">*</span>
+              </label>
               <Input
                 type="number"
                 value={formData.sizeValue}
-                onChange={(e) => updateField("sizeValue", e.target.value)}
+                onChange={(e) => updateField('sizeValue', e.target.value)}
                 placeholder="e.g. 600"
                 className={`rounded-[9px] h-11 pl-3 text-sm ${
-                  errors.sizeValue ? errorInputClass : ""
+                  errors.sizeValue ? errorInputClass : ''
                 }`}
               />
-            </Field>
-
-            <Field label="Unit of Measurement">
-              <Select
-                value={formData.sizeUnit}
-                onValueChange={(v) => updateField("sizeUnit", v ?? "sqm")}
-                items={unitItems}
-              >
-                <SelectTrigger className={selectTriggerClass}>
-                  <SelectValue placeholder="Square Meters (m²)" />
-                </SelectTrigger>
-                <SelectContent
-                  alignItemWithTrigger={false}
-                  align="start"
-                  sideOffset={6}
-                  className="rounded-[9px]"
-                >
-                  <SelectItem value="sqm">Square Meters (m²)</SelectItem>
-                  <SelectItem value="ha">Hectares (ha)</SelectItem>
-                  <SelectItem value="ares">Ares</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
+              {errors.sizeValue && (
+                <p className="text-xs text-red-600 font-medium mt-1">{errors.sizeValue}</p>
+              )}
+            </div>
           </div>
 
-          {/* Location */}
-          <Field
-            label="Location (Province down to Village)"
-            required
-            error={errors.villageId}
-          >
+          {/* 4. Village (cascades from Province) */}
+          <div>
+            <label className="block text-xs font-semibold text-brand-ink mb-1">
+              Village (cascades from Province → District → Sector → Cell → Village){' '}
+              <span className="text-red-500">*</span>
+            </label>
             <LocationCascade
               key={cascadeKey}
               deepest="village"
               invalid={!!errors.villageId}
               onChange={setLocation}
             />
-          </Field>
+            {errors.villageId && (
+              <p className="text-xs text-red-600 font-medium mt-1">{errors.villageId}</p>
+            )}
+          </div>
 
-          {/* UPI */}
-          <Field label="UPI Number (Unique Parcel Identifier)">
-            <Input
-              value={formData.upiNumber}
-              onChange={(e) => updateField("upiNumber", e.target.value)}
-              placeholder="e.g. 1/02/09/04/432"
-              className="rounded-[9px] h-11 pl-3 text-sm font-mono"
-            />
-          </Field>
+          {/* 5. UPI number & Ownership proof (admins only) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                UPI number
+              </label>
+              <Input
+                value={formData.upiNumber}
+                onChange={(e) => updateField('upiNumber', e.target.value)}
+                placeholder="1/02/09/04/432"
+                className="rounded-[9px] h-11 pl-3 text-sm font-mono"
+              />
+            </div>
 
-          {/* Cover photo */}
-          <Field label="Cover Photo" required error={errors.coverPhoto}>
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Ownership proof (admins only)
+              </label>
+              <label className="h-11 px-3 rounded-[9px] border border-brand-line bg-brand-bg-soft/40 flex items-center justify-between cursor-pointer hover:border-brand-green">
+                <span className="text-xs text-brand-ink-soft truncate flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-brand-green shrink-0" />
+                  {formData.ownershipDoc
+                    ? formData.ownershipDoc.name
+                    : 'Upload land title / mandate (private)'}
+                </span>
+                <span className="text-xs font-bold text-brand-green shrink-0 ml-2">Browse</span>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => updateField('ownershipDoc', e.target.files?.[0] || null)}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* 6. Photos (min 3) */}
+          <div>
+            <label className="block text-xs font-semibold text-brand-ink mb-1">
+              Photos (min 3 · first photo is cover) <span className="text-red-500">*</span>
+            </label>
             <div
-              className={`p-4 border border-dashed rounded-[9px] bg-brand-bg-soft/30 hover:border-brand-green/60 transition-colors ${
-                errors.coverPhoto ? "border-red-500" : "border-brand-line"
+              className={`p-4 border border-dashed rounded-[10px] bg-brand-bg-soft/30 ${
+                errors.photos ? 'border-red-500' : 'border-brand-line'
               }`}
             >
-              <label className="flex flex-col sm:flex-row items-center gap-3 cursor-pointer">
-                <span className="w-10 h-10 rounded-[9px] bg-white border border-brand-line flex items-center justify-center text-brand-green shrink-0">
-                  <Upload className="w-5 h-5 text-brand-green" />
-                </span>
-                <div className="flex-1 text-center sm:text-left">
-                  <span className="text-xs font-semibold text-brand-ink block">
-                    Click to upload property cover image
-                  </span>
-                  <span className="text-[11px] text-brand-ink-soft">
-                    JPEG, PNG or WEBP (high-resolution recommended)
-                  </span>
-                </div>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setCover(file);
-                  }}
-                  className="hidden"
-                />
-              </label>
-
-              {coverPreview && (
-                <div className="mt-3 relative w-full sm:w-60 h-36 rounded-[9px] overflow-hidden border border-brand-line">
-                  <img
-                    src={coverPreview}
-                    alt="Cover preview"
-                    className="w-full h-full object-cover"
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-brand-line rounded-[9px] text-xs font-semibold text-brand-ink shadow-2xs hover:border-brand-green hover:text-brand-green transition-all">
+                  <Upload className="w-3.5 h-3.5 text-brand-green" />
+                  <span>Select property photos (min 3)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handlePhotosSelect}
+                    className="hidden"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setCover(null)}
-                    className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 text-white rounded-[6px]"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </Field>
+                </label>
+                <span className="text-xs font-semibold text-brand-ink-soft">
+                  {formData.photos.length} / 3 minimum uploaded
+                </span>
+              </div>
 
-          {/* Additional photos */}
-          <Field label="Additional Photos" hint="(up to 4, optional)">
-            <div className="p-4 border border-dashed border-brand-line rounded-[9px] bg-brand-bg-soft/30">
-              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-white border border-brand-line rounded-[9px] text-xs font-semibold text-brand-ink shadow-xs hover:border-brand-green hover:text-brand-green transition-all">
-                <Upload className="w-3.5 h-3.5 text-brand-green" />
-                <span>Select multiple images</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onChange={(e) =>
-                    setExtras(Array.from(e.target.files || []).slice(0, 4))
-                  }
-                  className="hidden"
-                />
-              </label>
-
-              {extraPreviews.length > 0 && (
-                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {extraPreviews.map((url, i) => (
+              {photoPreviews.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+                  {photoPreviews.map((url, i) => (
                     <div
                       key={url}
                       className="relative h-20 rounded-[9px] overflow-hidden border border-brand-line"
                     >
                       <img
                         src={url}
-                        alt={`Extra ${i + 1}`}
+                        alt={`Photo ${i + 1}`}
                         className="w-full h-full object-cover"
                       />
+                      {i === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-brand-green text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          Cover
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePhotoAt(i)}
+                        className="absolute top-1 right-1 p-0.5 bg-black/65 text-white rounded cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </Field>
+            {errors.photos && (
+              <p className="text-xs text-red-600 font-medium mt-1">{errors.photos}</p>
+            )}
+          </div>
 
-          {/* VIP Exclusive Deal Option */}
-          <div className="p-4 rounded-[9px] bg-amber-50/50 border border-amber-200/80 space-y-4">
-            <label className="flex items-center gap-2.5 cursor-pointer">
+          {/* 7. Owner name (hidden) & Owner phone (hidden · unlock fee) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-[10px] bg-brand-bg-soft/50 border border-brand-line">
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                Owner name (hidden)
+              </label>
+              <Input
+                value={formData.ownerName}
+                onChange={(e) => updateField('ownerName', e.target.value)}
+                placeholder="e.g. Mugisha Alex"
+                className="rounded-[9px] h-11 pl-3 text-sm bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-brand-ink mb-1">
+                <Phone className="w-3.5 h-3.5 inline mr-1 text-brand-green" />
+                Owner phone (hidden · {Number(ownerUnlockFee).toLocaleString()} RWF unlock)
+              </label>
+              <Input
+                type="tel"
+                value={formData.ownerPhone}
+                onChange={(e) => updateField('ownerPhone', e.target.value)}
+                placeholder="078..."
+                className="rounded-[9px] h-11 pl-3 text-sm bg-white"
+              />
+            </div>
+          </div>
+
+          {/* 8. ⭐ List as VIP exclusive deal */}
+          <div className="p-4 rounded-[12px] bg-[#FFFDF2] border border-[#D3B42B] space-y-3">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={Boolean(formData.isVip)}
-                onChange={(e) => updateField("isVip", e.target.checked)}
-                className="w-4 h-4 rounded accent-brand-green"
+                onChange={(e) => updateField('isVip', e.target.checked)}
+                className="mt-1 w-4 h-4 rounded accent-[#007A66] cursor-pointer"
               />
-              <span className="text-xs font-bold text-brand-ink uppercase tracking-wider">
-                Submit as VIP Room Exclusive Deal (7-day early access for VIP subscribers)
+              <span className="text-xs sm:text-sm text-brand-ink leading-relaxed">
+                <strong>⭐ List as VIP exclusive deal.</strong> Shown only to VIP subscribers for{' '}
+                {settings?.vipDays || 7} days, then public. Use for discounted, discreet or
+                pre-launch sales. Admin verifies the discount before approving.
               </span>
             </label>
 
             {formData.isVip && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <Field label="Original Market Value (RWF)" hint="(before discount)">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Normal public price (RWF · before VIP discount)
+                  </label>
                   <Input
                     type="number"
                     value={formData.vipWasPriceRwf}
-                    onChange={(e) => updateField("vipWasPriceRwf", e.target.value)}
-                    placeholder="e.g. 20000000"
-                    className="rounded-[9px] h-11 pl-3 text-sm bg-white"
+                    onChange={(e) => updateField('vipWasPriceRwf', e.target.value)}
+                    placeholder="e.g. 24000000"
+                    className="rounded-[9px] h-10 pl-3 text-sm bg-white"
                   />
-                </Field>
-                <Field label="Reason for Discount / VIP Tag">
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Why it&apos;s discounted (shown to VIP members)
+                  </label>
                   <Input
                     value={formData.vipReason}
-                    onChange={(e) => updateField("vipReason", e.target.value)}
-                    placeholder="e.g. Urgent relocation sale"
-                    className="rounded-[9px] h-11 pl-3 text-sm bg-white"
+                    onChange={(e) => updateField('vipReason', e.target.value)}
+                    placeholder="e.g. Owner relocating — quick sale within 30 days"
+                    className="rounded-[9px] h-10 pl-3 text-sm bg-white"
                   />
-                </Field>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Owner contact */}
-          <div className="p-4 rounded-[9px] bg-brand-bg-soft/40 border border-brand-line space-y-4">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-brand-green" />
-              <h4 className="text-xs font-bold text-brand-ink uppercase tracking-wider">
-                Owner Direct Contact (Protected)
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Owner Full Name" hint="(Private)">
-                <Input
-                  value={formData.ownerName}
-                  onChange={(e) => updateField("ownerName", e.target.value)}
-                  placeholder="e.g. Mugisha Alex"
-                  className="rounded-[9px] h-11 pl-3 text-sm bg-white"
-                />
-              </Field>
-
-              <Field label="Owner Phone Number" hint="(optional, buyers pay to unlock)" error={errors.ownerPhone}>
-                <Input
-                  type="tel"
-                  value={formData.ownerPhone}
-                  onChange={(e) => updateField("ownerPhone", e.target.value)}
-                  placeholder="0788 XXX XXX"
-                  className={`rounded-[9px] h-11 pl-3 text-sm bg-white ${
-                    errors.ownerPhone ? errorInputClass : ""
-                  }`}
-                />
-                {!errors.ownerPhone && formData.ownerPhone && (
-                  <p className="text-[11px] text-brand-ink-soft">
-                    Buyers pay to unlock this verified contact
-                  </p>
-                )}
-                {!formData.ownerPhone && !errors.ownerPhone && (
-                  <p className="text-[11px] text-amber-600">
-                    If not provided, only the Blocker's contact will be shown to buyers
-                  </p>
-                )}
-              </Field>
-            </div>
-          </div>
-
-          {/* Form-level error (API failure) */}
           {errors.form && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-[9px] bg-red-50/90 border border-red-200 text-red-700 text-xs sm:text-sm font-medium">
               <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -564,7 +611,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
           )}
         </CardContent>
 
-        <CardFooter className="p-6 sm:p-8 pt-5 border-t border-brand-line/60 flex items-center justify-between">
+        <CardFooter className="p-5 sm:p-6 border-t border-brand-line flex items-center justify-between">
           <Button
             type="button"
             variant="outline"
@@ -578,7 +625,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
             type="submit"
             disabled={isSubmitting}
             variant="default"
-            className="rounded-[9px] font-semibold h-11 px-6 shadow-sm flex items-center gap-2"
+            className="rounded-[9px] font-semibold h-11 px-6 shadow-sm flex items-center gap-2 cursor-pointer"
           >
             {isSubmitting ? (
               <>
@@ -587,7 +634,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
               </>
             ) : (
               <>
-                <span>Submit for Admin Approval</span>
+                <span>Submit for admin approval</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

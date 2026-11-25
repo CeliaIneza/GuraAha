@@ -12,7 +12,7 @@ export class EmailService {
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nodemailer = require('nodemailer');
-        const port = Number(env.EMAIL_PORT) || 587;
+        const port = Number(env.EMAIL_PORT) || 465;
         const isSecure = port === 465;
 
         this.transporter = nodemailer.createTransport({
@@ -24,7 +24,7 @@ export class EmailService {
             pass: env.EMAIL_HOST_PASSWORD,
           },
           tls: {
-            rejectUnauthorized: env.NODE_ENV === 'production',
+            rejectUnauthorized: false,
           },
         });
       } catch {
@@ -42,15 +42,15 @@ export class EmailService {
     verificationCode: string,
     recipientName = 'Valued User'
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>';
-    const subject = `Your GuraAha Verification Code: ${verificationCode}`;
+    const fromAddress = env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>';
+    const subject = `Your Guraaha Verification Code: ${verificationCode}`;
 
-    const text = `Hello ${recipientName},\n\nYour GuraAha verification code is: ${verificationCode}\n\nThis code will expire in 15 minutes. If you did not request this, please disregard this email.\n\nBest regards,\nThe GuraAha Team`;
+    const text = `Hello ${recipientName},\n\nYour Guraaha verification code is: ${verificationCode}\n\nThis code will expire in 15 minutes. If you did not request this, please disregard this email.\n\nBest regards,\nThe Guraaha Team`;
 
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 28px; background-color: #ffffff; border: 1px solid #E5E7EB; border-radius: 12px; color: #111827;">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h2 style="color: #0F2C26; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">GuraAha</h2>
+          <h2 style="color: #0F2C26; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Guraaha</h2>
           <p style="color: #6B7280; font-size: 13px; margin-top: 4px;">Rwanda Verified Property Marketplace</p>
         </div>
         
@@ -59,7 +59,7 @@ export class EmailService {
         </p>
         
         <p style="font-size: 14px; line-height: 1.6; color: #4B5563; margin-bottom: 20px;">
-          Thank you for signing up on GuraAha. Please use the verification code below to verify your account and activate your blocker eligibility:
+          Thank you for signing up on Guraaha. Please use the verification code below to verify your account and activate your blocker eligibility:
         </p>
         
         <div style="background-color: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 8px; padding: 18px; text-align: center; margin: 24px 0;">
@@ -75,7 +75,7 @@ export class EmailService {
         <hr style="border: none; border-top: 1px solid #F3F4F6; margin: 24px 0;" />
         
         <p style="font-size: 11px; color: #9CA3AF; text-align: center; margin: 0;">
-          &copy; ${new Date().getFullYear()} GuraAha Rwanda. All rights reserved.
+          &copy; ${new Date().getFullYear()} Guraaha Rwanda. All rights reserved.
         </p>
       </div>
     `;
@@ -107,18 +107,18 @@ export class EmailService {
     resetLink: string,
     recipientName = 'Valued User'
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>';
-    const subject = 'GuraAha – Reset Your Password';
+    const fromAddress = env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>';
+    const subject = 'Guraaha – Reset Your Password';
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
-      <h2 style="color:#0F2C26;">GuraAha – Password Reset</h2>
+      <h2 style="color:#0F2C26;">Guraaha – Password Reset</h2>
       <p>Hello <strong>${recipientName}</strong>,</p>
-      <p>Click the button below to reset your GuraAha password. This link expires in <strong>1 hour</strong>.</p>
+      <p>Click the button below to reset your Guraaha password. This link expires in <strong>1 hour</strong>.</p>
       <div style="text-align:center;margin:28px 0;">
         <a href="${resetLink}" style="background:#007A66;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Reset Password</a>
       </div>
       <p style="font-size:12px;color:#9CA3AF;">If you did not request a password reset, you can safely ignore this email.</p>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
-      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
+      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
     if (!this.transporter) {
       console.log(`[MOCK PASSWORD RESET EMAIL] To: ${to} | Link: ${resetLink}`);
@@ -136,33 +136,35 @@ export class EmailService {
 
   async sendBlockerApplicationEmail(to: string, name: string): Promise<void> {
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
-      <h2 style="color:#0F2C26;">GuraAha – Blocker Application Received</h2>
+      <h2 style="color:#0F2C26;">Guraaha – Blocker Application Received</h2>
       <p>Hello <strong>${name}</strong>,</p>
-      <p>Thank you for applying to become a GuraAha Blocker! Our compliance team will review your National ID and sector registration.</p>
-      <p>You will be notified by email once your application has been reviewed (usually within 1-3 business days).</p>
+      <p>Thank you for applying to become a Guraaha Blocker! Our compliance team will review your National ID and sector registration.</p>
+      <p>You will be notified once your application has been reviewed (usually within 1-3 business days).</p>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
-      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
+      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
     if (!this.transporter) { console.log(`[MOCK EMAIL] Blocker application received: ${to}`); return; }
-    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>', to, subject: 'GuraAha – Blocker Application Received', html }); }
+    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>', to, subject: 'Guraaha – Blocker Application Received', html }); }
     catch (e) { console.error('[EmailService] sendBlockerApplicationEmail failed:', e); }
   }
 
-  async sendBlockerApprovalEmail(to: string, name: string, verificationCode: string): Promise<void> {
+  async sendBlockerApprovalEmail(to: string, name: string, verificationCode: string, username?: string, tempPassword?: string): Promise<void> {
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
-      <h2 style="color:#0F2C26;">🎉 GuraAha – You are now a Blocker!</h2>
+      <h2 style="color:#0F2C26;">🎉 Guraaha – You are now a Blocker!</h2>
       <p>Hello <strong>${name}</strong>,</p>
       <p>Congratulations! Your Blocker application has been <strong>approved</strong>.</p>
       <div style="background:#F3F4F6;border:1px solid #D1D5DB;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
         <p style="margin:0 0 8px;font-size:13px;color:#6B7280;">Your Verification Code</p>
         <span style="font-size:28px;font-weight:800;letter-spacing:4px;color:#0F2C26;font-family:monospace;">${verificationCode}</span>
+        ${username ? `<p style="margin:10px 0 0;font-size:13px;color:#0F2C26;">Username: <strong>${username}</strong></p>` : ''}
+        ${tempPassword ? `<p style="margin:4px 0 0;font-size:13px;color:#0F2C26;">Temporary Password: <strong>${tempPassword}</strong></p>` : ''}
       </div>
       <p>You can now log in to your dashboard and start posting property listings.</p>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
-      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
+      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
     if (!this.transporter) { console.log(`[MOCK EMAIL] Blocker approved: ${to} | Code: ${verificationCode}`); return; }
-    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>', to, subject: '🎉 GuraAha – Your Blocker Application is Approved!', html }); }
+    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>', to, subject: '🎉 Guraaha – Your Blocker Application is Approved!', html }); }
     catch (e) { console.error('[EmailService] sendBlockerApprovalEmail failed:', e); }
   }
 
@@ -172,15 +174,15 @@ export class EmailService {
     title: string,
     summary: string
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = env.DEFAULT_FROM_EMAIL || 'GuraAha <noreply@guraaha.rw>';
+    const fromAddress = env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>';
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
       <h2 style="color:#0F2C26;margin-top:0;">${title}</h2>
       <p style="font-size:14px;line-height:1.6;color:#374151;">${summary}</p>
       <div style="margin:24px 0;">
-        <a href="${env.FRONTEND_URL || 'http://localhost:5173'}" style="background:#007A66;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">View on GuraAha</a>
+        <a href="${env.FRONTEND_URL || 'http://localhost:5173'}" style="background:#007A66;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">View on Guraaha</a>
       </div>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
-      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} GuraAha Rwanda</p>
+      <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
 
     if (!this.transporter) {

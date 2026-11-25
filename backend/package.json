@@ -1,8 +1,8 @@
 {
   "name": "guraaha",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Guraaha Real Estate Platform Backend",
+  "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc && mkdir -p dist/data && cp src/data/*.json dist/data/",

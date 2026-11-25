@@ -24,18 +24,18 @@ export class AdminRepository {
     executor: QueryExecutor = db
   ): Promise<PaginatedResult<any>> {
     const page = Math.max(1, Number(params.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const limit = Math.min(200, Math.max(1, Number(params.limit) || 100));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
     const values: unknown[] = [];
 
-    if (params.status && params.status !== 'ALL') {
+    if (params.status && params.status !== "ALL") {
       values.push(params.status.toUpperCase());
       conditions.push(`bp.status = $${values.length}`);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const countResult = await executor.query(
       `
@@ -60,6 +60,7 @@ export class AdminRepository {
         bp.user_id,
         bp.national_id,
         bp.operating_location_id,
+        bp.area_text,
         bp.verification_code,
         bp.agreement_document_path,
         bp.status,
@@ -71,13 +72,36 @@ export class AdminRepository {
         bp.updated_at,
         u.phone,
         u.email,
+        u.username,
+        u.must_change_password,
+        u.last_login_at,
         u.first_name,
         u.last_name,
         loc.name AS operating_location_name,
         loc.level AS operating_location_level,
         loc_parent.name AS operating_parent_name,
         loc_grandparent.name AS operating_grandparent_name,
-        CONCAT_WS(' → ', loc_grandparent.name, loc_parent.name, loc.name) AS operating_location_path
+        COALESCE(
+          bp.area_text,
+          NULLIF(CONCAT_WS(' → ', loc_grandparent.name, loc_parent.name, loc.name), '')
+        ) AS operating_location_path,
+        (
+          SELECT COUNT(*)::int
+          FROM listings l
+          WHERE l.blocker_id = bp.id
+        ) AS listing_count,
+        (
+          SELECT CASE
+            WHEN s.period = 'WEEK' THEN 'Blocker Pro · Weekly'
+            ELSE 'Blocker Pro · Monthly'
+          END
+          FROM subscriptions s
+          WHERE s.blocker_id = bp.id
+            AND s.status = 'ACTIVE'
+            AND s.expires_at > NOW()
+          ORDER BY s.expires_at DESC
+          LIMIT 1
+        ) AS active_plan
       FROM blocker_profiles bp
       INNER JOIN users u ON u.id = bp.user_id
       LEFT JOIN locations loc ON loc.id = bp.operating_location_id
@@ -108,18 +132,18 @@ export class AdminRepository {
     executor: QueryExecutor = db
   ): Promise<PaginatedResult<any>> {
     const page = Math.max(1, Number(params.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const limit = Math.min(200, Math.max(1, Number(params.limit) || 100));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
     const values: unknown[] = [];
 
-    if (params.status && params.status !== 'ALL') {
+    if (params.status && params.status !== "ALL") {
       values.push(params.status.toUpperCase());
       conditions.push(`l.status = $${values.length}`);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const countResult = await executor.query(
       `
@@ -148,6 +172,8 @@ export class AdminRepository {
         l.category,
         l.sub_type,
         l.condition,
+        l.deal,
+        l.rental_terms,
         COALESCE(l.title_en, l.title_rw, l.title_fr) AS title,
         l.title_en,
         l.title_rw,
@@ -163,6 +189,7 @@ export class AdminRepository {
         l.owner_phone,
         l.ownership_document_path,
         l.status,
+        l.is_featured,
         l.is_disabled,
         l.is_vip,
         l.vip_was_price_rwf,
@@ -180,6 +207,12 @@ export class AdminRepository {
         u.phone AS blocker_phone,
         u.email AS blocker_email,
         bp.verification_code AS blocker_verification_code,
+        bp.status AS blocker_status,
+        (
+          SELECT COUNT(*)::int
+          FROM contact_unlocks cu
+          WHERE cu.listing_id = l.id
+        ) AS unlock_count,
         (
           SELECT lp.file_path
           FROM listing_photos lp
@@ -232,25 +265,25 @@ export class AdminRepository {
     executor: QueryExecutor = db
   ): Promise<PaginatedResult<any>> {
     const page = Math.max(1, Number(params.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const limit = Math.min(200, Math.max(1, Number(params.limit) || 100));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
     const values: unknown[] = [];
 
-    if (params.status && params.status !== 'ALL') {
+    if (params.status && params.status !== "ALL") {
       values.push(params.status.toUpperCase());
       conditions.push(`s.status = $${values.length}`);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const countResult = await executor.query(
       `
       SELECT COUNT(*)::int AS total
       FROM subscriptions s
       LEFT JOIN blocker_profiles bp ON bp.id = s.blocker_id
-      INNER JOIN users u ON u.id = COALESCE(s.user_id, bp.user_id)
+      LEFT JOIN users u ON u.id = COALESCE(s.user_id, bp.user_id)
       ${whereClause}
       `,
       values
@@ -275,16 +308,20 @@ export class AdminRepository {
         s.starts_at,
         s.expires_at,
         s.cancelled_at,
+        s.alert_districts,
+        s.subscriber_name,
+        s.subscriber_phone,
         s.created_at,
         s.updated_at,
         COALESCE(p.amount_rwf, 0)::int AS amount_rwf,
+        COALESCE(s.subscriber_name, NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), '')) AS display_name,
         u.first_name,
         u.last_name,
-        u.phone,
+        COALESCE(s.subscriber_phone, u.phone) AS phone,
         u.email
       FROM subscriptions s
       LEFT JOIN blocker_profiles bp ON bp.id = s.blocker_id
-      INNER JOIN users u ON u.id = COALESCE(s.user_id, bp.user_id)
+      LEFT JOIN users u ON u.id = COALESCE(s.user_id, bp.user_id)
       LEFT JOIN payments p ON p.id = s.payment_id
       ${whereClause}
       ORDER BY s.created_at DESC
@@ -302,5 +339,48 @@ export class AdminRepository {
         totalPages: Math.ceil(total / limit) || 1,
       },
     };
+  }
+
+  async findAllPayments(executor: QueryExecutor = db) {
+    const result = await executor.query(
+      `
+      SELECT
+        p.id,
+        p.user_id,
+        p.provider,
+        p.provider_reference,
+        p.amount_rwf::int AS amount_rwf,
+        p.purpose,
+        p.status,
+        p.metadata,
+        p.verified_at,
+        p.created_at,
+        p.updated_at,
+        u.first_name,
+        u.last_name,
+        u.phone,
+        u.email,
+        COALESCE(l.title_en, l.title_rw, l.title_fr) AS listing_title
+      FROM payments p
+      LEFT JOIN users u ON u.id = p.user_id
+      LEFT JOIN listings l ON l.id::text = (p.metadata->>'listingId')
+      ORDER BY p.created_at DESC
+      LIMIT 200
+      `
+    );
+    return result.rows;
+  }
+
+  async getAuditLogs(limit = 25, executor: QueryExecutor = db) {
+    const result = await executor.query(
+      `
+      SELECT id, actor_id, action, created_at
+      FROM audit_logs
+      ORDER BY created_at DESC
+      LIMIT $1
+      `,
+      [limit]
+    );
+    return result.rows;
   }
 }
