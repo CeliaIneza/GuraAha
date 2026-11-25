@@ -34,15 +34,16 @@ export const listingsApi = {
     api(`/listings/${id}`, { method: 'PATCH', body: payload, auth: true }),
   toggleDisabled: (id) =>
     api(`/listings/${id}/toggle-disabled`, { method: 'PATCH', auth: true }),
+  toggleFeatured: (id) =>
+    api(`/listings/${id}/toggle-featured`, { method: 'PATCH', auth: true }),
   delete: (id) =>
     api(`/listings/${id}`, { method: 'DELETE', auth: true }),
   removePhoto: (photoId) => api(`/listings/photos/${photoId}`, { method: 'DELETE', auth: true }),
-  // VIP-only deals: requires active VIP_ROOM subscription on the backend
   getVipDeals: (params = {}) => {
     const search = new URLSearchParams();
     if (params.page) search.set('page', String(params.page));
     if (params.pageSize) search.set('pageSize', String(params.pageSize));
     const qs = search.toString();
-    return api(`/listings/vip-deals${qs ? `?${qs}` : ''}`, { auth: true });
+    return api(`/listings/vip-deals${qs ? `?${qs}` : ''}`);
   },
 };

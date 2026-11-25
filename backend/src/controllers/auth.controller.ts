@@ -4,7 +4,7 @@ import { randomUUID, createHash } from "crypto";
 import { AuthService } from "../services/auth.service";
 import { TokenService } from "../services/token.service";
 import { VerificationService } from "../services/verification.service";
-import { decodeAuthToken } from "../utils/jwt.util";
+import { decodeAuthToken, verifyAuthToken } from "../utils/jwt.util";
 import { db } from "../config/database";
 import { env } from "../config/env";
 import { EmailService } from "../services/email.service";
@@ -54,6 +54,29 @@ export class AuthController {
 
   login = async (req: Request, res: Response) => {
     try {
+      const header = req.headers.authorization;
+      if (header && header.startsWith("Bearer ")) {
+        const rawToken = header.slice("Bearer ".length).trim();
+        if (rawToken) {
+          try {
+            const payload = verifyAuthToken(rawToken);
+            if (payload && payload.sub) {
+              const isRevoked = payload.jti
+                ? await this.tokenService.isAccessTokenRevoked(payload.jti)
+                : false;
+              if (!isRevoked) {
+                return res.status(409).json({
+                  message:
+                    "You are already logged in. Please log out first before logging in again.",
+                });
+              }
+            }
+          } catch {
+            // Token expired or invalid; allow fresh login
+          }
+        }
+      }
+
       const result = await this.authService.login(req.body);
       return res.status(200).json({
         message: "Logged in successfully",
@@ -170,16 +193,16 @@ export class AuthController {
 
   forgotPassword = async (req: Request, res: Response) => {
     try {
-      const { email } = req.body || {};
-      if (!email || typeof email !== "string") {
-        return res.status(400).json({ message: "Email is required" });
+      const identifier = String(req.body?.email || req.body?.identifier || "").trim();
+      if (!identifier) {
+        return res.status(400).json({ message: "Email or username is required" });
       }
       const { rows } = await db.query(
-        "SELECT id, first_name, last_name, email FROM users WHERE lower(email) = lower($1) AND status = 'ACTIVE'",
-        [email.trim()]
+        "SELECT id, first_name, last_name, email FROM users WHERE (lower(email) = lower($1) OR lower(username) = lower($1) OR phone = $1) AND status = 'ACTIVE' LIMIT 1",
+        [identifier]
       );
-      if (rows.length === 0) {
-        return res.status(200).json({ message: "If that email is registered, a reset link has been sent." });
+      if (rows.length === 0 || !rows[0].email) {
+        return res.status(200).json({ message: "If that account has a registered email, a reset link has been sent." });
       }
       const user = rows[0];
       const rawToken = randomUUID();
@@ -192,7 +215,7 @@ export class AuthController {
       const resetLink = `${env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${rawToken}`;
       const svc = new EmailService();
       await svc.sendPasswordResetEmail(user.email, resetLink, `${user.first_name} ${user.last_name}`);
-      return res.status(200).json({ message: "If that email is registered, a reset link has been sent." });
+      return res.status(200).json({ message: "If that account is registered, a reset link has been sent." });
     } catch (error) {
       console.error("forgotPassword error:", error);
       return res.status(500).json({ message: "Failed to process request" });
@@ -218,13 +241,53 @@ export class AuthController {
       }
       const userId = rows[0].user_id;
       const hash = await bcrypt.hash(password, 12);
-      await db.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [hash, userId]);
+      await db.query("UPDATE users SET password_hash = $1, must_change_password = FALSE, updated_at = NOW() WHERE id = $2", [hash, userId]);
       await db.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
       await this.tokenService.logoutAll(userId);
       return res.status(200).json({ message: "Password reset successfully. You can now log in." });
     } catch (error) {
       console.error("resetPassword error:", error);
       return res.status(500).json({ message: "Failed to reset password" });
+    }
+  };
+
+  updateProfile = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      const updated = await this.authService.updateProfile(userId, req.body || {});
+      return res.status(200).json({
+        message: "Profile saved.",
+        data: updated,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message: error instanceof Error ? error.message : "Failed to update profile",
+      });
+    }
+  };
+
+  changePassword = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      const { currentPassword, newPassword } = req.body || {};
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+      const updated = await this.authService.changePassword(userId, String(currentPassword), String(newPassword));
+      return res.status(200).json({
+        message: "Password updated.",
+        data: updated,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message: error instanceof Error ? error.message : "Failed to update password",
+      });
     }
   };
 }

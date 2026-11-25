@@ -9,6 +9,8 @@ export interface CreateListingInput {
   category?: string;
   subType?: string;
   condition?: string;
+  deal?: string;
+  rentalTerms?: string | null;
   titleRw?: string;
   titleEn?: string;
   titleFr?: string;
@@ -18,36 +20,50 @@ export interface CreateListingInput {
   priceRwf: number;
   sizeValue: number;
   sizeUnit: string;
-  upiNumber?: string;
-  ownerName?: string;
-  ownerPhone?: string;
-  ownershipDocumentPath?: string;
+  upiNumber?: string | null;
+  ownerName?: string | null;
+  ownerPhone?: string | null;
+  ownershipDocumentPath?: string | null;
+  status?: string;
+  isFeatured?: boolean;
+  isDisabled?: boolean;
   isVip?: boolean;
-  vipWasPriceRwf?: number;
-  vipDiscountPercent?: number;
-  vipReason?: string;
-  vipEarlyAccessDays?: number;
+  vipWasPriceRwf?: number | null;
+  vipDiscountPercent?: number | null;
+  vipReason?: string | null;
+  vipEarlyAccessDays?: number | null;
 }
 
 export interface UpdateListingInput {
-  titleRw?: string;
-  titleEn?: string;
-  titleFr?: string;
-  descriptionRw?: string;
-  descriptionEn?: string;
-  descriptionFr?: string;
+  blockerId?: string;
+  villageId?: string;
+  titleRw?: string | null;
+  titleEn?: string | null;
+  titleFr?: string | null;
+  descriptionRw?: string | null;
+  descriptionEn?: string | null;
+  descriptionFr?: string | null;
   priceRwf?: number;
   sizeValue?: number;
   sizeUnit?: string;
-  upiNumber?: string;
+  upiNumber?: string | null;
   type?: string;
-  category?: string;
-  subType?: string;
-  condition?: string;
+  category?: string | null;
+  subType?: string | null;
+  condition?: string | null;
+  deal?: string;
+  rentalTerms?: string | null;
+  ownerName?: string | null;
+  ownerPhone?: string | null;
+  ownershipDocumentPath?: string | null;
+  status?: string;
+  isFeatured?: boolean;
+  isDisabled?: boolean;
   isVip?: boolean;
-  vipWasPriceRwf?: number;
-  vipDiscountPercent?: number;
-  vipReason?: string;
+  vipWasPriceRwf?: number | null;
+  vipDiscountPercent?: number | null;
+  vipReason?: string | null;
+  vipEarlyAccessDays?: number | null;
 }
 
 export interface ListingFilters {
@@ -59,6 +75,9 @@ export interface ListingFilters {
   type?: string;
   category?: string;
   subType?: string;
+  deal?: string;
+  isFeatured?: boolean;
+  sort?: string;
   maxPrice?: number;
   minPrice?: number;
   isVipOnly?: boolean;
@@ -74,6 +93,8 @@ const LISTING_COLUMNS = `
   category,
   sub_type,
   condition,
+  deal,
+  rental_terms,
   title_rw,
   title_en,
   title_fr,
@@ -88,6 +109,7 @@ const LISTING_COLUMNS = `
   owner_phone,
   ownership_document_path,
   status,
+  is_featured,
   is_vip,
   vip_was_price_rwf,
   vip_discount_percent,
@@ -111,6 +133,8 @@ const ENRICHED_LISTING_SELECT = `
   l.category,
   l.sub_type,
   l.condition,
+  l.deal,
+  l.rental_terms,
   l.title_rw,
   l.title_en,
   l.title_fr,
@@ -125,6 +149,7 @@ const ENRICHED_LISTING_SELECT = `
   l.owner_phone,
   l.ownership_document_path,
   l.status,
+  l.is_featured,
   l.is_vip,
   l.vip_was_price_rwf,
   l.vip_discount_percent,
@@ -139,6 +164,7 @@ const ENRICHED_LISTING_SELECT = `
   l.created_at,
   l.updated_at,
   bp.user_id AS owner_user_id,
+  bp.status AS blocker_status,
   (
     SELECT lp.file_path
     FROM listing_photos lp
@@ -162,8 +188,12 @@ const ENRICHED_LISTING_SELECT = `
     'id', bp.id,
     'firstName', u.first_name,
     'lastName', u.last_name,
-    'verificationCode', bp.verification_code
-  ) AS blocker
+    'verificationCode', bp.verification_code,
+    'status', bp.status
+  ) AS blocker,
+  ah.highlights_en AS area_highlights_en,
+  ah.highlights_rw AS area_highlights_rw,
+  ah.highlights_fr AS area_highlights_fr
 `;
 
 const ENRICHED_LISTING_JOINS = `
@@ -175,6 +205,7 @@ const ENRICHED_LISTING_JOINS = `
   LEFT JOIN locations loc_sec ON loc_sec.id = loc_cel.parent_id
   LEFT JOIN locations loc_dis ON loc_dis.id = loc_sec.parent_id
   LEFT JOIN locations loc_pro ON loc_pro.id = loc_dis.parent_id
+  LEFT JOIN area_highlights ah ON LOWER(ah.district_name) = LOWER(loc_dis.name)
 `;
 
 export class ListingRepository {
@@ -185,32 +216,43 @@ export class ListingRepository {
       discountPercent = Number((((input.vipWasPriceRwf - input.priceRwf) / input.vipWasPriceRwf) * 100).toFixed(2));
     }
 
+    const deal = (input.deal || "sale").toLowerCase() === "rent" ? "rent" : "sale";
+    const status = (input.status || "PENDING").toUpperCase();
+    const earlyDays = input.vipEarlyAccessDays ?? 7;
+
     const result = await executor.query(
       `
       INSERT INTO listings (
-        blocker_id, village_id, type, category, sub_type, condition,
+        blocker_id, village_id, type, category, sub_type, condition, deal, rental_terms,
         title_rw, title_en, title_fr,
         description_rw, description_en, description_fr,
         price_rwf, size_value, size_unit,
         upi_number, owner_name, owner_phone, ownership_document_path,
-        is_vip, vip_was_price_rwf, vip_discount_percent, vip_reason, vip_early_access_days
+        status, is_featured, is_disabled,
+        is_vip, vip_was_price_rwf, vip_discount_percent, vip_reason, vip_early_access_days,
+        vip_expires_at, approved_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7, $8, $9,
-        $10, $11, $12,
-        $13, $14, $15,
-        $16, $17, $18, $19,
-        $20, $21, $22, $23, $24
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11,
+        $12, $13, $14,
+        $15, $16, $17,
+        $18, $19, $20, $21,
+        $22, $23, $24,
+        $25, $26, $27, $28, $29,
+        CASE WHEN $25 = TRUE AND $22 = 'APPROVED' THEN NOW() + ($29::int * INTERVAL '1 day') ELSE NULL END,
+        CASE WHEN $22 = 'APPROVED' THEN NOW() ELSE NULL END
       )
       RETURNING ${LISTING_COLUMNS}
       `,
       [
         input.blockerId,
         input.villageId,
-        input.type ? input.type.toUpperCase() : input.type,
-        input.category ?? null,
-        input.subType ?? null,
-        input.condition ?? null,
+        input.type || input.subType || input.category || "Land and Plots",
+        input.category ?? input.type ?? "Land and Plots",
+        input.subType ?? input.type ?? input.category ?? "Land and Plots",
+        input.condition ?? "Ready / finished",
+        deal,
+        input.rentalTerms ?? null,
         input.titleRw ?? null,
         input.titleEn ?? null,
         input.titleFr ?? null,
@@ -224,11 +266,14 @@ export class ListingRepository {
         input.ownerName ?? null,
         input.ownerPhone ?? null,
         input.ownershipDocumentPath ?? null,
+        status,
+        Boolean(input.isFeatured),
+        Boolean(input.isDisabled),
         isVip,
         input.vipWasPriceRwf ?? null,
         discountPercent,
         input.vipReason ?? null,
-        input.vipEarlyAccessDays ?? 7,
+        earlyDays,
       ]
     );
     return result.rows[0];
@@ -296,10 +341,13 @@ export class ListingRepository {
   }
 
   async findApproved(filters: ListingFilters, isVipUser: boolean = false, executor: QueryExecutor = db) {
-    const conditions: string[] = [`l.status = 'APPROVED'`, `l.is_disabled = FALSE`];
+    const conditions: string[] = [
+      `l.status = 'APPROVED'`,
+      `l.is_disabled = FALSE`,
+      `bp.status <> 'SUSPENDED'`,
+    ];
     const values: unknown[] = [];
 
-    // VIP Visibility Rule
     if (!isVipUser) {
       conditions.push(`(l.is_vip = FALSE OR l.vip_expires_at IS NULL OR l.vip_expires_at <= NOW())`);
     }
@@ -310,26 +358,56 @@ export class ListingRepository {
     }
 
     if (filters.locationId) {
-      values.push(filters.locationId);
-      const paramIdx = `$${values.length}`;
-      conditions.push(
-        `(${paramIdx}::uuid IN (l.village_id, loc_cel.id, loc_sec.id, loc_dis.id, loc_pro.id))`
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        filters.locationId
       );
+      if (isUuid) {
+        values.push(filters.locationId);
+        const paramIdx = `$${values.length}`;
+        conditions.push(
+          `(${paramIdx}::uuid IN (l.village_id, loc_cel.id, loc_sec.id, loc_dis.id, loc_pro.id))`
+        );
+      } else {
+        values.push(filters.locationId);
+        const paramIdx = `$${values.length}`;
+        conditions.push(
+          `LOWER(${paramIdx}) IN (LOWER(loc_vil.name), LOWER(loc_cel.name), LOWER(loc_sec.name), LOWER(loc_dis.name), LOWER(loc_pro.name))`
+        );
+      }
     }
 
-    if (filters.type) {
-      values.push(filters.type);
-      conditions.push(`UPPER(l.type) = UPPER($${values.length})`);
+    if (filters.deal) {
+      values.push(filters.deal.toLowerCase());
+      conditions.push(`LOWER(COALESCE(l.deal, 'sale')) = $${values.length}`);
+    }
+
+    if (filters.isFeatured !== undefined) {
+      values.push(Boolean(filters.isFeatured));
+      conditions.push(`l.is_featured = $${values.length}`);
     }
 
     if (filters.category) {
       values.push(filters.category);
-      conditions.push(`UPPER(l.category) = UPPER($${values.length})`);
+      const idx = `$${values.length}`;
+      conditions.push(
+        `(LOWER(l.category) = LOWER(${idx}) OR LOWER(l.type) = LOWER(${idx}))`
+      );
     }
 
     if (filters.subType) {
       values.push(filters.subType);
-      conditions.push(`UPPER(l.sub_type) = UPPER($${values.length})`);
+      const idx = `$${values.length}`;
+      conditions.push(
+        `(LOWER(l.sub_type) = LOWER(${idx}) OR LOWER(l.type) = LOWER(${idx}))`
+      );
+    }
+
+    if (filters.type && !filters.category && !filters.subType) {
+      values.push(filters.type);
+      const idx = `$${values.length}`;
+      conditions.push(
+        `(LOWER(l.type) = LOWER(${idx}) OR LOWER(l.category) = LOWER(${idx}) OR LOWER(l.sub_type) = LOWER(${idx}))`
+      );
     }
 
     if (filters.maxPrice) {
@@ -342,6 +420,17 @@ export class ListingRepository {
       conditions.push(`l.price_rwf >= $${values.length}`);
     }
 
+    let orderBy = `l.created_at DESC`;
+    if (filters.sort === "lo") {
+      orderBy = `l.price_rwf ASC, l.created_at DESC`;
+    } else if (filters.sort === "hi") {
+      orderBy = `l.price_rwf DESC, l.created_at DESC`;
+    } else if (filters.sort === "sale") {
+      orderBy = `CASE WHEN LOWER(COALESCE(l.deal, 'sale')) = 'sale' THEN 0 ELSE 1 END ASC, l.created_at DESC`;
+    } else if (filters.sort === "rent") {
+      orderBy = `CASE WHEN LOWER(COALESCE(l.deal, 'sale')) = 'rent' THEN 0 ELSE 1 END ASC, l.created_at DESC`;
+    }
+
     values.push(filters.limit);
     const limitParam = `$${values.length}`;
     values.push(filters.offset);
@@ -351,8 +440,8 @@ export class ListingRepository {
       `
       SELECT ${ENRICHED_LISTING_SELECT}
       ${ENRICHED_LISTING_JOINS}
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY l.created_at DESC
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY ${orderBy}
       LIMIT ${limitParam} OFFSET ${offsetParam}
       `,
       values
@@ -368,6 +457,7 @@ export class ListingRepository {
       WHERE l.is_vip = TRUE
         AND l.status = 'APPROVED'
         AND l.is_disabled = FALSE
+        AND bp.status <> 'SUSPENDED'
         AND (l.vip_expires_at IS NULL OR l.vip_expires_at > NOW())
       ORDER BY l.created_at DESC
       LIMIT $1 OFFSET $2
@@ -493,7 +583,7 @@ export class ListingRepository {
       SET
         is_disabled = NOT is_disabled,
         updated_at = NOW()
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
       RETURNING ${LISTING_COLUMNS}
       `,
       params
@@ -501,58 +591,94 @@ export class ListingRepository {
     return result.rows[0] ?? null;
   }
 
-  async update(listingId: string, blockerId: string, input: UpdateListingInput, executor: QueryExecutor = db) {
+  async toggleFeatured(listingId: string, executor: QueryExecutor = db) {
+    const result = await executor.query(
+      `
+      UPDATE listings
+      SET
+        is_featured = NOT is_featured,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING ${LISTING_COLUMNS}
+      `,
+      [listingId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async update(
+    listingId: string,
+    blockerId: string | null,
+    input: UpdateListingInput,
+    isAdmin = false,
+    executor: QueryExecutor = db
+  ) {
     const current = await this.findById(listingId, executor);
-    if (!current || current.blocker_id !== blockerId) {
+    if (!current || (!isAdmin && blockerId && current.blocker_id !== blockerId)) {
       return null;
     }
 
-    // Price or UPI changes require re-approval if the listing was APPROVED
-    let newStatus = current.status;
-    const priceChanged = input.priceRwf !== undefined && input.priceRwf !== current.price_rwf;
+    let newStatus = input.status ? input.status.toUpperCase() : current.status;
+    const priceChanged = input.priceRwf !== undefined && Number(input.priceRwf) !== Number(current.price_rwf);
     const upiChanged = input.upiNumber !== undefined && input.upiNumber !== current.upi_number;
+    const dealChanged = input.deal !== undefined && input.deal.toLowerCase() !== (current.deal || "sale").toLowerCase();
 
-    if (current.status === 'APPROVED' && (priceChanged || upiChanged)) {
-      newStatus = 'PENDING';
+    if (!isAdmin && current.status === "APPROVED" && (priceChanged || upiChanged || dealChanged)) {
+      newStatus = "PENDING";
     }
 
     const isVip = input.isVip !== undefined ? input.isVip : current.is_vip;
     let discountPercent = input.vipDiscountPercent ?? current.vip_discount_percent;
-    const wasPrice = input.vipWasPriceRwf ?? current.vip_was_price_rwf;
+    const wasPrice = input.vipWasPriceRwf !== undefined ? input.vipWasPriceRwf : current.vip_was_price_rwf;
     const price = input.priceRwf ?? current.price_rwf;
 
-    if (isVip && wasPrice && wasPrice > price && input.vipDiscountPercent === undefined) {
-      discountPercent = Number((((wasPrice - price) / wasPrice) * 100).toFixed(2));
+    if (isVip && wasPrice && Number(wasPrice) > Number(price) && input.vipDiscountPercent === undefined) {
+      discountPercent = Number((((Number(wasPrice) - Number(price)) / Number(wasPrice)) * 100).toFixed(2));
     }
+
+    const deal = input.deal ? (input.deal.toLowerCase() === "rent" ? "rent" : "sale") : current.deal || "sale";
+    const isFeatured = input.isFeatured !== undefined ? Boolean(input.isFeatured) : Boolean(current.is_featured);
+    const isDisabled = input.isDisabled !== undefined ? Boolean(input.isDisabled) : Boolean(current.is_disabled);
 
     const result = await executor.query(
       `
       UPDATE listings
       SET
-        title_rw = COALESCE($1, title_rw),
-        title_en = COALESCE($2, title_en),
-        title_fr = COALESCE($3, title_fr),
-        description_rw = COALESCE($4, description_rw),
-        description_en = COALESCE($5, description_en),
-        description_fr = COALESCE($6, description_fr),
-        price_rwf = COALESCE($7, price_rwf),
-        size_value = COALESCE($8, size_value),
-        size_unit = COALESCE($9, size_unit),
-        upi_number = COALESCE($10, upi_number),
-        type = COALESCE($11, type),
-        category = COALESCE($12, category),
-        sub_type = COALESCE($13, sub_type),
-        condition = COALESCE($14, condition),
-        is_vip = $15,
-        vip_was_price_rwf = $16,
-        vip_discount_percent = $17,
-        vip_reason = COALESCE($18, vip_reason),
-        status = $19,
+        blocker_id = COALESCE($1, blocker_id),
+        village_id = COALESCE($2, village_id),
+        title_rw = COALESCE($3, title_rw),
+        title_en = COALESCE($4, title_en),
+        title_fr = COALESCE($5, title_fr),
+        description_rw = COALESCE($6, description_rw),
+        description_en = COALESCE($7, description_en),
+        description_fr = COALESCE($8, description_fr),
+        price_rwf = COALESCE($9, price_rwf),
+        size_value = COALESCE($10, size_value),
+        size_unit = COALESCE($11, size_unit),
+        upi_number = COALESCE($12, upi_number),
+        type = COALESCE($13, type),
+        category = COALESCE($14, category),
+        sub_type = COALESCE($15, sub_type),
+        condition = COALESCE($16, condition),
+        deal = $17,
+        rental_terms = COALESCE($18, rental_terms),
+        owner_name = COALESCE($19, owner_name),
+        owner_phone = COALESCE($20, owner_phone),
+        is_featured = $21,
+        is_disabled = $22,
+        is_vip = $23,
+        vip_was_price_rwf = $24,
+        vip_discount_percent = $25,
+        vip_reason = COALESCE($26, vip_reason),
+        vip_early_access_days = COALESCE($27, vip_early_access_days),
+        status = $28,
         updated_at = NOW()
-      WHERE id = $20 AND blocker_id = $21
+      WHERE id = $29
       RETURNING ${LISTING_COLUMNS}
       `,
       [
+        input.blockerId ?? null,
+        input.villageId ?? null,
         input.titleRw ?? null,
         input.titleEn ?? null,
         input.titleFr ?? null,
@@ -567,13 +693,19 @@ export class ListingRepository {
         input.category ?? null,
         input.subType ?? null,
         input.condition ?? null,
+        deal,
+        input.rentalTerms ?? null,
+        input.ownerName ?? null,
+        input.ownerPhone ?? null,
+        isFeatured,
+        isDisabled,
         isVip,
-        wasPrice ?? null,
-        discountPercent ?? null,
+        isVip ? wasPrice ?? null : null,
+        isVip ? discountPercent ?? null : null,
         input.vipReason ?? null,
+        input.vipEarlyAccessDays ?? null,
         newStatus,
         listingId,
-        blockerId,
       ]
     );
     return result.rows[0] ?? null;

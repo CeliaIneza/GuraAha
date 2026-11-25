@@ -1,5 +1,6 @@
 import { SettingRepository, SettingDbRow } from "../repositories/setting.repository";
 import { PUBLIC_SETTING_KEYS } from "../validators/setting.validator";
+import { db } from "../config/database";
 import {
     ContactUnlockType,
     SubscriptionPlanConfig,
@@ -16,6 +17,9 @@ const DEFAULT_PUBLIC_SETTINGS: Record<string, string> = {
     [SETTING_KEY_SUBSCRIPTION_PLANS]: JSON.stringify(DEFAULT_SUBSCRIPTION_PLANS),
     [SETTING_KEY_VIP_EARLY_ACCESS_DAYS]: "7",
     [SETTING_KEY_VIP_MIN_DISCOUNT_PERCENT]: "10",
+    lotto_prize_rwf: "250000",
+    home_featured_min: "3",
+    home_latest_count: "6",
     contact_unlock_fee_rwf: "1000",
     subscription_pricing: JSON.stringify({
         MONTHLY: 5000,
@@ -56,6 +60,30 @@ export class SettingService {
                     // keep as string
                 }
             }
+        }
+
+        try {
+            const statsRes = await db.query(`
+                SELECT
+                    (SELECT COUNT(*)::int FROM listings WHERE status = 'APPROVED' AND is_disabled = FALSE) AS listings_count,
+                    (SELECT COUNT(*)::int FROM blocker_profiles WHERE status = 'APPROVED') AS verified_blockers_count,
+                    (SELECT COUNT(*)::int FROM locations WHERE level = 'DISTRICT' AND is_active = TRUE) AS districts_count,
+                    (SELECT COUNT(*)::int FROM contact_unlocks) AS contacts_unlocked_count
+            `);
+            const s = statsRes.rows[0] || {};
+            map.live_stats = {
+                listingsCount: Number(s.listings_count ?? 0),
+                verifiedBlockersCount: Number(s.verified_blockers_count ?? 0),
+                districtsCount: Number(s.districts_count || 30),
+                contactsUnlockedCount: Number(s.contacts_unlocked_count ?? 0),
+            };
+        } catch {
+            map.live_stats = {
+                listingsCount: 0,
+                verifiedBlockersCount: 0,
+                districtsCount: 30,
+                contactsUnlockedCount: 0,
+            };
         }
 
         return map;

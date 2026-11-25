@@ -29,6 +29,8 @@ const verificationService = new VerificationService(undefined, userRepository);
 const authController = new AuthController(authService, tokenService, verificationService);
 
 router.get('/me', authenticate, authController.me);
+router.patch('/profile', authenticate, authController.updateProfile);
+router.post('/change-password', authenticate, authController.changePassword);
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshTokenSchema), authController.refresh);

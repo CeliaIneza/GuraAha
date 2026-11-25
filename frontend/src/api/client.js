@@ -13,13 +13,44 @@ export const ACCESS_KEY = 'guraaha_access_token';
 export const REFRESH_KEY = 'guraaha_refresh_token';
 export const USER_KEY = 'guraaha_user';
 
+// Safe cross-browser storage fallback (handles Safari Private Mode, iOS/Android WebViews, strict tracking prevention)
+const memoryStore = new Map();
+
+export const safeStorage = {
+  getItem(key) {
+    try {
+      const val = window.localStorage.getItem(key);
+      if (val !== null) return val;
+    } catch {
+      // ignore storage access errors
+    }
+    return memoryStore.get(key) ?? null;
+  },
+  setItem(key, value) {
+    memoryStore.set(key, String(value));
+    try {
+      window.localStorage.setItem(key, String(value));
+    } catch {
+      // ignore quota/private mode errors
+    }
+  },
+  removeItem(key) {
+    memoryStore.delete(key);
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // ignore errors
+    }
+  },
+};
+
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_KEY);
+  return safeStorage.getItem(ACCESS_KEY);
 }
 
 export function getStoredUser() {
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = safeStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -27,15 +58,15 @@ export function getStoredUser() {
 }
 
 export function setSession({ accessToken, refreshToken, user }) {
-  if (accessToken) localStorage.setItem(ACCESS_KEY, accessToken);
-  if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (accessToken) safeStorage.setItem(ACCESS_KEY, accessToken);
+  if (refreshToken) safeStorage.setItem(REFRESH_KEY, refreshToken);
+  if (user) safeStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearSession() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-  localStorage.removeItem(USER_KEY);
+  safeStorage.removeItem(ACCESS_KEY);
+  safeStorage.removeItem(REFRESH_KEY);
+  safeStorage.removeItem(USER_KEY);
 }
 
 let refreshInFlight = null;
@@ -43,7 +74,7 @@ let refreshInFlight = null;
 export async function refreshSession() {
   if (refreshInFlight) return refreshInFlight;
 
-  const refreshToken = localStorage.getItem(REFRESH_KEY);
+  const refreshToken = safeStorage.getItem(REFRESH_KEY);
   if (!refreshToken) {
     clearSession();
     throw new Error('Session expired');
@@ -79,8 +110,8 @@ export async function api(path, options = {}) {
     retry = true,
   } = options;
 
-  const headers = {};
-  if (!form) headers['Content-Type'] = 'application/json';
+  const headers = { Accept: 'application/json' };
+  if (!form && body !== undefined) headers['Content-Type'] = 'application/json';
 
   const token = getAccessToken();
   if (token) {
@@ -95,7 +126,7 @@ export async function api(path, options = {}) {
     body: form ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401 && retry && localStorage.getItem(REFRESH_KEY)) {
+  if (res.status === 401 && retry && safeStorage.getItem(REFRESH_KEY)) {
     await refreshSession();
     return api(path, { ...options, retry: false });
   }

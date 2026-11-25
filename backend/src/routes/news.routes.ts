@@ -9,8 +9,8 @@ const router = Router();
 const controller = new NewsController();
 
 router.get("/", controller.getArticles);
-router.get("/:id", controller.getArticle);
-
+router.get("/admin/all", authenticate, requireRole("ADMIN"), controller.getAllAdmin);
+router.post("/admin/save", authenticate, requireRole("ADMIN"), controller.adminSave);
 router.post(
   "/admin/publish",
   authenticate,
@@ -18,5 +18,10 @@ router.post(
   validate(publishNewsSchema),
   controller.adminPublish
 );
+
+router.get("/:id", controller.getArticle);
+router.patch("/:id/toggle-publish", authenticate, requireRole("ADMIN"), controller.togglePublish);
+router.post("/:id/push", authenticate, requireRole("ADMIN"), controller.pushArticle);
+router.delete("/:id", authenticate, requireRole("ADMIN"), controller.deleteArticle);
 
 export default router;

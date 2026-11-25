@@ -5,7 +5,7 @@ import { UserRepository } from '../repositories/user.repository';
 import { BlockerService } from '../services/blocker.service';
 import { BlockerController } from '../controllers/blocker.controller';
 
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, optionalAuthenticate } from '../middleware/authenticate';
 import { requireRole } from '../middleware/authorize';
 import { validate } from '../middleware/validate';
 
@@ -21,11 +21,10 @@ const userRepository = new UserRepository();
 const blockerService = new BlockerService(blockerRepository, userRepository);
 const blockerController = new BlockerController(blockerService);
 
-// USER
+// PUBLIC OR AUTHENTICATED USER (prototype Become a Blocker works for any visitor or user)
 router.post(
     '/apply',
-    authenticate,
-    requireRole('USER'),
+    optionalAuthenticate,
     validate(applyForBlockerSchema),
     blockerController.apply
 );
@@ -33,7 +32,7 @@ router.post(
 router.get(
     '/application/me',
     authenticate,
-    requireRole('USER', 'BLOCKER'),
+    requireRole('USER', 'BLOCKER', 'ADMIN'),
     blockerController.getMyApplication
 );
 
@@ -43,6 +42,13 @@ router.get(
     authenticate,
     requireRole('ADMIN'),
     blockerController.getPendingApplications
+);
+
+router.post(
+    '/admin/save',
+    authenticate,
+    requireRole('ADMIN'),
+    blockerController.adminSave
 );
 
 router.patch(
@@ -58,6 +64,20 @@ router.patch(
     requireRole('ADMIN'),
     validate(rejectBlockerSchema),
     blockerController.reject
+);
+
+router.patch(
+    '/applications/:id/suspend',
+    authenticate,
+    requireRole('ADMIN'),
+    blockerController.suspend
+);
+
+router.post(
+    '/applications/:id/reset-password',
+    authenticate,
+    requireRole('ADMIN'),
+    blockerController.resetPassword
 );
 
 router.patch(

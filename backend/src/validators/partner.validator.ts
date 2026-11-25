@@ -5,21 +5,24 @@ export const PARTNER_TYPES = [
     "NOTARY",
     "VALUER",
     "ENGINEER",
+    "ARCHITECT",
     "LEGAL_ADVISOR",
     "BROKER",
     "OTHER"
 ] as const;
 
 export const createPartnerSchema = z.object({
-    type: z.string().trim().min(2).max(30),
+    type: z.string().trim().min(2).max(50),
     name: z.string().trim().min(2).max(255),
-    phone: z.string().trim().min(8).max(20).optional().nullable(),
-    email: z.string().trim().email().optional().nullable(),
+    phone: z.string().trim().min(7).max(30).optional().nullable(),
+    email: z.string().trim().email().optional().nullable().or(z.literal("")),
     locationId: z.string().uuid("Invalid location UUID").optional().nullable(),
+    districtName: z.string().trim().max(100).optional().nullable(),
+    certificationNumber: z.string().trim().max(100).optional().nullable(),
     descriptionRw: z.string().max(2000).optional().nullable(),
     descriptionEn: z.string().max(2000).optional().nullable(),
     descriptionFr: z.string().max(2000).optional().nullable(),
-    isCertified: z.boolean().optional().default(false),
+    isCertified: z.boolean().optional().default(true),
     isActive: z.boolean().optional().default(true),
 });
 
@@ -30,7 +33,7 @@ export type UpdatePartnerInput = z.infer<typeof updatePartnerSchema>;
 
 export const partnerQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
     type: z.string().trim().optional(),
     locationId: z.string().uuid().optional(),
     isCertified: z

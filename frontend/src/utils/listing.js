@@ -3,7 +3,7 @@ import { BACKEND_ORIGIN } from '../api/client';
 
 export function listingTitle(listing, lang = 'en') {
   if (!listing) return 'Untitled listing';
-  const titleEn = listing.titleEn || listing.title_en;
+  const titleEn = listing.titleEn || listing.title_en || listing.title || listing.t;
   const titleRw = listing.titleRw || listing.title_rw;
   const titleFr = listing.titleFr || listing.title_fr;
   const byLang = {
@@ -11,12 +11,12 @@ export function listingTitle(listing, lang = 'en') {
     rw: titleRw,
     fr: titleFr,
   };
-  return byLang[lang] || titleEn || titleRw || titleFr || listing.title || 'Untitled listing';
+  return byLang[lang] || titleEn || titleRw || titleFr || 'Untitled listing';
 }
 
 export function listingDescription(listing, lang = 'en') {
   if (!listing) return '';
-  const descEn = listing.descriptionEn || listing.description_en;
+  const descEn = listing.descriptionEn || listing.description_en || listing.desc || listing.description;
   const descRw = listing.descriptionRw || listing.description_rw;
   const descFr = listing.descriptionFr || listing.description_fr;
   const byLang = {
@@ -24,18 +24,43 @@ export function listingDescription(listing, lang = 'en') {
     rw: descRw,
     fr: descFr,
   };
-  return byLang[lang] || descEn || descRw || descFr || listing.desc || listing.description || '';
+  return byLang[lang] || descEn || descRw || descFr || '';
+}
+
+export function isRentListing(listing) {
+  const d = String(listing?.deal || 'sale').toLowerCase();
+  return d === 'rent';
+}
+
+export function isFeaturedListing(listing) {
+  return Boolean(listing?.is_featured ?? listing?.isFeatured ?? listing?.featured);
+}
+
+export function listingCategory(listing) {
+  return listing?.category || listing?.cat || listing?.type || 'Land and Plots';
+}
+
+export function listingSubType(listing) {
+  return listing?.sub_type || listing?.subType || listing?.type || listingCategory(listing);
+}
+
+export function listingTerms(listing, t) {
+  if (isRentListing(listing)) {
+    return listing?.rental_terms || listing?.rentalTerms || listing?.terms || (t ? t('monthly_rent') : 'Monthly rent');
+  }
+  return t ? t('outright_purchase') : 'Outright purchase · title transfer';
 }
 
 export function listingSize(listing) {
   if (!listing) return '';
   if (listing.size) {
-    return String(listing.size).replace(/\s*built/i, '').trim();
+    return String(listing.size).trim();
   }
   const sizeVal = listing.sizeValue ?? listing.size_value;
   if (sizeVal == null) return '';
-  const unit = listing.sizeUnit || listing.size_unit || 'sqm';
-  return `${Number(sizeVal).toLocaleString('en-US')} ${unit}`;
+  const unit = listing.sizeUnit || listing.size_unit || 'm²';
+  const displayUnit = unit === 'sqm' ? 'm²' : unit;
+  return `${Number(sizeVal).toLocaleString('en-US')} ${displayUnit}`;
 }
 
 export function listingLocationLine(listing, parts = ['sector', 'district']) {
@@ -60,10 +85,14 @@ export function listingPrice(listing) {
 export function listingCoverUrl(listing, width = 900) {
   if (!listing) return null;
   if (listing.image) return listing.image;
-  const coverPath = listing.coverPhotoPath || listing.cover_photo_path || listing.photos?.[0]?.file_path;
+  const coverPath =
+    listing.coverPhotoPath ||
+    listing.cover_photo_path ||
+    (typeof listing.photos?.[0] === 'string' ? listing.photos[0] : listing.photos?.[0]?.file_path);
   const fromMedia = mediaUrl(coverPath);
   if (fromMedia) return fromMedia;
-  const photo = IMG[listing.id];
+  const numId = Number(listing.id);
+  const photo = IMG[numId] || IMG[(Math.abs(String(listing.id || '1').charCodeAt(0)) % 25) + 1];
   if (photo) return unsplashUrl(photo, width);
   return null;
 }
@@ -94,8 +123,9 @@ export function blockerLabel(listing) {
   const blocker = listing.blocker || {};
   const firstName = blocker.firstName || blocker.first_name || listing.blocker_first_name;
   const lastName = blocker.lastName || blocker.last_name || listing.blocker_last_name;
-  const code = blocker.verificationCode || blocker.verification_code;
-  const name = [firstName, lastName].filter(Boolean).join(' ');
+  const code = blocker.verificationCode || blocker.verification_code || listing.blocker_verification_code;
+  const shortLast = lastName ? `${lastName[0]}.` : '';
+  const name = [firstName, shortLast].filter(Boolean).join(' ');
   if (code) {
     return name ? `${name} · ${code}` : `Blocker · ${code}`;
   }

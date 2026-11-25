@@ -1,18 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { adminApi } from "../../api/admin";
-import { partnersApi } from "../../api/partners";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Briefcase, Plus, Edit2, Trash2, Award, X } from "lucide-react";
-import { RowActions } from "./RowActions";
+import React, { useEffect, useState } from 'react';
+import { adminApi } from '../../api/admin';
+import { partnersApi } from '../../api/partners';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Briefcase, Plus, Edit2, Trash2, Eye, EyeOff, X } from 'lucide-react';
+import { RowActions } from './RowActions';
 import {
   Panel,
   RefreshButton,
@@ -22,28 +15,67 @@ import {
   theadClass,
   tbodyClass,
   rowClass,
-} from "./AdminShared";
+} from './AdminShared';
 
-const PARTNER_TYPES = ["SURVEYOR", "NOTARY", "ENGINEER", "VALUER", "LEGAL_ADVISOR", "BROKER", "OTHER"];
-const typeItems = Object.fromEntries(
-  PARTNER_TYPES.map((t) => [t, t.replace("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())])
-);
+const PARTNER_TYPES = [
+  'SURVEYOR',
+  'NOTARY',
+  'ENGINEER',
+  'ARCHITECT',
+  'VALUER',
+  'LEGAL_ADVISOR',
+  'OTHER',
+];
+
+export const RWANDA_30_DISTRICTS = [
+  // Kigali City (3)
+  'Gasabo',
+  'Kicukiro',
+  'Nyarugenge',
+  // Eastern Province (7)
+  'Bugesera',
+  'Gatsibo',
+  'Kayonza',
+  'Kirehe',
+  'Ngoma',
+  'Nyagatare',
+  'Rwamagana',
+  // Northern Province (5)
+  'Burera',
+  'Gakenke',
+  'Gicumbi',
+  'Musanze',
+  'Rulindo',
+  // Southern Province (8)
+  'Gisagara',
+  'Huye',
+  'Kamonyi',
+  'Muhanga',
+  'Nyamagabe',
+  'Nyanza',
+  'Nyaruguru',
+  'Ruhango',
+  // Western Province (7)
+  'Karongi',
+  'Ngororero',
+  'Nyabihu',
+  'Nyamasheke',
+  'Rubavu',
+  'Rusizi',
+  'Rutsiro',
+];
 
 const emptyForm = {
-  name: "",
-  type: "SURVEYOR",
-  phone: "",
-  email: "",
-  descriptionEn: "",
+  name: '',
+  type: 'SURVEYOR',
+  districtName: 'Gasabo',
+  certificationNumber: '',
+  phone: '',
+  email: '',
+  descriptionEn: '',
   isCertified: true,
+  isActive: true,
 };
-
-const Label = ({ children, required }) => (
-  <label className="block text-xs font-semibold text-brand-ink mb-1">
-    {children}
-    {required && <span className="text-red-500"> *</span>}
-  </label>
-);
 
 export const PartnersTab = ({ showToast }) => {
   const [partners, setPartners] = useState([]);
@@ -59,10 +91,14 @@ export const PartnersTab = ({ showToast }) => {
     setLoading(true);
     try {
       const res = await partnersApi.getAll();
-      const list = Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+      const list = Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+        ? res.data
+        : [];
       setPartners(list);
     } catch (err) {
-      showToast(err.message || "Failed to load partners");
+      showToast(err.message || 'Failed to load partners');
     } finally {
       setLoading(false);
     }
@@ -81,12 +117,15 @@ export const PartnersTab = ({ showToast }) => {
   const openEdit = (p) => {
     setEditingPartner(p);
     setForm({
-      name: p.name || "",
-      type: (p.type || "SURVEYOR").toUpperCase(),
-      phone: p.phone || "",
-      email: p.email || "",
-      descriptionEn: p.description_en || p.descriptionEn || "",
+      name: p.name || '',
+      type: (p.type || 'SURVEYOR').toUpperCase(),
+      districtName: p.district_name || p.location_name || 'Gasabo',
+      certificationNumber: p.certification_number || '',
+      phone: p.phone || '',
+      email: p.email || '',
+      descriptionEn: p.description_en || p.descriptionEn || '',
       isCertified: p.is_certified ?? p.isCertified ?? true,
+      isActive: p.is_active ?? p.isActive ?? true,
     });
     setIsFormOpen(true);
   };
@@ -97,44 +136,62 @@ export const PartnersTab = ({ showToast }) => {
     try {
       const payload = {
         name: form.name.trim(),
-        type: (form.type || "SURVEYOR").toUpperCase(),
+        type: (form.type || 'SURVEYOR').toUpperCase(),
+        districtName: form.districtName.trim() || 'Gasabo',
+        certificationNumber: form.certificationNumber.trim() || undefined,
         phone: form.phone.trim() || undefined,
         email: form.email.trim() || undefined,
         descriptionEn: form.descriptionEn.trim() || undefined,
         isCertified: Boolean(form.isCertified),
+        isActive: Boolean(form.isActive),
       };
       if (editingPartner) {
         await adminApi.updatePartner(editingPartner.id, payload);
-        showToast("Partner updated.");
+        showToast('Partner updated.');
       } else {
         await adminApi.createPartner(payload);
-        showToast("Partner added.");
+        showToast('Partner added.');
       }
       setIsFormOpen(false);
       loadPartners();
     } catch (err) {
-      showToast(err.message || "Failed to save partner");
+      showToast(err.message || 'Failed to save partner');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (p) => {
-    if (!window.confirm(`Delete "${p.name}"?`)) return;
+  const handleToggleVisible = async (p) => {
+    const currentlyActive = p.is_active ?? p.isActive ?? true;
     try {
-      await adminApi.deletePartner(p.id);
-      showToast("Partner deleted.");
+      await adminApi.updatePartner(p.id, { isActive: !currentlyActive });
+      showToast(
+        !currentlyActive
+          ? `"${p.name}" is now visible on public Partners page.`
+          : `"${p.name}" hidden from public Partners page.`
+      );
       loadPartners();
     } catch (err) {
-      showToast(err.message || "Failed to delete");
+      showToast(err.message || 'Failed to toggle partner visibility');
+    }
+  };
+
+  const handleDelete = async (p) => {
+    if (!window.confirm(`Permanently delete partner "${p.name}"?`)) return;
+    try {
+      await adminApi.deletePartner(p.id);
+      showToast('Partner deleted.');
+      loadPartners();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete');
     }
   };
 
   return (
     <Panel
       icon={Briefcase}
-      title="Certified Partners"
-      subtitle="Surveyors, notaries, and engineers available on the platform"
+      title={`Certified Partners (${partners.length})`}
+      subtitle="Surveyors, notaries, engineers, architects and valuers available on the platform"
       actions={
         <>
           <Button onClick={openAdd} size="sm" className="rounded-[9px]">
@@ -148,177 +205,206 @@ export const PartnersTab = ({ showToast }) => {
         <LoadingState />
       ) : partners.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className={`${tableClass} min-w-[720px]`}>
+          {/* Exact columns: Partner | Profession | District | Certification | Services | Status | Actions */}
+          <table className={`${tableClass} min-w-[900px]`}>
             <thead className={theadClass}>
               <tr>
-                <th className="py-3 px-4">Partner</th>
-                <th className="py-3 px-4">Type</th>
-                <th className="py-3 px-4">Contact</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-3.5">Partner</th>
+                <th className="py-3 px-3.5">Profession</th>
+                <th className="py-3 px-3.5">District</th>
+                <th className="py-3 px-3.5">Certification</th>
+                <th className="py-3 px-3.5">Services</th>
+                <th className="py-3 px-3.5">Status</th>
+                <th className="py-3 px-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className={tbodyClass}>
-              {partners.map((p) => (
-                <tr key={p.id} className={rowClass}>
-                  <td className="py-3 px-4 font-semibold text-brand-ink">
-                    {p.name}
-                    <div className="text-xs text-brand-ink-soft font-normal truncate max-w-xs">
-                      {p.description_en || p.descriptionEn}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-xs font-medium capitalize text-brand-ink-soft">
-                    {p.type}
-                  </td>
-                  <td className="py-3 px-4 text-xs text-brand-ink-soft">
-                    {p.phone && <div>{p.phone}</div>}
-                    {p.email && <div>{p.email}</div>}
-                  </td>
-                  <td className="py-3 px-4">
-                    {p.is_certified ?? p.isCertified ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[6px] text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        <Award className="w-3 h-3" /> Certified
+              {partners.map((p) => {
+                const isActive = p.is_active ?? p.isActive ?? true;
+                return (
+                  <tr key={p.id} className={rowClass}>
+                    <td className="py-3 px-3.5">
+                      <div className="font-semibold text-brand-ink">{p.name}</div>
+                      <div className="text-xs font-mono text-brand-ink-soft">
+                        {p.phone || p.email || '—'}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3.5 text-xs font-semibold capitalize text-brand-ink">
+                      {(p.type || 'SURVEYOR').toLowerCase().replace('_', ' ')}
+                    </td>
+                    <td className="py-3 px-3.5 text-xs font-semibold text-brand-green-dark">
+                      {p.district_name || p.location_name || 'Gasabo'}
+                    </td>
+                    <td className="py-3 px-3.5 font-mono text-xs text-brand-ink">
+                      {p.certification_number || 'Verified'}
+                    </td>
+                    <td className="py-3 px-3.5 text-xs text-brand-ink-soft max-w-xs truncate">
+                      {p.description_en || p.descriptionEn || '—'}
+                    </td>
+                    <td className="py-3 px-3.5">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          isActive
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {isActive ? 'Visible' : 'Hidden'}
                       </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">Standard</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <RowActions
-                      label={`Actions for ${p.name}`}
-                      actions={[
-                        { label: "Edit", icon: Edit2, onClick: () => openEdit(p) },
-                        { label: "Delete", icon: Trash2, destructive: true, onClick: () => handleDelete(p) },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                      <RowActions
+                        label={`Actions for ${p.name}`}
+                        actions={[
+                          {
+                            label: isActive ? 'Hide from public' : 'Show on public page',
+                            icon: isActive ? EyeOff : Eye,
+                            onClick: () => handleToggleVisible(p),
+                          },
+                          {
+                            label: 'Edit partner',
+                            icon: Edit2,
+                            onClick: () => openEdit(p),
+                          },
+                          {
+                            label: 'Delete permanently',
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => handleDelete(p),
+                          },
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
-        <EmptyState>No partners yet. Click "Add Partner" to register one.</EmptyState>
+        <EmptyState>No partners yet. Click &quot;Add Partner&quot; to register one.</EmptyState>
       )}
 
-      {/* Add / edit modal */}
+      {/* Add / Edit modal */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[9px] border border-brand-line p-6 w-full max-w-md shadow-2xl relative">
+          <div className="bg-white rounded-[12px] border border-brand-line p-6 w-full max-w-md shadow-2xl relative">
             <button
               type="button"
               onClick={() => setIsFormOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-[9px] hover:bg-brand-bg-soft text-brand-ink-soft hover:text-brand-ink"
+              className="absolute top-4 right-4 p-1.5 rounded-[9px] hover:bg-brand-bg-soft text-brand-ink-soft hover:text-brand-ink cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-bold text-brand-ink mb-4">
-              {editingPartner ? "Edit Partner" : "Add New Partner"}
+              {editingPartner ? 'Edit Partner' : 'Add New Partner'}
             </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
-                <Label required>Name</Label>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  Name *
+                </label>
                 <Input
                   required
                   value={form.name}
-                  onChange={(e) => setField("name", e.target.value)}
-                  placeholder="e.g. Kigali Land Surveyors Ltd"
-                  className="rounded-[9px] h-11 pl-3 text-sm"
+                  onChange={(e) => setField('name', e.target.value)}
+                  placeholder="e.g. Eng. Bosco Habimana"
+                  className="rounded-[9px] h-10 pl-3 text-sm"
                 />
-              </div>
-
-              <div>
-                <Label required>Type</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => setField("type", v ?? "surveyor")}
-                  items={typeItems}
-                >
-                  <SelectTrigger className="w-full h-11 rounded-[9px] text-sm font-medium border-brand-line bg-white px-3">
-                    <SelectValue placeholder="Surveyor" />
-                  </SelectTrigger>
-                  <SelectContent
-                    alignItemWithTrigger={false}
-                    align="start"
-                    sideOffset={6}
-                    className="rounded-[9px]"
-                  >
-                    {PARTNER_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {typeItems[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Phone</Label>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Profession *
+                  </label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setField('type', e.target.value)}
+                    className="w-full h-10 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium"
+                  >
+                    {PARTNER_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t.replace('_', ' ')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Operating District *
+                  </label>
+                  <select
+                    value={form.districtName}
+                    onChange={(e) => setField('districtName', e.target.value)}
+                    className="w-full h-10 rounded-[9px] border border-brand-line bg-white px-3 text-sm font-medium"
+                  >
+                    {RWANDA_30_DISTRICTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Certification No.
+                  </label>
                   <Input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setField("phone", e.target.value)}
-                    placeholder="0788..."
-                    className="rounded-[9px] h-11 pl-3 text-sm"
+                    value={form.certificationNumber}
+                    onChange={(e) => setField('certificationNumber', e.target.value)}
+                    placeholder="e.g. RLMUA #214"
+                    className="rounded-[9px] h-10 pl-3 text-sm font-mono"
                   />
                 </div>
                 <div>
-                  <Label>Email</Label>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Phone
+                  </label>
                   <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setField("email", e.target.value)}
-                    placeholder="partner@example.com"
-                    className="rounded-[9px] h-11 pl-3 text-sm"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setField('phone', e.target.value)}
+                    placeholder="0788..."
+                    className="rounded-[9px] h-10 pl-3 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <Label>Description (EN)</Label>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  Services Offered
+                </label>
                 <Textarea
                   value={form.descriptionEn}
-                  onChange={(e) => setField("descriptionEn", e.target.value)}
+                  onChange={(e) => setField('descriptionEn', e.target.value)}
                   rows={2}
-                  placeholder="Services offered..."
+                  placeholder="e.g. Land measurement, UPI boundary verification..."
                 />
               </div>
 
-              <label
-                htmlFor="certifiedCheck"
-                className="flex items-center gap-2 pt-1 cursor-pointer select-none"
-              >
-                <input
-                  type="checkbox"
-                  id="certifiedCheck"
-                  checked={form.isCertified}
-                  onChange={(e) => setField("isCertified", e.target.checked)}
-                  className="h-4 w-4 rounded-[4px] border-brand-line accent-[#007A66] cursor-pointer"
-                />
-                <span className="text-xs font-medium text-brand-ink">
-                  Certified partner badge
-                </span>
-              </label>
-
-              <div className="pt-3 flex gap-2">
+              <div className="pt-2 flex gap-2">
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 h-11 rounded-[9px] font-semibold"
+                  className="flex-1 h-10 rounded-[9px] font-semibold cursor-pointer"
                 >
                   {submitting
-                    ? "Saving…"
+                    ? 'Saving…'
                     : editingPartner
-                    ? "Save Changes"
-                    : "Create Partner"}
+                    ? 'Save Changes'
+                    : 'Create Partner'}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setIsFormOpen(false)}
-                  className="h-11 rounded-[9px] px-5"
+                  className="h-10 rounded-[9px] px-5 cursor-pointer"
                 >
                   Cancel
                 </Button>

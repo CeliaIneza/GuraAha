@@ -103,4 +103,8 @@ export class TokenService {
             });
         }
     }
+
+    async isAccessTokenRevoked(jti: string): Promise<boolean> {
+        return this.revokedTokenRepository.isRevoked(jti);
+    }
 }
