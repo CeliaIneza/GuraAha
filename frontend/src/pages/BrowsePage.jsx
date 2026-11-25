@@ -4,7 +4,7 @@ import { ListingCard } from '../components/ListingCard';
 import { useApp } from '../context/AppContext';
 import { listingsApi } from '../api/listings';
 import { locationsApi } from '../api/locations';
-import { initialListings } from '../data/mockData';
+import { initialListings } from '../data/translations';
 import {
   isFeaturedListing,
   isRentListing,

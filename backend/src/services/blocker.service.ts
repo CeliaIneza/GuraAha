@@ -299,7 +299,7 @@ export class BlockerService {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     adminId,
-                    `✅ Blocker ${fullName} approved — code ${updatedProfile.verification_code || verificationCode} and login @${assignedUsername || ''}`,
+                    `✅ Blocker ${fullName} approved code ${updatedProfile.verification_code || verificationCode} and login @${assignedUsername || ''}`,
                 ])
                 .catch(() => {});
 
@@ -343,8 +343,8 @@ export class BlockerService {
             .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                 adminId,
                 nextStatus === 'SUSPENDED'
-                    ? `⏸ Blocker ${fullName} suspended — ${listingCount} listing(s) hidden`
-                    : `▶ Blocker ${fullName} reactivated — listings live again`,
+                    ? `⏸ Blocker ${fullName} suspended ${listingCount} listing(s) hidden`
+                    : `▶ Blocker ${fullName} reactivated listings live again`,
             ])
             .catch(() => {});
 
@@ -378,7 +378,7 @@ export class BlockerService {
         await db
             .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                 adminId,
-                `🔑 Password reset for ${fullName} (@${username}) — temporary password issued`,
+                `🔑 Password reset for ${fullName} (@${username}) temporary password issued`,
             ])
             .catch(() => {});
 
@@ -527,7 +527,7 @@ export class BlockerService {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     adminId,
-                    `➕ Blocker ${input.name} added${code ? ' — code ' + code : ''}`,
+                    `➕ Blocker ${input.name} added${code ? ' code ' + code : ''}`,
                 ])
                 .catch(() => {});
 

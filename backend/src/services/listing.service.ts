@@ -262,7 +262,7 @@ export class ListingService {
         await db
             .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                 adminId,
-                `✅ "${title}" approved — live on the public site`,
+                `✅ "${title}" approved live on the public site`,
             ])
             .catch(() => {});
         return approved;
@@ -280,7 +280,7 @@ export class ListingService {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     adminId,
-                    `⭐ "${title}" approved as VIP exclusive — visible to VIP subscribers for ${earlyAccessDays} days`,
+                    `⭐ "${title}" approved as VIP exclusive visible to VIP subscribers for ${earlyAccessDays} days`,
                 ])
                 .catch(() => {});
             this.notificationService
@@ -359,8 +359,8 @@ export class ListingService {
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     user.id,
                     updated.is_disabled
-                        ? `⏸ "${title}" disabled — hidden from the public site`
-                        : `▶ "${title}" enabled — live again`,
+                        ? `⏸ "${title}" disabled hidden from the public site`
+                        : `▶ "${title}" enabled live again`,
                 ])
                 .catch(() => {});
             return updated;

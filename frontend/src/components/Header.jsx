@@ -57,13 +57,7 @@ export const Header = () => {
 
   return (
     <>
-      <header
-        className={`sticky top-0 z-50 bg-white border-b border-brand-line shadow-xs flex items-center justify-between flex-nowrap transition-all duration-150 ${
-          isRw
-            ? 'px-3 sm:px-5 lg:px-6 py-2.5 gap-2 lg:gap-3'
-            : 'px-4 sm:px-7 py-2.5 gap-3 lg:gap-4'
-        }`}
-      >
+      <header className="sticky top-0 z-50 w-full max-w-full bg-white border-b border-brand-line shadow-xs px-3 sm:px-5 lg:px-6 2xl:px-8 py-2.5 flex items-center justify-between gap-2 2xl:gap-4 transition-all duration-150">
         {/* Official Guraaha.com Logo */}
         <Link
           to="/"
@@ -74,25 +68,17 @@ export const Header = () => {
           <img
             src="/guraaha-logo.png"
             alt="Guraaha.com"
-            className="h-9 sm:h-11 w-auto block transition-transform group-hover:scale-[1.02]"
+            className="h-8 sm:h-9 2xl:h-10 w-auto block transition-transform group-hover:scale-[1.02]"
           />
         </Link>
 
-        {/* Desktop Navigation Links (shown on xl+ screens >= 1180px) */}
-        <nav
-          className={`hidden xl:flex items-center flex-nowrap shrink ${
-            isRw ? 'gap-0.5 py-0.5' : 'gap-1.5 py-1'
-          }`}
-        >
+        {/* Desktop Navigation Links (shown on xl+ screens >= 1280px) */}
+        <nav className="hidden xl:flex items-center justify-center flex-1 min-w-0 gap-0.5 2xl:gap-1.5 py-0.5">
           {navItems.map(([path, label]) => (
             <Link
               key={path}
               to={path}
-              className={`rounded-[9px] border font-medium transition-colors whitespace-nowrap ${
-                isRw
-                  ? 'px-2 lg:px-2.5 py-1.5 text-xs lg:text-[13px]'
-                  : 'px-3 py-1.5 text-[13.5px]'
-              } ${
+              className={`rounded-[9px] border font-medium transition-colors whitespace-nowrap px-2 2xl:px-3 py-1.5 text-xs 2xl:text-[13.5px] ${
                 isActive(path)
                   ? 'bg-brand-green text-white font-semibold shadow-xs border-brand-green'
                   : 'text-brand-ink-soft hover:bg-brand-bg-soft hover:text-brand-ink border-transparent'
@@ -104,11 +90,7 @@ export const Header = () => {
         </nav>
 
         {/* Right Actions & Mobile Hamburger Button */}
-        <div
-          className={`flex items-center shrink-0 ml-auto xl:ml-0 ${
-            isRw ? 'gap-1.5 sm:gap-2' : 'gap-2 sm:gap-2.5'
-          }`}
-        >
+        <div className="flex items-center shrink-0 ml-auto xl:ml-0 gap-1.5 sm:gap-2">
           {/* Desktop Language Selector */}
           <div className="hidden xl:block">
             <Select
@@ -118,13 +100,7 @@ export const Header = () => {
               }}
               items={languageOptions}
             >
-              <SelectTrigger
-                className={`rounded-[9px] ${
-                  isRw
-                    ? 'w-[140px] sm:w-[155px] h-8.5 text-xs sm:text-sm px-2.5'
-                    : 'w-[145px] sm:w-[158px] h-9 text-sm px-3'
-                }`}
-              >
+              <SelectTrigger className="rounded-[9px] w-[132px] 2xl:w-[152px] h-8.5 text-xs 2xl:text-[13px] px-2.5">
                 <SelectValue placeholder="Select Language" />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false} align="end" sideOffset={6}>
@@ -135,20 +111,30 @@ export const Header = () => {
             </Select>
           </div>
 
+          {/* Mobile / Tablet Quick Language Switcher */}
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value)}
+            aria-label="Language"
+            className="xl:hidden h-9 px-2 rounded-[9px] border border-brand-line bg-white text-xs font-semibold text-brand-ink focus:outline-none focus:border-brand-green"
+          >
+            <option value="rw">🇷🇼 RW</option>
+            <option value="en">🇬🇧 EN</option>
+            <option value="fr">🇫🇷 FR</option>
+          </select>
+
           <NotificationBell />
 
           {(user?.role === 'BLOCKER' || user?.role === 'USER') && (
             <Button
               asChild
               variant="outline"
-              size={isRw ? 'sm' : 'default'}
-              className={`hidden xl:inline-flex rounded-[9px] border-2 ${
-                isRw ? 'px-2.5 py-1 text-xs sm:text-sm h-8.5' : ''
-              }`}
+              size="sm"
+              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
             >
               <Link to="/dashboard">
-                <UserCheck className={`${isRw ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-brand-green`} />
-                {user?.role === 'BLOCKER' ? t('nav_dashboard') : 'My Profile'}
+                <UserCheck className="w-3.5 h-3.5 text-brand-green shrink-0" />
+                <span>{user?.role === 'BLOCKER' ? t('nav_dashboard') : 'My Profile'}</span>
               </Link>
             </Button>
           )}
@@ -157,14 +143,12 @@ export const Header = () => {
             <Button
               asChild
               variant="default"
-              size={isRw ? 'sm' : 'default'}
-              className={`hidden xl:inline-flex rounded-[9px] border-2 ${
-                isRw ? 'px-2.5 py-1 text-xs sm:text-sm h-8.5' : ''
-              }`}
+              size="sm"
+              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
             >
               <Link to="/admin">
-                <ShieldCheck className={isRw ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
-                {t('nav_admin')}
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>{t('nav_admin')}</span>
               </Link>
             </Button>
           )}
@@ -174,39 +158,35 @@ export const Header = () => {
               type="button"
               onClick={handleLogout}
               variant="outline"
-              size={isRw ? 'sm' : 'default'}
-              className={`hidden xl:inline-flex rounded-[9px] border-2 ${
-                isRw ? 'px-2.5 py-1 text-xs sm:text-sm h-8.5' : ''
-              }`}
+              size="sm"
+              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
             >
-              <LogOut className={`${isRw ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-brand-ink-soft`} />
+              <LogOut className="w-3.5 h-3.5 text-brand-ink-soft shrink-0" />
               <span>{t('dash_logout')}</span>
             </Button>
           ) : (
-            <div className="hidden xl:flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-1.5">
               <Button
                 asChild
                 variant="outline"
-                size={isRw ? 'sm' : 'default'}
-                className={`rounded-[9px] border-2 ${
-                  isRw ? 'px-2.5 py-1 text-xs sm:text-sm h-8.5' : ''
-                }`}
+                size="sm"
+                className="rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
               >
                 <Link to="/login">
-                  <LogIn className={`${isRw ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />
+                  <LogIn className="w-3.5 h-3.5 shrink-0" />
                   <span>{t('login_btn') || 'Log in'}</span>
                 </Link>
               </Button>
             </div>
           )}
 
-          {/* Mobile Hamburger Button (shown below xl < 1180px) */}
+          {/* Mobile Hamburger Button (shown below xl < 1280px) */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label="Menu"
             aria-expanded={mobileMenuOpen}
-            className="xl:hidden w-10 h-10 rounded-[10px] border border-brand-line bg-white hover:bg-brand-bg-soft text-brand-ink inline-flex items-center justify-center cursor-pointer transition-colors"
+            className="xl:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] border border-brand-line bg-white hover:bg-brand-bg-soft text-brand-ink inline-flex items-center justify-center cursor-pointer transition-colors shrink-0"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>

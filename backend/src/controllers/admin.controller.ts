@@ -183,7 +183,7 @@ export class AdminController {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     req.user?.id ?? null,
-                    `🔄 Payment ${payment.provider_reference || payment.id.slice(0, 8)} re-checked: now PAID — access granted`,
+                    `🔄 Payment ${payment.provider_reference || payment.id.slice(0, 8)} re-checked: now PAID, access granted`,
                 ])
                 .catch(() => {});
 
@@ -323,7 +323,7 @@ export class AdminController {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     req.user?.id ?? null,
-                    `📣 Deal alert for "${title}" sent to active VIP subscribers`,
+                    `Deal alert for "${title}" sent to active VIP subscribers`,
                 ])
                 .catch(() => {});
             return res.status(200).json({ message: "VIP deal alert dispatched", data: result });

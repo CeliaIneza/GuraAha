@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { newsApi } from '../api/news';
-import { initialNews } from '../data/mockData';
+import { initialNews } from '../data/translations';
 
 const DISTRICTS = ['Gasabo', 'Kicukiro', 'Nyarugenge', 'Bugesera', 'Musanze', 'Rubavu', 'Huye'];
 const TOPICS = ['All', 'Land & plots', 'Construction', 'Policy & law', 'Auctions'];
@@ -216,7 +216,7 @@ export const NewsPage = () => {
             selectedTopic.toLowerCase()
         );
 
-  // Main News & Market Updates List (/news) — Articles FIRST, Get Alerts BELOW
+  // Main News & Market Updates List (/news) Articles FIRST, Get Alerts BELOW
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 min-h-screen space-y-10">
       <div>
@@ -289,7 +289,7 @@ export const NewsPage = () => {
         </div>
       </div>
 
-      {/* Free Real-Estate Alert Subscription Box — Placed BELOW the articles */}
+      {/* Free Real-Estate Alert Subscription Box Placed BELOW the articles */}
       <div className="bg-gradient-to-br from-[#E0F2EE] to-white border border-brand-line rounded-[16px] p-6 sm:p-7">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           <div className="lg:col-span-5">

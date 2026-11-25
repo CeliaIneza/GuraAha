@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { i18n, DEFAULT_CATEGORIES, DEFAULT_AREA_HIGHLIGHTS } from '../data/mockData';
+import { i18n, DEFAULT_CATEGORIES, DEFAULT_AREA_HIGHLIGHTS } from '../data/translations';
 import { settingsApi } from '../api/settings';
 import { categoriesApi } from '../api/categories';
 import { locationsApi } from '../api/locations';

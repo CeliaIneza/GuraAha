@@ -5,7 +5,7 @@ import { notificationsApi } from '../api/notifications';
 import { newsApi } from '../api/news';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { initialNews } from '../data/mockData';
+import { initialNews } from '../data/translations';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';

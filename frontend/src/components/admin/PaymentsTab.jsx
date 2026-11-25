@@ -103,7 +103,7 @@ export const PaymentsTab = ({ showToast }) => {
                 const displayStatus =
                   status === 'COMPLETED' || status === 'SUCCESSFUL' ? 'PAID' : status;
                 const phone =
-                  p.metadata?.phone || p.phone_used || p.phone || p.user_phone || '—';
+                  p.metadata?.phone || p.phone_used || p.phone || p.user_phone || ' ';
                 const typeLabel =
                   p.metadata?.type ||
                   p.purpose ||

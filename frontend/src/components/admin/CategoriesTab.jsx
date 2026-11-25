@@ -233,7 +233,7 @@ export const CategoriesTab = ({ showToast }) => {
                       </div>
                     ) : (
                       <p className="text-xs italic text-brand-ink-soft">
-                        No sub-types — listings use the category directly.
+                        No sub-types listings use the category directly.
                       </p>
                     )}
                   </div>

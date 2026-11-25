@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { listingsApi } from '../api/listings';
 import { paymentsApi } from '../api/payments';
-import { findDummyListing } from '../data/mockData';
+import { findDummyListing } from '../data/translations';
 import {
   blockerLabel,
   isFeaturedListing,
@@ -235,12 +235,12 @@ export const DetailPage = () => {
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="bg-white rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">{t('detail_size')}</span>
-              <b className="text-sm sm:text-base text-brand-ink">{listingSize(listing) || '—'}</b>
+              <b className="text-sm sm:text-base text-brand-ink">{listingSize(listing) || ' '}</b>
             </div>
             <div className="bg-white rounded-xl p-3.5 border border-brand-line">
               <span className="text-xs text-brand-ink-soft block mb-0.5">{t('detail_upi')}</span>
               <b className="text-sm sm:text-base text-brand-ink">
-                {listing.upi_number || listing.upiNumber || listing.upi || '—'}
+                {listing.upi_number || listing.upiNumber || listing.upi || ' '}
               </b>
             </div>
             <div className="bg-white rounded-xl p-3.5 border border-brand-line">
@@ -278,7 +278,7 @@ export const DetailPage = () => {
           {highlights && highlights.length > 0 && (
             <div className="mt-7 bg-[#E0F2EE] border border-brand-line rounded-[14px] p-5">
               <h4 className="font-bold text-base text-[#00594A] mb-2">
-                📍 {t('detail_why_invest')} {districtName}
+               {t('detail_why_invest')} {districtName}
               </h4>
               <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-brand-ink">
                 {highlights.map((item, idx) => (
@@ -386,7 +386,7 @@ export const DetailPage = () => {
             })}
 
             <div className="text-xs text-brand-ink-soft bg-brand-bg-soft p-3 rounded-lg border border-brand-line leading-relaxed">
-              🎟️ {t('detail_lotto_note')}
+             {t('detail_lotto_note')}
             </div>
           </div>
         </div>

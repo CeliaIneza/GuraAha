@@ -123,7 +123,7 @@ export const PartnersPage = () => {
             <option value="ALL">All Districts</option>
             {availableDistricts.map((d) => (
               <option key={d} value={d}>
-                📍 {d} District
+               {d} District
               </option>
             ))}
           </select>
