@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { newsApi } from '../../api/news';
-import { initialNews } from '../../data/mockData';
+import { initialNews } from '../../data/translations';
 import { Newspaper, Plus, Trash2, Edit2, Send, Eye, EyeOff, X } from 'lucide-react';
 import { RowActions } from './RowActions';
 import { Panel, RefreshButton, tableClass, theadClass, tbodyClass, rowClass } from './AdminShared';

@@ -163,7 +163,7 @@ export const ListingsTab = ({
                   const blocker =
                     `${l.blocker_first_name || ''} ${l.blocker_last_name || ''}`.trim() ||
                     l.blocker_phone ||
-                    '—';
+                    ' ';
                   const code = l.blocker_verification_code;
                   const cat = listingCategory(l);
                   const sub = listingSubType(l);
@@ -338,7 +338,7 @@ export const ListingsTab = ({
               </div>
             </div>
 
-            {/* Modal Body — 2-column layout identical to Screenshot #4 */}
+            {/* Modal Body 2-column layout identical to Screenshot #4 */}
             <div className="p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
                 {/* Left 3 cols: Main Photo + 4 Thumbnails + Title + VIP Banner + 6 Spec Cards + About + Area Highlights */}
@@ -424,13 +424,13 @@ export const ListingsTab = ({
                     <div className="bg-brand-bg-soft/60 rounded-xl p-3 border border-brand-line">
                       <span className="text-xs text-brand-ink-soft block">Size</span>
                       <b className="text-sm text-brand-ink">
-                        {listingSize(selectedListing) || '—'}
+                        {listingSize(selectedListing) || ' '}
                       </b>
                     </div>
                     <div className="bg-brand-bg-soft/60 rounded-xl p-3 border border-brand-line">
                       <span className="text-xs text-brand-ink-soft block">UPI / Parcel No.</span>
                       <b className="text-sm text-brand-ink font-mono">
-                        {selectedListing.upi_number || selectedListing.upi || '—'}
+                        {selectedListing.upi_number || selectedListing.upi || ' '}
                       </b>
                     </div>
                     <div className="bg-brand-bg-soft/60 rounded-xl p-3 border border-brand-line">
@@ -460,7 +460,7 @@ export const ListingsTab = ({
                   {/* Area investment highlights */}
                   <div className="mt-6">
                     <h4 className="font-bold text-base text-brand-ink mb-1.5">
-                      📍 Area investment highlights
+                     Area investment highlights
                     </h4>
                     <p className="text-xs sm:text-sm text-brand-ink-soft leading-relaxed">
                       {(getDistrictHighlight(districtName) || [])[0] ||

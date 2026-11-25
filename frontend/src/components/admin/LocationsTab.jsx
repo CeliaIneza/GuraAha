@@ -190,7 +190,7 @@ export const LocationsTab = ({ showToast }) => {
                 return (
                   <tr key={item.district_id || item.district_name} className={rowClass}>
                     <td className="py-3 px-4 font-bold text-brand-ink">
-                      📍 {item.district_name}
+                     {item.district_name}
                     </td>
                     <td className="py-3 px-4 text-xs text-brand-ink-soft">
                       {item.province_name || 'Rwanda'}
@@ -231,7 +231,7 @@ export const LocationsTab = ({ showToast }) => {
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-bold text-brand-ink mb-4">
-              Edit Area Highlights — {editingArea.district_name}
+              Edit Area Highlights {editingArea.district_name}
             </h3>
             <form onSubmit={handleSaveEdit} className="space-y-3.5">
               <div>

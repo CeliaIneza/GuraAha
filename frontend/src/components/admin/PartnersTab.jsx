@@ -226,7 +226,7 @@ export const PartnersTab = ({ showToast }) => {
                     <td className="py-3 px-3.5">
                       <div className="font-semibold text-brand-ink">{p.name}</div>
                       <div className="text-xs font-mono text-brand-ink-soft">
-                        {p.phone || p.email || '—'}
+                        {p.phone || p.email || ' '}
                       </div>
                     </td>
                     <td className="py-3 px-3.5 text-xs font-semibold capitalize text-brand-ink">
@@ -239,7 +239,7 @@ export const PartnersTab = ({ showToast }) => {
                       {p.certification_number || 'Verified'}
                     </td>
                     <td className="py-3 px-3.5 text-xs text-brand-ink-soft max-w-xs truncate">
-                      {p.description_en || p.descriptionEn || '—'}
+                      {p.description_en || p.descriptionEn || ' '}
                     </td>
                     <td className="py-3 px-3.5">
                       <span

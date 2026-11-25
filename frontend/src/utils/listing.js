@@ -1,4 +1,4 @@
-import { GRAD, IMG, XTRA, unsplashUrl } from '../data/mockData';
+import { GRAD, IMG, XTRA, unsplashUrl } from '../data/translations';
 import { BACKEND_ORIGIN } from '../api/client';
 
 export function listingTitle(listing, lang = 'en') {

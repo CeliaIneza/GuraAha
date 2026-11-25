@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { blockersApi } from '../api/blockers';
-import { sectorsByDistrict } from '../data/mockData';
+import { sectorsByDistrict } from '../data/translations';
 import { CheckCircle2, AlertCircle, Upload, FileText, X, Loader2 } from 'lucide-react';
 
 const DISTRICTS = Object.keys(sectorsByDistrict);
@@ -279,7 +279,7 @@ export const BecomeBlockerPage = () => {
               {/* Row 3: Choose login credentials box */}
               <div className="bg-[#F6F5F0] border border-brand-line rounded-[12px] p-4 space-y-3">
                 <div className="font-bold text-xs sm:text-sm text-[#00594A]">
-                  🔐 {t('blocker_creds_title')}
+                 {t('blocker_creds_title')}
                 </div>
 
                 <div>

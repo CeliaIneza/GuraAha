@@ -184,7 +184,7 @@ export class NewsController {
       await db
         .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
           req.user?.id ?? null,
-          `${id ? "💾 Article updated" : "➕ Article added"}: "${headline}"${saved.is_published ? "" : " (draft)"}${pushNow && saved.is_published ? " — notification sent" : ""}`,
+          `${id ? "💾 Article updated" : "➕ Article added"}: "${headline}"${saved.is_published ? "" : " (draft)"}${pushNow && saved.is_published ? " notification sent" : ""}`,
         ])
         .catch(() => {});
 
@@ -217,7 +217,7 @@ export class NewsController {
           req.user?.id ?? null,
           updated.is_published
             ? `📰 "${title}" published on the News page`
-            : `📝 "${title}" unpublished — back to draft`,
+            : `📝 "${title}" unpublished back to draft`,
         ])
         .catch(() => {});
 
@@ -245,7 +245,7 @@ export class NewsController {
       await db
         .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
           req.user?.id ?? null,
-          `📣 "${title}" pushed to subscribers`,
+          `"${title}" pushed to subscribers`,
         ])
         .catch(() => {});
 

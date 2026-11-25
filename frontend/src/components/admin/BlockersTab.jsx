@@ -150,7 +150,7 @@ export const BlockersTab = ({
                     app.area_text ||
                     app.operating_location_path ||
                     app.operating_location_name ||
-                    '—';
+                    ' ';
                   const listingCount = Number(app.listing_count ?? 0);
                   const activePlan = app.active_plan || 'None';
 
@@ -218,13 +218,13 @@ export const BlockersTab = ({
                         )}
                       </td>
                       <td className="py-3 px-3.5 font-mono text-xs font-bold text-brand-green-dark">
-                        {app.verification_code || '—'}
+                        {app.verification_code || ' '}
                       </td>
                       <td className="py-3 px-3.5 font-mono text-xs text-brand-ink">
-                        {app.phone || '—'}
+                        {app.phone || ' '}
                       </td>
                       <td className="py-3 px-3.5 font-mono text-xs text-brand-ink-soft">
-                        {app.national_id || '—'}
+                        {app.national_id || ' '}
                       </td>
                       <td className="py-3 px-3.5 text-xs text-brand-ink">{areaDisplay}</td>
                       <td className="py-3 px-3.5 text-xs font-bold text-brand-ink">
@@ -360,7 +360,7 @@ export const BlockersTab = ({
 
               <div className="p-3.5 rounded-[10px] bg-brand-bg-soft border border-brand-line space-y-3">
                 <div className="text-xs font-bold text-brand-green-dark">
-                  🔐 Login Credentials
+                 Login Credentials
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -498,7 +498,7 @@ export const BlockersTab = ({
                     <span>National ID (16 Digits)</span>
                   </div>
                   <div className="font-mono text-sm font-bold text-brand-ink break-all">
-                    {selectedBlocker.national_id || '—'}
+                    {selectedBlocker.national_id || ' '}
                   </div>
                 </div>
 

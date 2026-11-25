@@ -234,7 +234,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                 <Input
                   value={formData.titleRw}
                   onChange={(e) => updateField('titleRw', e.target.value)}
-                  placeholder="e.g. Ikibanza cyo guturamo kireba imisozi — Remera"
+                  placeholder="e.g. Ikibanza cyo guturamo kireba imisozi Remera"
                   className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ''}`}
                 />
                 <Textarea
@@ -251,7 +251,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                 <Input
                   value={formData.titleEn}
                   onChange={(e) => updateField('titleEn', e.target.value)}
-                  placeholder="e.g. Residential plot with mountain view — Remera"
+                  placeholder="e.g. Residential plot with mountain view Remera"
                   className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ''}`}
                 />
                 <Textarea
@@ -268,7 +268,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                 <Input
                   value={formData.titleFr}
                   onChange={(e) => updateField('titleFr', e.target.value)}
-                  placeholder="e.g. Parcelle résidentielle avec vue sur montagne — Remera"
+                  placeholder="e.g. Parcelle résidentielle avec vue sur montagne Remera"
                   className={`rounded-[9px] h-11 pl-3 text-sm ${errors.title ? errorInputClass : ''}`}
                 />
                 <Textarea
@@ -326,7 +326,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                     </option>
                   ))
                 ) : (
-                  <option value={formData.category}>—</option>
+                  <option value={formData.category}> </option>
                 )}
               </select>
             </div>
@@ -595,7 +595,7 @@ export const AddPropertyTab = ({ onCancel, onSuccess }) => {
                   <Input
                     value={formData.vipReason}
                     onChange={(e) => updateField('vipReason', e.target.value)}
-                    placeholder="e.g. Owner relocating — quick sale within 30 days"
+                    placeholder="e.g. Owner relocating quick sale within 30 days"
                     className="rounded-[9px] h-10 pl-3 text-sm bg-white"
                   />
                 </div>

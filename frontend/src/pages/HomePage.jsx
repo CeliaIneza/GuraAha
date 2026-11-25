@@ -5,7 +5,7 @@ import { ListingCard } from '../components/ListingCard';
 import { listingsApi } from '../api/listings';
 import { locationsApi } from '../api/locations';
 import { newsApi } from '../api/news';
-import { initialListings, initialNews } from '../data/mockData';
+import { initialListings, initialNews } from '../data/translations';
 import {
   isFeaturedListing,
   listingCategory,
@@ -265,7 +265,7 @@ export const HomePage = () => {
               </b>
               <span className="text-xs sm:text-sm opacity-90">
                 {lang === 'rw'
-                  ? 'Abakommissiyoneri bemewe'
+                  ? 'Abakomisiyoneri bemewe'
                   : lang === 'fr'
                   ? 'Agents vérifiés'
                   : 'Verified blockers'}
@@ -368,11 +368,11 @@ export const HomePage = () => {
           </div>
         </section>
 
-        {/* 3. VIP Room Teaser Banner (NO listings shown inside — subscribers must pay first) */}
+        {/* 3. VIP Room Teaser Banner (NO listings shown inside subscribers must pay first) */}
         <section className="rounded-[18px] p-6 sm:p-8 text-white bg-gradient-to-br from-[#0F2C26] via-[#00594A] to-[#007A66] border border-brand-green/40 shadow-lg flex flex-wrap items-center justify-between gap-6">
           <div className="max-w-2xl">
             <h2 className="text-xl sm:text-2xl font-bold text-white">
-              {t('vip_teaser_title') || '⭐ VIP Room — exclusive deals before anyone else'}
+              {t('vip_teaser_title') || '⭐ VIP Room exclusive deals before anyone else'}
             </h2>
             <p className="text-sm sm:text-base text-white/90 mt-2 leading-relaxed">
               {t('vip_teaser_sub') ||
@@ -420,11 +420,11 @@ export const HomePage = () => {
 
         {/* 5. Monthly Lotto (Brand Green Gradient Only) & No-Smartphone Blocker Banner */}
         <section className="space-y-5">
-          {/* Lotto Banner — Pure Brand Green Gradient */}
+          {/* Lotto Banner Pure Brand Green Gradient */}
           <div className="rounded-[18px] p-6 sm:p-8 text-white bg-gradient-to-br from-[#00594A] to-[#007A66] flex flex-wrap items-center justify-between gap-6 shadow-md">
             <div className="max-w-xl">
               <span className="inline-block bg-white/15 border border-white/25 text-white px-3 py-1 rounded-full text-xs font-bold">
-                🎟️ {t('lotto_badge')}
+                {t('lotto_badge')}
               </span>
               <h2 className="text-2xl sm:text-3xl font-bold text-white mt-2.5">
                 {t('lotto_title')}

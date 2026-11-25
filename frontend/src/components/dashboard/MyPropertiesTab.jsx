@@ -201,7 +201,7 @@ export const MyPropertiesTab = ({
                       {typeLabel}
                     </td>
                     <td className="py-3 px-4 text-brand-ink-soft text-xs">
-                      {listingLocationLine(item) || '—'}
+                      {listingLocationLine(item) || ' '}
                     </td>
                     <td className="py-3 px-4 font-bold text-brand-green-dark text-xs">
                       {listingPrice(item).toLocaleString()} RWF

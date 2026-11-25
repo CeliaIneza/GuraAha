@@ -68,9 +68,17 @@ function MainLayout() {
     location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/admin');
 
   return (
-    <div className={`flex flex-col min-h-screen ${isDashboardView ? 'h-dvh overflow-hidden' : ''}`}>
+    <div
+      className={`flex flex-col min-h-screen w-full max-w-full overflow-x-clip ${
+        isDashboardView ? 'h-dvh overflow-hidden' : ''
+      }`}
+    >
       <Header />
-      <main className={`flex-1 flex flex-col ${isDashboardView ? 'min-h-0 overflow-hidden' : ''}`}>
+      <main
+        className={`flex-1 flex flex-col w-full max-w-full min-w-0 ${
+          isDashboardView ? 'min-h-0 overflow-hidden' : ''
+        }`}
+      >
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/browse" element={<BrowsePage />} />
