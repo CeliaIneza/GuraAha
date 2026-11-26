@@ -53,6 +53,19 @@ export class BlockerService {
         let targetUserId = userId;
         let user = targetUserId ? await this.userRepository.findById(targetUserId) : null;
 
+        // If the caller is logged in as ADMIN or submitted the public registration form with a new username & password
+        // that doesn't match the current session user, create/resolve the applicant account separately
+        if (
+            user &&
+            (user.role === 'ADMIN' ||
+                (input.username &&
+                    input.password &&
+                    user.username?.toLowerCase() !== input.username.trim().toLowerCase()))
+        ) {
+            user = null;
+            targetUserId = undefined;
+        }
+
         // Public application without prior login (matches prototype Become a Blocker flow)
         if (!user) {
             if (!input.fullName || !input.phone) {
