@@ -1,40 +1,120 @@
+import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
+interface SmtpCandidate {
+  host: string;
+  port: number;
+  secure: boolean;
+}
+
 export class EmailService {
-  private transporter: any = null;
+  private candidates: SmtpCandidate[] = [];
 
   constructor() {
-    this.initTransporter();
+    this.initCandidates();
   }
 
-  private initTransporter() {
-    if (env.EMAIL_HOST && env.EMAIL_HOST_USER && env.EMAIL_HOST_PASSWORD) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const nodemailer = require('nodemailer');
-        const port = Number(env.EMAIL_PORT) || 465;
-        const isSecure = port === 465;
+  private initCandidates() {
+    if (!env.EMAIL_HOST_USER || !env.EMAIL_HOST_PASSWORD) {
+      console.warn(
+        '[EmailService] EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not set. Outbound emails will be logged to console.'
+      );
+      return;
+    }
 
-        this.transporter = nodemailer.createTransport({
-          host: env.EMAIL_HOST,
-          port,
-          secure: isSecure,
+    const primaryHost = (env.EMAIL_HOST || 'guraaha.com').trim();
+    const primaryPort = Number(env.EMAIL_PORT) || 465;
+    const mailSubdomain = primaryHost.startsWith('mail.')
+      ? primaryHost
+      : `mail.${primaryHost.replace(/^https?:\/\//, '')}`;
+
+    const rawList: SmtpCandidate[] = [
+      { host: primaryHost, port: primaryPort, secure: primaryPort === 465 },
+      { host: mailSubdomain, port: 465, secure: true },
+      { host: mailSubdomain, port: 587, secure: false },
+      { host: primaryHost, port: primaryPort === 465 ? 587 : 465, secure: primaryPort !== 465 },
+      { host: '127.0.0.1', port: 465, secure: true },
+      { host: '127.0.0.1', port: 587, secure: false },
+    ];
+
+    const seen = new Set<string>();
+    for (const c of rawList) {
+      const key = `${c.host}:${c.port}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        this.candidates.push(c);
+      }
+    }
+  }
+
+  private getFromAddress(): string {
+    const authUser = (env.EMAIL_HOST_USER || '').trim();
+    const configuredFrom = (env.DEFAULT_FROM_EMAIL || '').trim();
+
+    // Namecheap cPanel Exim requires the From address to match the authenticated mailbox when authUser is an email
+    if (authUser.includes('@')) {
+      if (!configuredFrom || configuredFrom.includes('@guraaha.rw') || !configuredFrom.includes(authUser)) {
+        return `"Guraaha" <${authUser}>`;
+      }
+    }
+    return configuredFrom || `"Guraaha" <noreply@guraaha.com>`;
+  }
+
+  private async dispatchMail(options: {
+    to: string;
+    subject: string;
+    text?: string;
+    html: string;
+  }): Promise<{ success: boolean; messageId?: string }> {
+    const from = this.getFromAddress();
+
+    if (this.candidates.length === 0) {
+      console.log(`[MOCK EMAIL DISPATCH] From: ${from} | To: ${options.to} | Subject: ${options.subject}`);
+      return { success: true, messageId: 'mock-console-id' };
+    }
+
+    let lastError: unknown = null;
+    for (const candidate of this.candidates) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: candidate.host,
+          port: candidate.port,
+          secure: candidate.secure,
           auth: {
             user: env.EMAIL_HOST_USER,
             pass: env.EMAIL_HOST_PASSWORD,
           },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
           tls: {
             rejectUnauthorized: false,
           },
         });
-      } catch {
-        console.warn('[EmailService] nodemailer module not installed; using console/dev email dispatch.');
+
+        const info = await transporter.sendMail({
+          from,
+          to: options.to,
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+        });
+
+        console.log(
+          `[EmailService] Email sent to ${options.to} via ${candidate.host}:${candidate.port} (${info.messageId})`
+        );
+        return { success: true, messageId: info.messageId };
+      } catch (err) {
+        lastError = err;
+        console.warn(
+          `[EmailService] SMTP attempt via ${candidate.host}:${candidate.port} failed:`,
+          err instanceof Error ? err.message : err
+        );
       }
-    } else {
-      console.warn(
-        '[EmailService] Email credentials (EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD) not fully set. Outbound emails will be logged to console in dev mode.'
-      );
     }
+
+    console.error('[EmailService] All SMTP candidates failed for recipient:', options.to, lastError);
+    return { success: false };
   }
 
   async sendVerificationEmail(
@@ -42,9 +122,7 @@ export class EmailService {
     verificationCode: string,
     recipientName = 'Valued User'
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>';
     const subject = `Your Guraaha Verification Code: ${verificationCode}`;
-
     const text = `Hello ${recipientName},\n\nYour Guraaha verification code is: ${verificationCode}\n\nThis code will expire in 15 minutes. If you did not request this, please disregard this email.\n\nBest regards,\nThe Guraaha Team`;
 
     const html = `
@@ -59,7 +137,7 @@ export class EmailService {
         </p>
         
         <p style="font-size: 14px; line-height: 1.6; color: #4B5563; margin-bottom: 20px;">
-          Thank you for signing up on Guraaha. Please use the verification code below to verify your account and activate your blocker eligibility:
+          Thank you for signing up on Guraaha. Please use the verification code below to verify your account:
         </p>
         
         <div style="background-color: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 8px; padding: 18px; text-align: center; margin: 24px 0;">
@@ -80,26 +158,7 @@ export class EmailService {
       </div>
     `;
 
-    if (!this.transporter) {
-      console.log(`[MOCK EMAIL DISPATCH] To: ${to} | Code: ${verificationCode}`);
-      return { success: true, messageId: 'mock-console-id' };
-    }
-
-    try {
-      const info = await this.transporter.sendMail({
-        from: fromAddress,
-        to,
-        subject,
-        text,
-        html,
-      });
-
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('[EmailService] Failed to send email via SMTP:', error);
-      console.log(`[DEV FALLBACK CODE] To: ${to} | Verification Code: ${verificationCode}`);
-      return { success: false };
-    }
+    return this.dispatchMail({ to, subject, text, html });
   }
 
   async sendPasswordResetEmail(
@@ -107,8 +166,8 @@ export class EmailService {
     resetLink: string,
     recipientName = 'Valued User'
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>';
     const subject = 'Guraaha – Reset Your Password';
+    const text = `Hello ${recipientName},\n\nUse the link below to reset your Guraaha password (valid for 1 hour):\n${resetLink}`;
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
       <h2 style="color:#0F2C26;">Guraaha – Password Reset</h2>
       <p>Hello <strong>${recipientName}</strong>,</p>
@@ -120,35 +179,38 @@ export class EmailService {
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
       <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
-    if (!this.transporter) {
-      console.log(`[MOCK PASSWORD RESET EMAIL] To: ${to} | Link: ${resetLink}`);
-      return { success: true, messageId: 'mock-console-id' };
-    }
-    try {
-      const info = await this.transporter.sendMail({ from: fromAddress, to, subject, html });
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('[EmailService] Failed to send password reset email:', error);
-      console.log(`[DEV FALLBACK RESET LINK] To: ${to} | Link: ${resetLink}`);
-      return { success: false };
-    }
+
+    return this.dispatchMail({ to, subject, text, html });
   }
 
   async sendBlockerApplicationEmail(to: string, name: string): Promise<void> {
+    const subject = 'Guraaha – Blocker Application Received';
+    const text = `Hello ${name},\n\nThank you for applying to become a Guraaha Blocker! Our compliance team will review your National ID and district registration and notify you once approved.`;
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
       <h2 style="color:#0F2C26;">Guraaha – Blocker Application Received</h2>
       <p>Hello <strong>${name}</strong>,</p>
-      <p>Thank you for applying to become a Guraaha Blocker! Our compliance team will review your National ID and sector registration.</p>
-      <p>You will be notified once your application has been reviewed (usually within 1-3 business days).</p>
+      <p>Thank you for applying to become a Guraaha Blocker! Our compliance team will review your National ID and district registration.</p>
+      <p>You will be notified once your application has been reviewed.</p>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
       <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
-    if (!this.transporter) { console.log(`[MOCK EMAIL] Blocker application received: ${to}`); return; }
-    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>', to, subject: 'Guraaha – Blocker Application Received', html }); }
-    catch (e) { console.error('[EmailService] sendBlockerApplicationEmail failed:', e); }
+
+    await this.dispatchMail({ to, subject, text, html });
   }
 
-  async sendBlockerApprovalEmail(to: string, name: string, verificationCode: string, username?: string, tempPassword?: string): Promise<void> {
+  async sendBlockerApprovalEmail(
+    to: string,
+    name: string,
+    verificationCode: string,
+    username?: string,
+    tempPassword?: string
+  ): Promise<void> {
+    const subject = '🎉 Guraaha – Your Blocker Application is Approved!';
+    const text = `Hello ${name},\n\nCongratulations! Your Blocker application has been approved.\nVerification Code: ${verificationCode}${
+      username ? `\nUsername: ${username}` : ''
+    }${tempPassword ? `\nTemporary Password: ${tempPassword}` : ''}\n\nYou can now log in at ${
+      env.FRONTEND_URL || 'https://guraaha.com'
+    }/login`;
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
       <h2 style="color:#0F2C26;">🎉 Guraaha – You are now a Blocker!</h2>
       <p>Hello <strong>${name}</strong>,</p>
@@ -159,13 +221,12 @@ export class EmailService {
         ${username ? `<p style="margin:10px 0 0;font-size:13px;color:#0F2C26;">Username: <strong>${username}</strong></p>` : ''}
         ${tempPassword ? `<p style="margin:4px 0 0;font-size:13px;color:#0F2C26;">Temporary Password: <strong>${tempPassword}</strong></p>` : ''}
       </div>
-      <p>You can now log in to your dashboard and start posting property listings.</p>
+      <p>You can now log in to your dashboard, subscribe to a Blocker Pro plan, and start posting property listings.</p>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
       <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
-    if (!this.transporter) { console.log(`[MOCK EMAIL] Blocker approved: ${to} | Code: ${verificationCode}`); return; }
-    try { await this.transporter.sendMail({ from: env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>', to, subject: '🎉 Guraaha – Your Blocker Application is Approved!', html }); }
-    catch (e) { console.error('[EmailService] sendBlockerApprovalEmail failed:', e); }
+
+    await this.dispatchMail({ to, subject, text, html });
   }
 
   async sendAlertEmail(
@@ -174,29 +235,22 @@ export class EmailService {
     title: string,
     summary: string
   ): Promise<{ success: boolean; messageId?: string }> {
-    const fromAddress = env.DEFAULT_FROM_EMAIL || 'Guraaha <noreply@guraaha.com>';
     const html = `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:28px;border:1px solid #E5E7EB;border-radius:12px;">
       <h2 style="color:#0F2C26;margin-top:0;">${title}</h2>
       <p style="font-size:14px;line-height:1.6;color:#374151;">${summary}</p>
       <div style="margin:24px 0;">
-        <a href="${env.FRONTEND_URL || 'http://localhost:5173'}" style="background:#007A66;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">View on Guraaha</a>
+        <a href="${env.FRONTEND_URL || 'https://guraaha.com'}" style="background:#007A66;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">View on Guraaha</a>
       </div>
       <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;"/>
       <p style="font-size:11px;color:#9CA3AF;text-align:center;">&copy; ${new Date().getFullYear()} Guraaha Rwanda</p>
     </div>`;
 
-    if (!this.transporter) {
-      console.log(`[MOCK ALERT EMAIL] To: ${to} | Subject: ${subject} | Summary: ${summary}`);
-      return { success: true, messageId: 'mock-console-id' };
-    }
-
-    try {
-      const info = await this.transporter.sendMail({ from: fromAddress, to, subject, text: `${title}\n\n${summary}`, html });
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('[EmailService] sendAlertEmail failed:', error);
-      return { success: false };
-    }
+    return this.dispatchMail({
+      to,
+      subject,
+      text: `${title}\n\n${summary}`,
+      html,
+    });
   }
 
   async sendBulkAlertEmails(

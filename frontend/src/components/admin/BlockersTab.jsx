@@ -326,6 +326,21 @@ export const BlockersTab = ({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  Email Address (for verification code &amp; password notifications)
+                </label>
+                <input
+                  type="email"
+                  value={newBlockerForm.email}
+                  onChange={(e) =>
+                    setNewBlockerForm((p) => ({ ...p, email: e.target.value }))
+                  }
+                  placeholder="blocker@email.com"
+                  className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink mb-1">

@@ -6,6 +6,7 @@ import { ListingPhotoRepository } from "../repositories/listingphoto.repository"
 import { LocationRepository } from "../repositories/location.repository";
 import { SubscriptionRepository } from "../repositories/subscription.repository";
 import { NotificationService } from "./notification.service";
+import { EmailService } from "./email.service";
 import { CreateListingInput } from "../validators/listing.validator";
 import { UPLOAD_ROOT } from "../middleware/upload";
 import { db } from "../config/database";
@@ -69,6 +70,12 @@ export class ListingService {
             }
             if (blockerProfile.status !== 'APPROVED') {
                 throw new Error('Only approved blockers can create listings');
+            }
+            const activeSub = await this.subscriptionRepository.findCurrentActive(blockerProfile.id);
+            if (!activeSub) {
+                throw new Error(
+                    'Active Blocker Pro subscription required. Please subscribe to a Weekly or Monthly Blocker Pro plan before adding a property listing.'
+                );
             }
             blockerId = blockerProfile.id;
         }
@@ -135,14 +142,67 @@ export class ListingService {
             vipEarlyAccessDays: input.vipEarlyAccessDays ?? 7,
         });
 
+        const listingTitle = created.title_en || created.title_rw || created.title_fr || 'New Property';
         await db
             .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                 userId,
-                `➕ Listing "${created.title_en || created.title_rw || created.title_fr}" created (${created.status})`,
+                `➕ Listing "${listingTitle}" created (${created.status})`,
             ])
             .catch(() => {});
 
+        // Notify Blocker & Admin via Email
+        db.query(
+            `SELECT u.email, u.first_name, u.last_name FROM blocker_profiles bp INNER JOIN users u ON u.id = bp.user_id WHERE bp.id = $1 LIMIT 1`,
+            [blockerId]
+        )
+            .then(({ rows }) => {
+                const blockerUser = rows[0];
+                const emailService = new EmailService();
+                if (blockerUser?.email) {
+                    emailService
+                        .sendAlertEmail(
+                            blockerUser.email,
+                            `Guraaha – Listing Submitted: "${listingTitle}"`,
+                            `Your Property Listing Was Submitted`,
+                            `Hello ${blockerUser.first_name || 'Blocker'}, your listing "${listingTitle}" (${Number(created.price_rwf || 0).toLocaleString()} RWF) has been received and is pending verification by the Guraaha Admin.`
+                        )
+                        .catch(() => {});
+                }
+                db.query(
+                    `SELECT u.email FROM users u INNER JOIN roles r ON r.id = u.role_id WHERE r.name = 'ADMIN' AND u.email IS NOT NULL`
+                )
+                    .then((adminRes) => {
+                        const adminEmails = adminRes.rows.map((r: any) => r.email).filter(Boolean);
+                        if (adminEmails.length > 0) {
+                            emailService
+                                .sendBulkAlertEmails(
+                                    adminEmails,
+                                    `Guraaha Admin – New Listing Pending Review: "${listingTitle}"`,
+                                    `New Property Listing Submitted`,
+                                    `A new property listing "${listingTitle}" (${Number(created.price_rwf || 0).toLocaleString()} RWF) has been submitted by ${blockerUser ? `${blockerUser.first_name || ''} ${blockerUser.last_name || ''}`.trim() : 'a Blocker'} and is awaiting approval in the Admin Panel.`
+                                )
+                                .catch(() => {});
+                        }
+                    })
+                    .catch(() => {});
+            })
+            .catch(() => {});
+
         return created;
+    }
+
+    private notifyBlockerListingStatus(blockerId: string, subject: string, heading: string, message: string) {
+        db.query(
+            `SELECT u.email, u.first_name FROM blocker_profiles bp INNER JOIN users u ON u.id = bp.user_id WHERE bp.id = $1 AND u.email IS NOT NULL LIMIT 1`,
+            [blockerId]
+        )
+            .then(({ rows }) => {
+                if (rows[0]?.email) {
+                    const emailService = new EmailService();
+                    emailService.sendAlertEmail(rows[0].email, subject, heading, message).catch(() => {});
+                }
+            })
+            .catch(() => {});
     }
 
     async getById(listingId: string, requestingUser?: RequestingUser) {
@@ -265,6 +325,16 @@ export class ListingService {
                 `✅ "${title}" approved live on the public site`,
             ])
             .catch(() => {});
+
+        if (listing.blocker_id) {
+            this.notifyBlockerListingStatus(
+                listing.blocker_id,
+                `🎉 Guraaha – Listing Approved: "${title}"`,
+                `Your Listing is Approved & Live!`,
+                `Congratulations! Your property listing "${title}" has been approved by the Guraaha Admin and is now live on the platform.`
+            );
+        }
+
         return approved;
     }
 
@@ -283,6 +353,16 @@ export class ListingService {
                     `⭐ "${title}" approved as VIP exclusive visible to VIP subscribers for ${earlyAccessDays} days`,
                 ])
                 .catch(() => {});
+
+            if (listing.blocker_id) {
+                this.notifyBlockerListingStatus(
+                    listing.blocker_id,
+                    `⭐ Guraaha – VIP Listing Approved: "${title}"`,
+                    `Your VIP Room Listing is Live!`,
+                    `Congratulations! Your VIP exclusive listing "${title}" has been approved and is now live in the Guraaha VIP Room for ${earlyAccessDays} days.`
+                );
+            }
+
             this.notificationService
                 .fanOutVipDealAlert({
                     listingId: approved.id,
@@ -311,6 +391,16 @@ export class ListingService {
                 `❌ "${title}" rejected: ${rejectionReason}`,
             ])
             .catch(() => {});
+
+        if (listing.blocker_id) {
+            this.notifyBlockerListingStatus(
+                listing.blocker_id,
+                `Guraaha – Listing Rejected: "${title}"`,
+                `Update on Your Property Listing`,
+                `Your property listing "${title}" was not approved. Reason: ${rejectionReason}`
+            );
+        }
+
         return rejected;
     }
 
@@ -319,11 +409,21 @@ export class ListingService {
         if (!listing) {
             throw new Error('Listing not found');
         }
-        return this.listingRepository.revise(
+        const revised = await this.listingRepository.revise(
             listingId,
             adminId,
             adminNote || 'Revision requested by admin'
         );
+        const title = listing.title_en || listing.title_rw || listing.title_fr || listingId;
+        if (listing.blocker_id) {
+            this.notifyBlockerListingStatus(
+                listing.blocker_id,
+                `Guraaha – Revision Requested: "${title}"`,
+                `Revision Requested on Your Listing`,
+                `The Guraaha Admin requested a revision on your listing "${title}". Note: ${adminNote || 'Please review and update your listing details.'}`
+            );
+        }
+        return revised;
     }
 
     async update(listingId: string, userId: string, input: UpdateListingInput, userRole = 'BLOCKER') {

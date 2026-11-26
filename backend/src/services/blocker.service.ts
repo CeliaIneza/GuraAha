@@ -196,6 +196,26 @@ export class BlockerService {
                 });
         }
 
+        // Notify Admin(s) via email that a new Blocker Application is pending review
+        db.query(
+            `SELECT u.email FROM users u INNER JOIN roles r ON r.id = u.role_id WHERE r.name = 'ADMIN' AND u.email IS NOT NULL`
+        )
+            .then(({ rows }) => {
+                const adminEmails = rows.map((r: any) => r.email).filter(Boolean);
+                if (adminEmails.length > 0) {
+                    const emailService = new EmailService();
+                    emailService
+                        .sendBulkAlertEmails(
+                            adminEmails,
+                            `Guraaha Admin – New Blocker Application: ${displayName}`,
+                            `New Blocker Application Submitted`,
+                            `${displayName} (@${user.username || ''}, Phone: ${user.phone || ''}, District: ${input.areaText || 'Rwanda'}) has applied to become a verified Blocker and is awaiting your review in the Admin Panel.`
+                        )
+                        .catch(() => {});
+                }
+            })
+            .catch(() => {});
+
         return application;
     }
 
@@ -252,6 +272,18 @@ export class BlockerService {
                     `❌ Blocker ${name} rejected: ${rejectionReason}`,
                 ])
                 .catch(() => {});
+
+            if (userInfo && userInfo.email) {
+                const emailService = new EmailService();
+                emailService
+                    .sendAlertEmail(
+                        userInfo.email,
+                        'Guraaha – Update on Your Blocker Account',
+                        'Update on Your Guraaha Blocker Status',
+                        `Hello ${name}, your Guraaha Blocker status has been updated to Rejected / Removed from Public. Reason: ${rejectionReason}`
+                    )
+                    .catch(() => {});
+            }
 
             return updatedProfile;
         } catch (error) {
@@ -421,11 +453,14 @@ export class BlockerService {
         adminId: string,
         input: {
             id?: string;
-            name: string;
+            name?: string;
+            fullName?: string;
             phone: string;
             email?: string;
-            nid: string;
+            nid?: string;
+            nationalId?: string;
             area?: string;
+            areaText?: string;
             operatingLocationId?: string;
             username: string;
             password?: string;
@@ -439,7 +474,11 @@ export class BlockerService {
             throw new Error('Username: 3–30 characters, lowercase letters, numbers, dot, dash or underscore.');
         }
 
-        const nameParts = (input.name || '').trim().split(/\s+/);
+        const effectiveName = (input.name || input.fullName || '').trim();
+        const effectiveNid = (input.nid || input.nationalId || '').trim();
+        const effectiveArea = (input.area || input.areaText || '').trim();
+
+        const nameParts = effectiveName.split(/\s+/);
         const firstName = nameParts[0] || 'Blocker';
         const lastName = nameParts.slice(1).join(' ') || '';
         const targetStatus = (input.status || 'APPROVED').toUpperCase();
@@ -458,7 +497,7 @@ export class BlockerService {
                 phone: input.phone.trim(),
                 email: input.email || undefined,
                 username: cleanUsername,
-                areaText: input.area,
+                areaText: effectiveArea || undefined,
             });
             await this.userRepository.updateRole(existingProfile.user_id, roleId);
 
@@ -492,7 +531,7 @@ export class BlockerService {
                     updated_at = NOW()
                 WHERE id = $5
                 `,
-                [input.nid.trim(), input.area || null, targetStatus, code, existingProfile.id]
+                [effectiveNid, effectiveArea || null, targetStatus, code, existingProfile.id]
             );
 
             await this.syncBlockerAdminPlan(existingProfile.id, existingProfile.user_id, input.plan);
@@ -500,7 +539,7 @@ export class BlockerService {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     adminId,
-                    `💾 Blocker ${input.name} updated`,
+                    `💾 Blocker ${effectiveName} updated`,
                 ])
                 .catch(() => {});
 
@@ -528,9 +567,9 @@ export class BlockerService {
             const code = targetStatus === 'APPROVED' ? generateBlockerCode() : null;
             const createdProfile = await this.blockerRepository.create({
                 userId: createdUser.id,
-                nationalId: input.nid.trim(),
+                nationalId: effectiveNid,
                 operatingLocationId: input.operatingLocationId || null,
-                areaText: input.area || null,
+                areaText: effectiveArea || null,
                 status: targetStatus,
                 verificationCode: code,
             });
@@ -540,9 +579,22 @@ export class BlockerService {
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [
                     adminId,
-                    `➕ Blocker ${input.name} added${code ? ' code ' + code : ''}`,
+                    `➕ Blocker ${effectiveName} added${code ? ' code ' + code : ''}`,
                 ])
                 .catch(() => {});
+
+            if (createdUser.email) {
+                const emailService = new EmailService();
+                emailService
+                    .sendBlockerApprovalEmail(
+                        createdUser.email,
+                        effectiveName || firstName,
+                        code || 'PENDING',
+                        cleanUsername,
+                        rawPw
+                    )
+                    .catch((err) => console.error('Failed to send new blocker welcome email:', err));
+            }
 
             return { ...createdProfile, username: cleanUsername, temporaryPassword: rawPw };
         }

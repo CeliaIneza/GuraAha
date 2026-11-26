@@ -297,12 +297,30 @@ export const DashboardPage = () => {
               />
             )}
 
-            {activeTab === 'add' && (
-              <AddPropertyTab
-                onCancel={() => handleTabChange('listings')}
-                onSuccess={handlePropertyAdded}
-              />
-            )}
+            {activeTab === 'add' &&
+              (subscription?.blockerSubscription?.isActive ? (
+                <AddPropertyTab
+                  onCancel={() => handleTabChange('listings')}
+                  onSuccess={handlePropertyAdded}
+                />
+              ) : (
+                <div className="bg-white border-2 border-amber-300 rounded-[14px] p-6 sm:p-8 shadow-xs space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold text-lg">
+                      🔒
+                    </div>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-bold text-brand-ink">
+                        Blocker Pro Subscription Required
+                      </h3>
+                      <p className="text-xs sm:text-sm text-brand-ink-soft mt-1 leading-relaxed">
+                        You must first subscribe to a <strong>Blocker Pro</strong> plan (Weekly or Monthly) before you can add and publish property listings on Guraaha.
+                      </p>
+                    </div>
+                  </div>
+                  <SubscriptionTab subscription={subscription} isBlocker={true} />
+                </div>
+              ))}
 
             {activeTab === 'subscription' && (
               <SubscriptionTab subscription={subscription} isBlocker={isBlocker} />

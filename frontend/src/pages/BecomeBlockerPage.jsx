@@ -14,6 +14,7 @@ export const BecomeBlockerPage = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    email: '',
     nationalId: '',
     areaText: 'Gasabo',
     username: '',
@@ -64,6 +65,7 @@ export const BecomeBlockerPage = () => {
 
     const fullName = formData.fullName.trim();
     const phone = formData.phone.trim();
+    const email = formData.email.trim();
     const nationalId = formData.nationalId.trim();
     const areaText = formData.areaText.trim() || selectedDistrict;
     const username = formData.username.trim().toLowerCase().replace(/\s+/g, '');
@@ -96,6 +98,7 @@ export const BecomeBlockerPage = () => {
       const res = await blockersApi.applyPublic({
         fullName,
         phone,
+        email: email || undefined,
         nationalId,
         areaText,
         username,
@@ -107,6 +110,7 @@ export const BecomeBlockerPage = () => {
         fullName,
         username: createdUsername,
         phone,
+        email,
         areaText,
       });
     } catch (err) {
@@ -216,8 +220,21 @@ export const BecomeBlockerPage = () => {
                 </div>
               </div>
 
-              {/* Row 2: National ID & Primary Area (District) */}
+              {/* Row 2: Email Address & National ID */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    {t('blocker_email') || 'Email address'} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => updateField('email', e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink mb-1">
                     {t('blocker_nid')} <span className="text-red-500">*</span>
@@ -231,22 +248,24 @@ export const BecomeBlockerPage = () => {
                     className="w-full h-11 px-3.5 rounded-[9px] border border-brand-line bg-white text-sm font-mono text-brand-ink focus:outline-none focus:border-brand-green"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-brand-ink mb-1">
-                    {t('blocker_area') || 'Primary area (District)'} <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={selectedDistrict}
-                    onChange={(e) => setSelectedDistrict(e.target.value)}
-                    className="w-full h-11 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                  >
-                    {RWANDA_30_DISTRICTS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              </div>
+
+              {/* Row 3: Primary Area (District) */}
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  {t('blocker_area') || 'Primary area (District)'} <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="w-full h-11 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                >
+                  {RWANDA_30_DISTRICTS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Row 3: Choose login credentials box */}
