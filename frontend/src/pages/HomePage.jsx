@@ -9,6 +9,7 @@ import { initialListings, initialNews } from '../data/translations';
 import {
   isFeaturedListing,
   listingCategory,
+  mediaUrl,
 } from '../utils/listing';
 import { Search } from 'lucide-react';
 
@@ -493,8 +494,7 @@ export const HomePage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
             {newsItems.slice(0, 3).map((n) => {
               const imgUrl =
-                n.image_url ||
-                n.cover_image ||
+                mediaUrl(n.image_url || n.cover_image) ||
                 'https://images.unsplash.com/photo-1486325212027-8081e485255e?q=60&auto=format&fit=crop&w=900';
               const heading =
                 (lang === 'rw' && n.title_rw) ||

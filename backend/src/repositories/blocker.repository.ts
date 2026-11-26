@@ -45,6 +45,7 @@ export class BlockerRepository {
 
   async create(input: CreateBlockerProfileInput, executor: QueryExecutor = db) {
     const status = (input.status || "PENDING").toUpperCase();
+    const approvedAt = status === "APPROVED" ? new Date() : null;
     const isUuid =
       input.operatingLocationId &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -62,7 +63,7 @@ export class BlockerRepository {
                 status,
                 verification_code,
                 approved_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $6 = 'APPROVED' THEN NOW() ELSE NULL END)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (user_id) DO UPDATE
             SET
                 national_id = EXCLUDED.national_id,
@@ -71,6 +72,7 @@ export class BlockerRepository {
                 agreement_document_path = COALESCE(EXCLUDED.agreement_document_path, blocker_profiles.agreement_document_path),
                 status = EXCLUDED.status,
                 verification_code = COALESCE(blocker_profiles.verification_code, EXCLUDED.verification_code),
+                approved_at = COALESCE(blocker_profiles.approved_at, EXCLUDED.approved_at),
                 rejection_reason = NULL,
                 updated_at = NOW()
             RETURNING ${BLOCKER_PROFILE_COLUMNS}
@@ -83,6 +85,7 @@ export class BlockerRepository {
         input.agreementDocumentPath ?? null,
         status,
         input.verificationCode ?? null,
+        approvedAt,
       ],
     );
     return result.rows[0];

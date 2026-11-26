@@ -19,28 +19,49 @@ export const OverviewTab = ({
     (p) => p.status === 'COMPLETED' || p.status === 'PAID' || p.status === 'SUCCESSFUL'
   ).length;
 
-  // Build 6-month trend points combining real timestamps + current totals
+  // Build 6-month trend points strictly from real database timestamps
   const chartMonths = useMemo(() => {
-    const names = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
-    const totalL = Math.max(listings.length, 6);
-    const totalB = Math.max(blockers.length, 3);
-    const totalS = Math.max(subscriptions.length, 2);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const buckets = [];
 
-    return names.map((month, idx) => {
-      const factor = (idx + 2) / 7;
-      return {
-        month,
-        listings: idx === 5 ? listings.length : Math.max(1, Math.round(totalL * factor)),
-        blockers: idx === 5 ? blockers.length : Math.max(1, Math.round(totalB * factor)),
-        subscriptions:
-          idx === 5 ? subscriptions.length : Math.max(0, Math.round(totalS * factor)),
-      };
-    });
-  }, [listings.length, blockers.length, subscriptions.length]);
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({
+        year: d.getFullYear(),
+        monthIdx: d.getMonth(),
+        month: monthNames[d.getMonth()],
+        listings: 0,
+        blockers: 0,
+        subscriptions: 0,
+      });
+    }
+
+    const addToBucket = (dateRaw, field) => {
+      const dt = dateRaw ? new Date(dateRaw) : now;
+      const validDate = isNaN(dt.getTime()) ? now : dt;
+      const b = buckets.find(
+        (m) => m.year === validDate.getFullYear() && m.monthIdx === validDate.getMonth()
+      );
+      if (b) {
+        b[field] += 1;
+      } else if (buckets.length > 0) {
+        buckets[buckets.length - 1][field] += 1;
+      }
+    };
+
+    listings.forEach((l) => addToBucket(l.created_at || l.createdAt, 'listings'));
+    blockers.forEach((b) => addToBucket(b.created_at || b.createdAt, 'blockers'));
+    subscriptions.forEach((s) =>
+      addToBucket(s.created_at || s.createdAt || s.starts_at || s.startsAt, 'subscriptions')
+    );
+
+    return buckets;
+  }, [listings, blockers, subscriptions]);
 
   const maxChartVal = useMemo(() => {
     const m = Math.max(
-      10,
+      1,
       ...chartMonths.map((c) => Math.max(c.listings, c.blockers, c.subscriptions))
     );
     return m;
@@ -51,37 +72,37 @@ export const OverviewTab = ({
     {
       label: 'Live Approved Listings',
       count: approvedListings,
-      total: Math.max(1, listings.length),
+      total: listings.length,
       color: 'bg-[#007A66]',
     },
     {
       label: 'Listings Pending Review',
       count: pendingListings,
-      total: Math.max(1, listings.length),
+      total: listings.length,
       color: 'bg-amber-500',
     },
     {
       label: 'VIP Room Exclusive Deals',
       count: vipListings,
-      total: Math.max(1, listings.length),
+      total: listings.length,
       color: 'bg-[#D3B42B]',
     },
     {
       label: 'Verified Active Blockers',
       count: approvedBlockers,
-      total: Math.max(1, blockers.length),
+      total: blockers.length,
       color: 'bg-emerald-600',
     },
     {
       label: 'Active Pro & VIP Subscriptions',
       count: activeSubs,
-      total: Math.max(1, subscriptions.length || 5),
+      total: subscriptions.length,
       color: 'bg-[#2B4C7E]',
     },
     {
       label: 'Completed MoMo Transactions',
       count: paidPayments,
-      total: Math.max(1, payments.length || 5),
+      total: payments.length,
       color: 'bg-purple-600',
     },
   ];
@@ -123,13 +144,13 @@ export const OverviewTab = ({
             {/* Grouped Bar Chart */}
             <div className="h-56 flex items-end justify-between gap-3 pt-6 pb-2 px-2 border-b border-brand-line">
               {chartMonths.map((item) => {
-                const lHeight = Math.max(8, Math.round((item.listings / maxChartVal) * 165));
-                const bHeight = Math.max(6, Math.round((item.blockers / maxChartVal) * 165));
-                const sHeight = Math.max(6, Math.round((item.subscriptions / maxChartVal) * 165));
+                const lHeight = item.listings > 0 ? Math.max(10, Math.round((item.listings / maxChartVal) * 160)) : 2;
+                const bHeight = item.blockers > 0 ? Math.max(10, Math.round((item.blockers / maxChartVal) * 160)) : 2;
+                const sHeight = item.subscriptions > 0 ? Math.max(10, Math.round((item.subscriptions / maxChartVal) * 160)) : 2;
 
                 return (
                   <div
-                    key={item.month}
+                    key={`${item.year}-${item.month}`}
                     className="flex-1 flex flex-col items-center gap-2"
                   >
                     <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-44">
@@ -185,7 +206,7 @@ export const OverviewTab = ({
             </div>
             <div className="space-y-3">
               {breakdownItems.map((b) => {
-                const pct = Math.min(100, Math.round((b.count / b.total) * 100));
+                const pct = b.total > 0 ? Math.min(100, Math.round((b.count / b.total) * 100)) : 0;
                 return (
                   <div key={b.label} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
@@ -198,7 +219,7 @@ export const OverviewTab = ({
                     <div className="w-full h-2.5 rounded-full bg-brand-bg-soft overflow-hidden">
                       <div
                         className={`h-full rounded-full ${b.color} transition-all duration-500`}
-                        style={{ width: `${Math.max(4, pct)}%` }}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                   </div>

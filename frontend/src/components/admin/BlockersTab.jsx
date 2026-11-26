@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { RowActions } from './RowActions';
+import { RWANDA_30_DISTRICTS } from './PartnersTab';
 import {
   Panel,
   RefreshButton,
@@ -50,7 +51,7 @@ export const BlockersTab = ({
     phone: '',
     email: '',
     nationalId: '',
-    areaText: '',
+    areaText: 'Gasabo',
     username: '',
     password: '',
     status: 'APPROVED',
@@ -68,7 +69,7 @@ export const BlockersTab = ({
       phone: '',
       email: '',
       nationalId: '',
-      areaText: '',
+      areaText: 'Gasabo',
       username: '',
       password: `Guraaha@${num}`,
       status: 'APPROVED',
@@ -343,18 +344,22 @@ export const BlockersTab = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink mb-1">
-                    Primary Area (District &amp; Sector) *
+                    Primary Area (District) *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={newBlockerForm.areaText}
                     onChange={(e) =>
                       setNewBlockerForm((p) => ({ ...p, areaText: e.target.value }))
                     }
-                    placeholder="e.g. Kimironko, Gasabo"
-                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm"
-                  />
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line bg-white text-sm"
+                  >
+                    {RWANDA_30_DISTRICTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

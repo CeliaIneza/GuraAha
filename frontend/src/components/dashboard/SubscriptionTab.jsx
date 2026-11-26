@@ -113,7 +113,7 @@ export const SubscriptionTab = ({ subscription, isBlocker: isBlockerProp }) => {
                 <Star className="w-5 h-5 text-brand-green fill-brand-green" />
                 <div>
                   <CardTitle className="text-xl font-bold text-brand-ink">
-                    ⭐ VIP Room Membership
+                    VIP Room Membership
                   </CardTitle>
                   <p className="text-xs text-brand-ink-soft mt-0.5">
                     See hidden, below-market & pre-launch properties 7 days before the public and unlock VIP deal contacts for free.
@@ -191,7 +191,7 @@ export const SubscriptionTab = ({ subscription, isBlocker: isBlockerProp }) => {
               <Unlock className="w-5 h-5 text-brand-green" />
               <div>
                 <CardTitle className="text-xl font-bold text-brand-ink">
-                  🔓 Unlimited Contact Unlock Pass
+                  Unlimited Contact Unlock Pass
                 </CardTitle>
                 <p className="text-xs text-brand-ink-soft mt-0.5">
                   Reveal Blocker and Owner phone numbers on any public listing without paying per-listing unlock fees.

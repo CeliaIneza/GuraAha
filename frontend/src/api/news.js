@@ -20,6 +20,16 @@ export const newsApi = {
   getById: (id) => api(`/news/${id}`),
   getAllAdmin: () => api('/news/admin/all', { auth: true }),
   adminGetAll: () => api('/news/admin/all', { auth: true }),
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api('/news/admin/upload-image', {
+      method: 'POST',
+      body: formData,
+      auth: true,
+      form: true,
+    });
+  },
   adminSave: (payload) => api('/news/admin/save', { method: 'POST', body: payload, auth: true }),
   create: (payload) => api('/news/admin/save', { method: 'POST', body: payload, auth: true }),
   update: (id, payload) => {

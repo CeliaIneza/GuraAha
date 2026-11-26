@@ -219,6 +219,12 @@ export class ListingRepository {
     const deal = (input.deal || "sale").toLowerCase() === "rent" ? "rent" : "sale";
     const status = (input.status || "PENDING").toUpperCase();
     const earlyDays = input.vipEarlyAccessDays ?? 7;
+    const isApproved = status === "APPROVED";
+    const approvedAt = isApproved ? new Date() : null;
+    const vipExpiresAt =
+      isVip && isApproved
+        ? new Date(Date.now() + earlyDays * 24 * 60 * 60 * 1000)
+        : null;
 
     const result = await executor.query(
       `
@@ -239,8 +245,7 @@ export class ListingRepository {
         $18, $19, $20, $21,
         $22, $23, $24,
         $25, $26, $27, $28, $29,
-        CASE WHEN $25 = TRUE AND $22 = 'APPROVED' THEN NOW() + ($29::int * INTERVAL '1 day') ELSE NULL END,
-        CASE WHEN $22 = 'APPROVED' THEN NOW() ELSE NULL END
+        $30, $31
       )
       RETURNING ${LISTING_COLUMNS}
       `,
@@ -274,6 +279,8 @@ export class ListingRepository {
         discountPercent,
         input.vipReason ?? null,
         earlyDays,
+        vipExpiresAt,
+        approvedAt,
       ]
     );
     return result.rows[0];

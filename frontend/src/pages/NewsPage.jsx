@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { newsApi } from '../api/news';
 import { initialNews } from '../data/translations';
+import { mediaUrl } from '../utils/listing';
 
 const DISTRICTS = ['Gasabo', 'Kicukiro', 'Nyarugenge', 'Bugesera', 'Musanze', 'Rubavu', 'Huye'];
 const TOPICS = ['All', 'Land & plots', 'Construction', 'Policy & law', 'Auctions'];
@@ -121,8 +122,7 @@ export const NewsPage = () => {
     '';
 
   const getCover = (a) =>
-    a.image_url ||
-    a.cover_image ||
+    mediaUrl(a?.image_url || a?.cover_image) ||
     'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=60&auto=format&fit=crop&w=1200';
 
   // Single Article Reader View (/news/:id) matching Screenshot #2

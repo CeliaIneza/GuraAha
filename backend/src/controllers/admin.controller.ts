@@ -450,14 +450,15 @@ export class AdminController {
             if (!sub) return res.status(404).json({ message: "Subscription not found" });
 
             const nextStatus = sub.status === "CANCELLED" ? "ACTIVE" : "CANCELLED";
+            const cancelledAt = nextStatus === "CANCELLED" ? new Date() : null;
             const updatedRes = await db.query(
                 `
                 UPDATE subscriptions
-                SET status = $1, cancelled_at = CASE WHEN $1 = 'CANCELLED' THEN NOW() ELSE NULL END, updated_at = NOW()
+                SET status = $1, cancelled_at = $3, updated_at = NOW()
                 WHERE id = $2
                 RETURNING *
                 `,
-                [nextStatus, subId]
+                [nextStatus, subId, cancelledAt]
             );
             await db
                 .query(`INSERT INTO audit_logs (actor_id, action) VALUES ($1, $2)`, [

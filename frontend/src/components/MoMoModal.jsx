@@ -48,6 +48,10 @@ export const MoMoModal = () => {
 
   // ── Initiate payment (send MoMo push) ───────────────────────────────────
   const handleInitiate = async () => {
+    if (isSubscription && subscriptionPlan?.startsWith('BLOCKER_PRO') && user?.role !== 'BLOCKER') {
+      setError('Only verified Blockers can pay for a Blocker Pro subscription.');
+      return;
+    }
     if (!momoPhone.trim()) {
       setError('Please enter your MoMo phone number');
       return;

@@ -2,23 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { blockersApi } from '../api/blockers';
-import { sectorsByDistrict } from '../data/translations';
+import { RWANDA_30_DISTRICTS } from '../components/admin/PartnersTab';
 import { CheckCircle2, AlertCircle, Upload, FileText, X, Loader2 } from 'lucide-react';
-
-const DISTRICTS = Object.keys(sectorsByDistrict);
 
 export const BecomeBlockerPage = () => {
   const { t } = useApp();
   const navigate = useNavigate();
 
   const [selectedDistrict, setSelectedDistrict] = useState('Gasabo');
-  const [selectedSector, setSelectedSector] = useState('Kimironko');
 
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
     nationalId: '',
-    areaText: 'Kimironko, Gasabo',
+    areaText: 'Gasabo',
     username: '',
     password: '',
     confirmPassword: '',
@@ -31,22 +28,11 @@ export const BecomeBlockerPage = () => {
   const [submittedData, setSubmittedData] = useState(null);
 
   useEffect(() => {
-    const sectors = sectorsByDistrict[selectedDistrict] || [];
-    const nextSec = sectors.includes(selectedSector) ? selectedSector : sectors[0] || '';
-    setSelectedSector(nextSec);
     setFormData((prev) => ({
       ...prev,
-      areaText: [nextSec, selectedDistrict].filter(Boolean).join(', '),
+      areaText: selectedDistrict,
     }));
   }, [selectedDistrict]);
-
-  const handleSectorChange = (sec) => {
-    setSelectedSector(sec);
-    setFormData((prev) => ({
-      ...prev,
-      areaText: [sec, selectedDistrict].filter(Boolean).join(', '),
-    }));
-  };
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -79,7 +65,7 @@ export const BecomeBlockerPage = () => {
     const fullName = formData.fullName.trim();
     const phone = formData.phone.trim();
     const nationalId = formData.nationalId.trim();
-    const areaText = formData.areaText.trim() || `${selectedSector}, ${selectedDistrict}`;
+    const areaText = formData.areaText.trim() || selectedDistrict;
     const username = formData.username.trim().toLowerCase().replace(/\s+/g, '');
     const password = formData.password;
     const confirmPassword = formData.confirmPassword;
@@ -230,7 +216,7 @@ export const BecomeBlockerPage = () => {
                 </div>
               </div>
 
-              {/* Row 2: National ID & Primary Area (District & Sector) */}
+              {/* Row 2: National ID & Primary Area (District) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink mb-1">
@@ -247,32 +233,19 @@ export const BecomeBlockerPage = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-brand-ink mb-1">
-                    Primary area (District &amp; Sector) <span className="text-red-500">*</span>
+                    {t('blocker_area') || 'Primary area (District)'} <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
-                      value={selectedDistrict}
-                      onChange={(e) => setSelectedDistrict(e.target.value)}
-                      className="w-full h-11 px-2.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                    >
-                      {DISTRICTS.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={selectedSector}
-                      onChange={(e) => handleSectorChange(e.target.value)}
-                      className="w-full h-11 px-2.5 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
-                    >
-                      {(sectorsByDistrict[selectedDistrict] || []).map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    className="w-full h-11 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  >
+                    {RWANDA_30_DISTRICTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
