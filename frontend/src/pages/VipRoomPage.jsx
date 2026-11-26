@@ -251,7 +251,9 @@ export const VipRoomPage = () => {
           {isVipMember ? (
             <div className="inline-flex items-center gap-2 bg-[#007A66]/30 border border-green-500/40 text-green-400 text-sm font-bold px-5 py-2.5 rounded-xl">
               <Star className="w-4 h-4 fill-green-400" />
-              VIP Active {vipStatus.remainingDays} days left
+              {vipStatus?.isActive
+                ? `VIP Active · ${vipStatus.remainingDays ?? 0} days left`
+                : 'VIP Room · Admin Access Active'}
             </div>
           ) : (
             <div className="flex items-center gap-4 flex-wrap">
