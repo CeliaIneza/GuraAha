@@ -4,7 +4,7 @@ import { BlockerService } from '../services/blocker.service';
 export class BlockerController {
     constructor(private readonly blockerService: BlockerService) {}
 
-    apply = async (req: Request, res: Response) => {
+        apply = async (req: Request, res: Response) => {
         try {
             const application = await this.blockerService.apply(req.user?.id, req.body);
 
@@ -13,6 +13,7 @@ export class BlockerController {
                 data: application,
             });
         } catch (error) {
+            console.error('[blocker apply]', error);
             return res.status(400).json({
                 message:
                     error instanceof Error
