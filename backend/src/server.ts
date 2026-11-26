@@ -24,7 +24,7 @@ async function bootstrap() {
         }
 
         app.listen(env.PORT, () => {
-            console.log(`Server is running on port ${env.PORT}`);
+            console.log(`Guraaha API server is running on port ${env.PORT}`);
         });
     } catch (error) {
         console.error('Error occurred while starting the server:', error);
