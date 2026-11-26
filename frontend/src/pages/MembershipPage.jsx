@@ -1,18 +1,39 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Check, ShieldCheck, Key, Star } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Check, ShieldCheck, Key, Star, AlertCircle } from 'lucide-react';
 
 export const MembershipPage = () => {
   const { settings, openMoMo, t } = useApp();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [period, setPeriod] = useState('month'); // 'week' | 'month'
+  const [restrictionError, setRestrictionError] = useState('');
 
   const blockerPrice = period === 'week' ? settings.blockerProWeekly : settings.blockerProMonthly;
   const unlockPassPrice = period === 'week' ? settings.unlockPassWeekly : settings.unlockPassMonthly;
   const vipRoomPrice = period === 'week' ? settings.vipRoomWeekly : settings.vipRoomMonthly;
 
+  const isVerifiedBlocker = user?.role === 'BLOCKER';
+
   const handleSubscribe = (planKey, amount) => {
+    setRestrictionError('');
     const suffix = period === 'week' ? 'weekly' : 'monthly';
+
     if (planKey === 'blocker') {
+      if (!user) {
+        setRestrictionError(
+          'Only verified Blockers can pay for a Blocker Pro subscription. Please log in with an approved Blocker account first, or apply at "Become a Blocker".'
+        );
+        return;
+      }
+      if (!isVerifiedBlocker) {
+        setRestrictionError(
+          'Only verified Blockers can subscribe to Blocker Pro. Because your account is not a Blocker account, payment for Blocker Pro is disabled. You can subscribe to the Unlock Pass or VIP Room below, or apply at "Become a Blocker".'
+        );
+        return;
+      }
       openMoMo({
         kind: `subscription-${suffix}`,
         amount,
@@ -21,6 +42,10 @@ export const MembershipPage = () => {
         period,
       });
     } else if (planKey === 'unlock') {
+      if (!user) {
+        navigate('/login', { state: { from: '/membership' } });
+        return;
+      }
       openMoMo({
         kind: `subscription-unlock_pass_${suffix}`,
         amount,
@@ -29,6 +54,10 @@ export const MembershipPage = () => {
         period,
       });
     } else if (planKey === 'vip') {
+      if (!user) {
+        navigate('/login', { state: { from: '/membership' } });
+        return;
+      }
       openMoMo({
         kind: `subscription-vip_room_${suffix}`,
         amount,
@@ -72,6 +101,31 @@ export const MembershipPage = () => {
         </div>
       </div>
 
+      {restrictionError && (
+        <div className="max-w-3xl mx-auto mb-8 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{restrictionError}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {!user && (
+              <Link
+                to="/login"
+                className="px-3.5 py-2 rounded-lg bg-brand-green text-white text-xs font-bold hover:bg-brand-green-dark transition-colors"
+              >
+                Log in
+              </Link>
+            )}
+            <Link
+              to="/become-blocker"
+              className="px-3.5 py-2 rounded-lg bg-white border border-red-300 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors"
+            >
+              Become a Blocker →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 3 PLANS GRID matching prototype */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* 1. BLOCKER PRO */}
@@ -94,7 +148,7 @@ export const MembershipPage = () => {
               </span>
             </div>
 
-            <ul className="space-y-3 mb-8">
+            <ul className="space-y-3 mb-6">
               {[1, 2, 3, 4].map((n) => (
                 <li key={n} className="flex items-center gap-2.5 text-sm text-brand-ink-soft">
                   <Check className="w-4 h-4 text-brand-green flex-shrink-0" />
@@ -102,13 +156,28 @@ export const MembershipPage = () => {
                 </li>
               ))}
             </ul>
+
+            {!isVerifiedBlocker && (
+              <div className="mb-4 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11.5px] text-amber-900 font-medium">
+                🔒 Restricted to approved Blockers.{' '}
+                <Link to="/become-blocker" className="underline font-bold text-brand-green">
+                  Apply as a Blocker
+                </Link>{' '}
+                to unlock this plan.
+              </div>
+            )}
           </div>
 
           <button
+            type="button"
             onClick={() => handleSubscribe('blocker', blockerPrice)}
-            className="w-full py-3 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl transition-colors text-sm sm:text-base shadow-sm cursor-pointer"
+            className={`w-full py-3 font-semibold rounded-xl transition-colors text-sm sm:text-base shadow-sm cursor-pointer ${
+              isVerifiedBlocker
+                ? 'bg-brand-green hover:bg-brand-green-dark text-white'
+                : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+            }`}
           >
-            {t('mem_bp_btn')}
+            {isVerifiedBlocker ? t('mem_bp_btn') : '🔒 Verified Blockers Only'}
           </button>
         </div>
 

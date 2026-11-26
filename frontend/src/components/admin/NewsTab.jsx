@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { newsApi } from '../../api/news';
 import { initialNews } from '../../data/translations';
-import { Newspaper, Plus, Trash2, Edit2, Send, Eye, EyeOff, X } from 'lucide-react';
+import { mediaUrl } from '../../utils/listing';
+import { Newspaper, Plus, Trash2, Edit2, Send, Eye, EyeOff, X, Upload, Loader2 } from 'lucide-react';
 import { RowActions } from './RowActions';
 import { Panel, RefreshButton, tableClass, theadClass, tbodyClass, rowClass } from './AdminShared';
 
@@ -11,7 +12,7 @@ const emptyArticle = {
   title: '',
   summary: '',
   body: '',
-  imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=60&auto=format&fit=crop&w=1200',
+  imageUrl: '',
   audience: 'all',
   isPublished: true,
 };
@@ -23,6 +24,7 @@ export const NewsTab = ({ showToast }) => {
   const [viewingArticle, setViewingArticle] = useState(null);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyArticle);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const loadArticles = async () => {
     setLoading(true);
@@ -54,14 +56,30 @@ export const NewsTab = ({ showToast }) => {
       title: a.title_en || a.title || '',
       summary: a.summary || '',
       body: a.body_en || a.body || a.summary || '',
-      imageUrl:
-        a.image_url ||
-        a.cover_image ||
-        'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=60&auto=format&fit=crop&w=1200',
+      imageUrl: a.image_url || a.cover_image || '',
       audience: a.audience || 'all',
       isPublished: a.is_published ?? a.published ?? true,
     });
     setModalOpen(true);
+  };
+
+  const handleImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const res = await newsApi.uploadImage(file);
+      const uploadedUrl = res?.data?.imageUrl;
+      if (uploadedUrl) {
+        setForm((prev) => ({ ...prev, imageUrl: uploadedUrl }));
+        showToast('Cover picture uploaded.');
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to upload picture');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   const handleSave = async (e) => {
@@ -131,10 +149,13 @@ export const NewsTab = ({ showToast }) => {
     }
   };
 
-  const getCover = (a) =>
-    a?.image_url ||
-    a?.cover_image ||
-    'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=60&auto=format&fit=crop&w=1200';
+  const getCover = (a) => {
+    const raw = a?.image_url || a?.cover_image;
+    return (
+      mediaUrl(raw) ||
+      'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=60&auto=format&fit=crop&w=1200'
+    );
+  };
 
   return (
     <Panel
@@ -393,16 +414,50 @@ export const NewsTab = ({ showToast }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-ink mb-1">
-                  Cover Image URL
+                <label className="block text-xs font-semibold text-brand-ink mb-1.5">
+                  Cover Picture
                 </label>
-                <input
-                  type="text"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm"
-                />
+                <div className="p-3 rounded-[10px] border border-dashed border-brand-line bg-brand-bg-soft/40 space-y-2.5">
+                  {form.imageUrl && (
+                    <div className="relative rounded-[8px] overflow-hidden border border-brand-line bg-white">
+                      <img
+                        src={mediaUrl(form.imageUrl) || form.imageUrl}
+                        alt="Article Cover Preview"
+                        className="w-full h-36 object-cover block"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((p) => ({ ...p, imageUrl: '' }))}
+                        className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 hover:bg-black text-white text-[11px] font-semibold cursor-pointer"
+                      >
+                        Remove picture
+                      </button>
+                    </div>
+                  )}
+
+                  <label className="flex items-center justify-center gap-2 h-10 px-4 rounded-[9px] border border-brand-green/40 bg-white hover:bg-brand-pale text-brand-green text-xs font-bold cursor-pointer transition-colors">
+                    {uploadingImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Uploading picture…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>
+                          {form.imageUrl ? 'Change Cover Picture' : 'Upload Cover Picture (JPG, PNG, WEBP)'}
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImageFileChange}
+                      disabled={uploadingImage}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
 
               <div>
