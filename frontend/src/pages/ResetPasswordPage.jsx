@@ -45,7 +45,7 @@ export const ResetPasswordPage = () => {
             </div>
             <CardTitle className="text-xl font-bold text-brand-ink">Set new password</CardTitle>
             <CardDescription className="text-sm text-brand-ink-soft mt-1">
-              Choose a strong password for your GuraAha account.
+              Choose a strong password for your Guraaha account.
             </CardDescription>
           </CardHeader>
 

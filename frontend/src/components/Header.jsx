@@ -57,7 +57,7 @@ export const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full max-w-full bg-white border-b border-brand-line shadow-xs px-3 sm:px-5 lg:px-6 2xl:px-8 py-2.5 flex items-center justify-between gap-2 2xl:gap-4 transition-all duration-150">
+      <header className="sticky top-0 z-50 w-full max-w-full bg-white border-b border-brand-line shadow-xs px-3.5 sm:px-5 lg:px-6 2xl:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-2 2xl:gap-4 transition-all duration-150">
         {/* Official Guraaha.com Logo */}
         <Link
           to="/"
@@ -68,17 +68,17 @@ export const Header = () => {
           <img
             src="/guraaha-logo.png"
             alt="Guraaha.com"
-            className="h-8 sm:h-9 2xl:h-10 w-auto block transition-transform group-hover:scale-[1.02]"
+            className="h-9 sm:h-10 2xl:h-11 w-auto block transition-transform group-hover:scale-[1.02]"
           />
         </Link>
 
         {/* Desktop Navigation Links (shown on xl+ screens >= 1280px) */}
-        <nav className="hidden xl:flex items-center justify-center flex-1 min-w-0 gap-0.5 2xl:gap-1.5 py-0.5">
+        <nav className="hidden xl:flex items-center justify-center flex-1 min-w-0 gap-1 2xl:gap-1.5 py-0.5">
           {navItems.map(([path, label]) => (
             <Link
               key={path}
               to={path}
-              className={`rounded-[9px] border font-medium transition-colors whitespace-nowrap px-2 2xl:px-3 py-1.5 text-xs 2xl:text-[13.5px] ${
+              className={`rounded-[9px] border font-medium transition-colors whitespace-nowrap px-2.5 2xl:px-3.5 py-2 text-xs 2xl:text-[13.5px] ${
                 isActive(path)
                   ? 'bg-brand-green text-white font-semibold shadow-xs border-brand-green'
                   : 'text-brand-ink-soft hover:bg-brand-bg-soft hover:text-brand-ink border-transparent'
@@ -100,7 +100,7 @@ export const Header = () => {
               }}
               items={languageOptions}
             >
-              <SelectTrigger className="rounded-[9px] w-[132px] 2xl:w-[152px] h-8.5 text-xs 2xl:text-[13px] px-2.5">
+              <SelectTrigger className="rounded-[9px] w-[134px] 2xl:w-[154px] h-9.5 text-xs 2xl:text-[13px] px-2.5">
                 <SelectValue placeholder="Select Language" />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false} align="end" sideOffset={6}>
@@ -116,7 +116,7 @@ export const Header = () => {
             value={lang}
             onChange={(e) => setLang(e.target.value)}
             aria-label="Language"
-            className="xl:hidden h-9 px-2 rounded-[9px] border border-brand-line bg-white text-xs font-semibold text-brand-ink focus:outline-none focus:border-brand-green"
+            className="xl:hidden h-9.5 px-2.5 rounded-[9px] border border-brand-line bg-white text-xs font-semibold text-brand-ink focus:outline-none focus:border-brand-green"
           >
             <option value="rw">🇷🇼 RW</option>
             <option value="en">🇬🇧 EN</option>
@@ -130,7 +130,7 @@ export const Header = () => {
               asChild
               variant="outline"
               size="sm"
-              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
+              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-[13px] h-9.5 gap-1.5 whitespace-nowrap"
             >
               <Link to="/dashboard">
                 <UserCheck className="w-3.5 h-3.5 text-brand-green shrink-0" />
@@ -144,7 +144,7 @@ export const Header = () => {
               asChild
               variant="default"
               size="sm"
-              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
+              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-[13px] h-9.5 gap-1.5 whitespace-nowrap"
             >
               <Link to="/admin">
                 <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
@@ -159,7 +159,7 @@ export const Header = () => {
               onClick={handleLogout}
               variant="outline"
               size="sm"
-              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
+              className="hidden xl:inline-flex rounded-[9px] border-2 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-[13px] h-9.5 gap-1.5 whitespace-nowrap"
             >
               <LogOut className="w-3.5 h-3.5 text-brand-ink-soft shrink-0" />
               <span>{t('dash_logout')}</span>
@@ -170,7 +170,7 @@ export const Header = () => {
                 asChild
                 variant="outline"
                 size="sm"
-                className="rounded-[9px] border-2 px-2.5 2xl:px-3 py-1 text-xs 2xl:text-[13px] h-8.5 gap-1.5 whitespace-nowrap"
+                className="rounded-[9px] border-2 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-[13px] h-9.5 gap-1.5 whitespace-nowrap"
               >
                 <Link to="/login">
                   <LogIn className="w-3.5 h-3.5 shrink-0" />
@@ -186,7 +186,7 @@ export const Header = () => {
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label="Menu"
             aria-expanded={mobileMenuOpen}
-            className="xl:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] border border-brand-line bg-white hover:bg-brand-bg-soft text-brand-ink inline-flex items-center justify-center cursor-pointer transition-colors shrink-0"
+            className="xl:hidden w-9.5 h-9.5 sm:w-10 sm:h-10 rounded-[10px] border border-brand-line bg-white hover:bg-brand-bg-soft text-brand-ink inline-flex items-center justify-center cursor-pointer transition-colors shrink-0"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>

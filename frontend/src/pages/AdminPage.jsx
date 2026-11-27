@@ -681,6 +681,7 @@ export const AdminDashboardPage = () => {
                 onToggleDisabled={handleToggleListingDisabled}
                 onToggleFeatured={handleToggleListingFeatured}
                 onDelete={handleDeleteListing}
+                showToast={showToast}
               />
             )}
 

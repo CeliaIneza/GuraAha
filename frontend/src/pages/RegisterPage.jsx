@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 import { PasswordInput } from '../components/PasswordInput';
 import { normalizePhone } from '../utils/phone';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
@@ -10,7 +11,11 @@ import { AlertCircle } from 'lucide-react';
 
 export const RegisterPage = () => {
   const { register } = useAuth();
+  const { openMoMo } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/';
+  const autoOpenMoMo = location.state?.autoOpenMoMo || null;
 
   const [form, setForm] = useState({
     firstName: '',
@@ -49,7 +54,10 @@ export const RegisterPage = () => {
         email: form.email.trim() || undefined,
         password: form.password,
       });
-      navigate('/', { replace: true });
+      navigate(from, { replace: true });
+      if (autoOpenMoMo) {
+        setTimeout(() => openMoMo(autoOpenMoMo), 150);
+      }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -178,6 +186,7 @@ export const RegisterPage = () => {
                 Already have an account?{' '}
                 <Link
                   to="/login"
+                  state={location.state}
                   className="text-brand-green font-semibold hover:underline"
                 >
                   Log in

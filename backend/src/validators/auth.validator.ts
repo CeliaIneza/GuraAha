@@ -59,7 +59,18 @@ export const forgotPasswordSchema = z.object({
     identifier: z.string().trim().min(1).optional(),
 });
 
-export const resetPasswordSchema = z.object({
-    token: z.string().trim().min(1),
-    password: z.string().min(8),
-});
+export const resetPasswordSchema = z.preprocess(
+    (val: any) => {
+        if (val && typeof val === "object" && val.token && typeof val.token === "object") {
+            return {
+                token: val.token.token,
+                password: val.token.password ?? val.password,
+            };
+        }
+        return val;
+    },
+    z.object({
+        token: z.string().trim().min(1),
+        password: z.string().min(8),
+    })
+);

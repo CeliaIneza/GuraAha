@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const applyForBlockerSchema = z.object({
-  fullName: z.string().trim().min(1).max(200).optional(),
-  phone: z.string().trim().min(7).max(30).optional(),
-  email: z.string().trim().email().optional().or(z.literal("")),
+  fullName: z.string().trim().min(1, "Full name is required").max(200).optional(),
+  phone: z.string().trim().min(7, "Phone number is too short").max(30).optional(),
+  email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
   nationalId: z
     .string()
     .trim()
@@ -11,8 +11,8 @@ export const applyForBlockerSchema = z.object({
     .max(50, "National ID is too long"),
   operatingLocationId: z.string().trim().optional().nullable(),
   areaText: z.string().trim().max(255).optional().nullable(),
-  username: z.string().trim().min(3).max(50).optional(),
-  password: z.string().min(8).optional(),
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(50).optional(),
+  password: z.string().min(4, "Password must be at least 4 characters").optional(),
   agreementDocumentPath: z.string().trim().optional().nullable(),
 });
 
