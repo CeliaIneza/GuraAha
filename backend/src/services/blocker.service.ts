@@ -81,8 +81,8 @@ export class BlockerService {
             }
 
             const pw = input.password || generateTempPassword();
-            if (pw.length < 8 || !/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) {
-                throw new Error('Password: at least 8 characters, with a letter and a number.');
+            if (pw.length < 4) {
+                throw new Error('Password must be at least 4 characters.');
             }
 
             // Check if phone or email already exists
@@ -146,8 +146,8 @@ export class BlockerService {
                 user = await this.userRepository.updateProfile(user.id, updates);
             }
             if (input.password) {
-                if (input.password.length < 8 || !/[a-zA-Z]/.test(input.password) || !/[0-9]/.test(input.password)) {
-                    throw new Error('Password: at least 8 characters, with a letter and a number.');
+                if (input.password.length < 4) {
+                    throw new Error('Password must be at least 4 characters.');
                 }
                 const passwordHash = await bcrypt.hash(input.password, PASSWORD_SALT_ROUNDS);
                 await this.userRepository.updatePassword(user.id, passwordHash, false);

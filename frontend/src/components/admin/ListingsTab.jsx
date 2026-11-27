@@ -15,6 +15,7 @@ import {
   mediaUrl,
 } from '../../utils/listing';
 import { useApp } from '../../context/AppContext';
+import { listingsApi } from '../../api/listings';
 import {
   FileCheck,
   Check,
@@ -27,6 +28,8 @@ import {
   Trash2,
   Ban,
   ChevronRight,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { RowActions } from './RowActions';
@@ -53,12 +56,168 @@ export const ListingsTab = ({
   onToggleDisabled,
   onToggleFeatured,
   onDelete,
+  showToast,
 }) => {
-  const { getDistrictHighlight } = useApp();
+  const { getDistrictHighlight, categories } = useApp();
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [dealFilter, setDealFilter] = useState('ALL');
   const [selectedListing, setSelectedListing] = useState(null);
   const [activePhotoUrl, setActivePhotoUrl] = useState('');
+  const [editingListing, setEditingListing] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    titleEn: '',
+    titleRw: '',
+    titleFr: '',
+    deal: 'sale',
+    rentalTerms: '',
+    category: 'Plots',
+    subType: '',
+    condition: 'Move-in ready',
+    priceRwf: '',
+    sizeValue: '',
+    sizeUnit: 'SQM',
+    upiNumber: '',
+    ownerName: '',
+    ownerPhone: '',
+    description: '',
+    descriptionEn: '',
+    descriptionRw: '',
+    descriptionFr: '',
+    status: 'APPROVED',
+    isFeatured: false,
+    isVip: false,
+    vipWasPriceRwf: '',
+    vipReason: '',
+  });
+  const [editPhotos, setEditPhotos] = useState([]);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const openEdit = async (l) => {
+    setSelectedListing(null);
+    setEditingListing(l);
+    const titleVal = l.title || l.title_en || listingTitle(l) || '';
+    const descVal = l.description || l.description_en || listingDescription(l, 'en') || '';
+    setEditForm({
+      title: titleVal,
+      titleEn: l.title_en || titleVal,
+      titleRw: l.title_rw || '',
+      titleFr: l.title_fr || '',
+      deal: (l.deal || 'sale').toLowerCase() === 'rent' ? 'rent' : 'sale',
+      rentalTerms: l.rental_terms || '',
+      category: listingCategory(l) || 'Plots',
+      subType: listingSubType(l) || '',
+      condition: l.condition || 'Move-in ready',
+      priceRwf: l.price_rwf != null ? String(l.price_rwf) : '',
+      sizeValue: l.size_value != null ? String(l.size_value) : '',
+      sizeUnit: l.size_unit || 'SQM',
+      upiNumber: l.upi_number || l.upi || '',
+      ownerName: l.owner_name || '',
+      ownerPhone: l.owner_phone || l.ownerPhone || '',
+      description: descVal,
+      descriptionEn: l.description_en || descVal,
+      descriptionRw: l.description_rw || '',
+      descriptionFr: l.description_fr || '',
+      status: l.status || 'APPROVED',
+      isFeatured: Boolean(l.is_featured || l.featured),
+      isVip: Boolean(l.is_vip),
+      vipWasPriceRwf: l.vip_was_price_rwf != null ? String(l.vip_was_price_rwf) : '',
+      vipReason: l.vip_reason || '',
+    });
+    const rawPhotos = Array.isArray(l.photos) ? l.photos : [];
+    setEditPhotos(rawPhotos);
+    try {
+      const res = await listingsApi.getPhotos(l.id);
+      if (Array.isArray(res?.data)) {
+        setEditPhotos(res.data);
+      }
+    } catch {
+      // keep existing photos
+    }
+  };
+
+  const handleUploadEditPhoto = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !editingListing) return;
+    setUploadingPhoto(true);
+    try {
+      for (const file of files) {
+        await listingsApi.addPhoto(editingListing.id, file, editPhotos.length);
+      }
+      const res = await listingsApi.getPhotos(editingListing.id);
+      if (Array.isArray(res?.data)) {
+        setEditPhotos(res.data);
+      }
+      showToast?.('Photo uploaded.');
+      onRefresh?.();
+    } catch (err) {
+      showToast?.(err?.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteEditPhoto = async (photoId) => {
+    if (!photoId || !editingListing) return;
+    try {
+      await listingsApi.removePhoto(photoId);
+      setEditPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      showToast?.('Photo removed.');
+      onRefresh?.();
+    } catch (err) {
+      showToast?.(err?.message || 'Failed to delete photo');
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingListing) return;
+    setSavingEdit(true);
+    try {
+      const primaryTitle = (editForm.titleEn || editForm.title || '').trim();
+      const primaryDesc = (editForm.descriptionEn || editForm.description || '').trim();
+      const payload = {
+        title: primaryTitle,
+        titleEn: primaryTitle,
+        titleRw: editForm.titleRw.trim() || null,
+        titleFr: editForm.titleFr.trim() || null,
+        deal: editForm.deal,
+        rentalTerms: editForm.deal === 'rent' ? editForm.rentalTerms.trim() || null : null,
+        category: editForm.category,
+        type: editForm.category,
+        subType: editForm.subType.trim() || null,
+        condition: editForm.condition.trim() || null,
+        priceRwf: Number(editForm.priceRwf) || 0,
+        sizeValue: editForm.sizeValue !== '' ? Number(editForm.sizeValue) : null,
+        sizeUnit: editForm.sizeUnit || 'SQM',
+        upiNumber: editForm.upiNumber.trim() || null,
+        ownerName: editForm.ownerName.trim() || null,
+        ownerPhone: editForm.ownerPhone.trim() || null,
+        description: primaryDesc,
+        descriptionEn: primaryDesc,
+        descriptionRw: editForm.descriptionRw.trim() || null,
+        descriptionFr: editForm.descriptionFr.trim() || null,
+        status: editForm.status,
+        isFeatured: Boolean(editForm.isFeatured),
+        isVip: Boolean(editForm.isVip),
+        vipWasPriceRwf:
+          editForm.isVip && editForm.vipWasPriceRwf !== ''
+            ? Number(editForm.vipWasPriceRwf)
+            : null,
+        vipReason: editForm.isVip ? editForm.vipReason.trim() || null : null,
+      };
+      await listingsApi.update(editingListing.id, payload);
+      showToast?.('Listing updated successfully.');
+      setEditingListing(null);
+      onRefresh?.();
+    } catch (err) {
+      showToast?.(err?.message || 'Failed to update listing');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const count = (s) => listings.filter((l) => l.status === s).length;
   const counts = {
@@ -174,6 +333,7 @@ export const ListingsTab = ({
 
                   const rowActions = [
                     { label: 'View details', icon: Eye, onClick: () => openDetail(l) },
+                    { label: 'Edit listing', icon: Pencil, onClick: () => openEdit(l) },
                   ];
                   if (onToggleFeatured) {
                     rowActions.push({
@@ -598,6 +758,16 @@ export const ListingsTab = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => openEdit(selectedListing)}
+                  className="rounded-[9px]"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit Listing
+                </Button>
+
                 {selectedListing.status === 'PENDING' && (
                   <>
                     <Button
@@ -662,6 +832,501 @@ export const ListingsTab = ({
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Edit Listing Modal (works for APPROVED / Public, PENDING, and REJECTED listings) */}
+      {editingListing && (
+        <div
+          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6"
+          onClick={() => !savingEdit && setEditingListing(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-brand-line overflow-hidden max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-brand-line flex items-center justify-between bg-brand-bg-soft/60 shrink-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <Pencil className="w-4 h-4 text-brand-green" />
+                <h3 className="text-base font-extrabold text-brand-ink">
+                  Edit Listing Details
+                </h3>
+                <StatusBadge status={editingListing.status} />
+                {editingListing.status === 'APPROVED' && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Live / Public — changes take effect immediately
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => !savingEdit && setEditingListing(null)}
+                className="p-1.5 rounded-full hover:bg-gray-200/70 text-gray-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto flex-1 space-y-5">
+              {/* Titles (EN / RW / FR) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Title (English) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.titleEn}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        titleEn: e.target.value,
+                        title: e.target.value,
+                      })
+                    }
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Title (Kinyarwanda)
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.titleRw}
+                    onChange={(e) => setEditForm({ ...editForm, titleRw: e.target.value })}
+                    placeholder="Optional Kinyarwanda title"
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Title (French)
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.titleFr}
+                    onChange={(e) => setEditForm({ ...editForm, titleFr: e.target.value })}
+                    placeholder="Optional French title"
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink focus:outline-none focus:border-brand-green"
+                  />
+                </div>
+              </div>
+
+              {/* Deal, Category, Sub-type, Condition */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Deal Type *
+                  </label>
+                  <select
+                    value={editForm.deal}
+                    onChange={(e) => setEditForm({ ...editForm, deal: e.target.value })}
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink"
+                  >
+                    <option value="sale">For Sale</option>
+                    <option value="rent">For Rent</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Category *
+                  </label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => {
+                      const nextCat = e.target.value;
+                      const found = (categories || []).find(
+                        (c) => (c.name || c.cat) === nextCat
+                      );
+                      const subs = found?.sub_types || found?.subs || [];
+                      setEditForm({
+                        ...editForm,
+                        category: nextCat,
+                        subType: subs[0] || editForm.subType,
+                      });
+                    }}
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink"
+                  >
+                    {(categories && categories.length > 0
+                      ? categories
+                      : [
+                          { name: 'Plots' },
+                          { name: 'Residential' },
+                          { name: 'Commercial' },
+                          { name: 'Apartments' },
+                          { name: 'Farms' },
+                        ]
+                    ).map((c) => {
+                      const name = c.name || c.cat;
+                      return (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Sub-Type
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.subType}
+                    onChange={(e) => setEditForm({ ...editForm, subType: e.target.value })}
+                    placeholder="e.g. Residential plot, Villa"
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Condition
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.condition}
+                    onChange={(e) => setEditForm({ ...editForm, condition: e.target.value })}
+                    placeholder="e.g. Move-in ready, Serviced"
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink"
+                  />
+                </div>
+              </div>
+
+              {/* Price, Size, Unit, UPI */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Price (RWF) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editForm.priceRwf}
+                    onChange={(e) => setEditForm({ ...editForm, priceRwf: e.target.value })}
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm font-bold text-brand-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Size Value
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editForm.sizeValue}
+                    onChange={(e) => setEditForm({ ...editForm, sizeValue: e.target.value })}
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Size Unit
+                  </label>
+                  <select
+                    value={editForm.sizeUnit}
+                    onChange={(e) => setEditForm({ ...editForm, sizeUnit: e.target.value })}
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink"
+                  >
+                    <option value="SQM">SQM (m²)</option>
+                    <option value="HECTARES">Hectares (ha)</option>
+                    <option value="ACRES">Acres</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    UPI / Parcel Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.upiNumber}
+                    onChange={(e) => setEditForm({ ...editForm, upiNumber: e.target.value })}
+                    placeholder="e.g. 1/03/08/02/4412"
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm font-mono text-brand-ink"
+                  />
+                </div>
+              </div>
+
+              {/* Rental Terms (when rent) + Owner Name + Owner Phone + Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {editForm.deal === 'rent' && (
+                  <div>
+                    <label className="block text-xs font-bold text-brand-ink mb-1">
+                      Rental Terms
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.rentalTerms}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, rentalTerms: e.target.value })
+                      }
+                      placeholder="e.g. Monthly · 3 mo deposit"
+                      className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Owner Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.ownerName}
+                    onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                    placeholder="Direct property owner name"
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm text-brand-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Owner Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.ownerPhone}
+                    onChange={(e) => setEditForm({ ...editForm, ownerPhone: e.target.value })}
+                    placeholder="+250 78..."
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line text-sm font-mono text-brand-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Listing Status
+                  </label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className="w-full h-10 px-3 rounded-[9px] border border-brand-line bg-white text-sm font-semibold text-brand-ink"
+                  >
+                    <option value="APPROVED">APPROVED (Public)</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="NEEDS_REVISION">NEEDS_REVISION</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Featured & VIP Controls */}
+              <div className="p-4 rounded-xl bg-brand-bg-soft/70 border border-brand-line space-y-3">
+                <div className="flex flex-wrap items-center gap-6">
+                  <label className="inline-flex items-center gap-2 text-xs font-bold text-brand-ink cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editForm.isFeatured}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, isFeatured: e.target.checked })
+                      }
+                      className="rounded border-brand-line text-brand-green focus:ring-brand-green"
+                    />
+                    <span>★ Feature on Homepage</span>
+                  </label>
+
+                  <label className="inline-flex items-center gap-2 text-xs font-bold text-brand-ink cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editForm.isVip}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, isVip: e.target.checked })
+                      }
+                      className="rounded border-brand-line text-brand-green focus:ring-brand-green"
+                    />
+                    <span>⭐ Mark as VIP Room Deal</span>
+                  </label>
+                </div>
+
+                {editForm.isVip && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <label className="block text-xs font-bold text-brand-ink mb-1">
+                        Original &quot;Was&quot; Price (RWF)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editForm.vipWasPriceRwf}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, vipWasPriceRwf: e.target.value })
+                        }
+                        placeholder="e.g. 32000000"
+                        className="w-full h-9 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-brand-ink mb-1">
+                        VIP Discount Reason
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.vipReason}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, vipReason: e.target.value })
+                        }
+                        placeholder="e.g. Owner relocating — urgent sale"
+                        className="w-full h-9 px-3 rounded-[9px] border border-brand-line bg-white text-sm text-brand-ink"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Descriptions (EN / RW / FR) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Description (English)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editForm.descriptionEn}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        descriptionEn: e.target.value,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full p-2.5 rounded-[9px] border border-brand-line text-xs text-brand-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Description (Kinyarwanda)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editForm.descriptionRw}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, descriptionRw: e.target.value })
+                    }
+                    placeholder="Optional Kinyarwanda description"
+                    className="w-full p-2.5 rounded-[9px] border border-brand-line text-xs text-brand-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-ink mb-1">
+                    Description (French)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editForm.descriptionFr}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, descriptionFr: e.target.value })
+                    }
+                    placeholder="Optional French description"
+                    className="w-full p-2.5 rounded-[9px] border border-brand-line text-xs text-brand-ink"
+                  />
+                </div>
+              </div>
+
+              {/* Photos Manager */}
+              <div className="p-4 rounded-xl border border-brand-line bg-brand-bg-soft/40 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-brand-ink">
+                      Listing Photos ({editPhotos.length})
+                    </h4>
+                    <p className="text-[11px] text-brand-ink-soft">
+                      Add new photos or remove outdated ones.
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] bg-brand-green text-white text-xs font-bold cursor-pointer hover:bg-brand-green-dark transition-colors">
+                    {uploadingPhoto ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{uploadingPhoto ? 'Uploading...' : 'Upload Photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={uploadingPhoto}
+                      onChange={handleUploadEditPhoto}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {editPhotos.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                    {editPhotos.map((p, i) => {
+                      const rawPath = typeof p === 'string' ? p : p.file_path || p.filePath;
+                      const url = mediaUrl(rawPath);
+                      const photoId = typeof p === 'object' ? p.id : null;
+                      return (
+                        <div
+                          key={photoId || `${url}-${i}`}
+                          className="relative group h-24 rounded-lg bg-cover bg-center border border-brand-line overflow-hidden"
+                          style={{ backgroundImage: `url('${url}')` }}
+                        >
+                          {i === 0 && (
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-bold">
+                              Cover
+                            </span>
+                          )}
+                          {photoId && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteEditPhoto(photoId)}
+                              className="absolute top-1.5 right-1.5 p-1 rounded-full bg-red-600 text-white opacity-90 hover:opacity-100 cursor-pointer shadow"
+                              title="Remove photo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-brand-ink-soft italic">
+                    No uploaded photo records found for this listing.
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-brand-line flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={savingEdit}
+                  onClick={() => setEditingListing(null)}
+                  className="rounded-[9px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="rounded-[9px] bg-brand-green hover:bg-brand-green-dark text-white"
+                >
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

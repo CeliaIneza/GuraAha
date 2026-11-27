@@ -10,9 +10,13 @@ export function validate(schema: ZodType) {
         const result = schema.safeParse(req.body);
 
         if(!result.success) {
+            const fieldErrors = result.error.flatten().fieldErrors;
+            const firstMsg = Object.entries(fieldErrors)
+                .map(([field, msgs]) => Array.isArray(msgs) && msgs.length ? `${field}: ${msgs[0]}` : null)
+                .filter(Boolean)[0];
             return res.status(400).json({
-                message: 'Validation failed',
-                errors: result.error.flatten().fieldErrors,
+                message: firstMsg ? `Validation failed (${firstMsg})` : 'Validation failed',
+                errors: fieldErrors,
             });
         }
 

@@ -10,10 +10,11 @@ import { AlertCircle, LogOut } from 'lucide-react';
 
 export const LoginPage = () => {
   const { user, login, logout } = useAuth();
-  const { t } = useApp();
+  const { t, openMoMo } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from || '/';
+  const from = location.state?.from || '';
+  const autoOpenMoMo = location.state?.autoOpenMoMo || null;
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -56,12 +57,17 @@ export const LoginPage = () => {
         password,
       });
 
-      if (loggedUser?.role === 'ADMIN') {
+      if (from) {
+        navigate(from, { replace: true });
+        if (autoOpenMoMo) {
+          setTimeout(() => openMoMo(autoOpenMoMo), 150);
+        }
+      } else if (loggedUser?.role === 'ADMIN') {
         navigate('/admin', { replace: true });
       } else if (loggedUser?.role === 'BLOCKER') {
         navigate('/dashboard', { replace: true });
       } else {
-        navigate(from, { replace: true });
+        navigate('/', { replace: true });
       }
     } catch (err) {
       setError(
@@ -217,6 +223,7 @@ export const LoginPage = () => {
                   Looking to buy or rent?{' '}
                   <Link
                     to="/register"
+                    state={location.state}
                     className="text-brand-green font-semibold hover:underline"
                   >
                     {t('auth_create_one_free')}

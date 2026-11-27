@@ -17,8 +17,13 @@ export const authApi = {
       method: 'POST',
       body: { email: emailOrIdentifier, identifier: emailOrIdentifier },
     }),
-  resetPassword: (token, password) =>
-    api('/auth/reset-password', { method: 'POST', body: { token, password } }),
+  resetPassword: (tokenOrObj, maybePassword) => {
+    const body =
+      typeof tokenOrObj === 'object' && tokenOrObj !== null
+        ? tokenOrObj
+        : { token: tokenOrObj, password: maybePassword };
+    return api('/auth/reset-password', { method: 'POST', body });
+  },
   updateProfile: (payload) =>
     api('/auth/profile', { method: 'PATCH', body: payload, auth: true }),
   changePassword: (currentPasswordOrObj, maybeNewPassword) => {

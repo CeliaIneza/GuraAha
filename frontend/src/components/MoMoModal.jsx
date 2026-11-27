@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { paymentsApi } from '../api/payments';
 import { subscriptionsApi } from '../api/subscriptions';
-import { Smartphone, X, Check, Copy, Loader2, Phone, RefreshCw } from 'lucide-react';
+import { Smartphone, X, Check, Copy, Loader2, Phone, RefreshCw, LogIn, UserPlus } from 'lucide-react';
 
 export const MoMoModal = () => {
   const { momoModal, closeMoMo, notifyUnlock, notifySubscription } = useApp();
   const { user } = useAuth();
+  const location = useLocation();
   const [stage, setStage] = useState('idle'); // idle | pending | revealed | error
   const [momoPhone, setMomoPhone] = useState('');
   const [contact, setContact] = useState(null);
@@ -33,6 +35,11 @@ export const MoMoModal = () => {
       : rawPlan;
   const unlockType = momoModal.kind === 'blocker' ? 'BLOCKER' : 'OWNER';
 
+  const returnPath =
+    !isSubscription && momoModal.listingId
+      ? `/listing/${momoModal.listingId}`
+      : `${location.pathname}${location.search || ''}`;
+
   useEffect(() => {
     if (momoModal.isOpen) {
       setStage('idle');
@@ -46,8 +53,14 @@ export const MoMoModal = () => {
 
   if (!momoModal.isOpen) return null;
 
+  const isAuthError = !user || error?.toLowerCase().includes('please log in');
+
   // ── Initiate payment (send MoMo push) ───────────────────────────────────
   const handleInitiate = async () => {
+    if (!user) {
+      setError('Please log in to continue');
+      return;
+    }
     if (isSubscription && subscriptionPlan?.startsWith('BLOCKER_PRO') && user?.role !== 'BLOCKER') {
       setError('Only verified Blockers can pay for a Blocker Pro subscription.');
       return;
@@ -232,10 +245,56 @@ export const MoMoModal = () => {
         </div>
 
         <div className="px-6 pb-6">
-          {error && (
-            <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-              {error}
+          {isAuthError ? (
+            <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-brand-ink space-y-3">
+              <p className="text-sm font-medium leading-relaxed text-brand-ink">
+                To continue, please{' '}
+                <Link
+                  to="/login"
+                  state={{ from: returnPath, autoOpenMoMo: momoModal }}
+                  onClick={handleClose}
+                  className="text-brand-green font-bold underline hover:text-brand-green-dark"
+                >
+                  log in
+                </Link>{' '}
+                or{' '}
+                <Link
+                  to="/register"
+                  state={{ from: returnPath, autoOpenMoMo: momoModal }}
+                  onClick={handleClose}
+                  className="text-brand-green font-bold underline hover:text-brand-green-dark"
+                >
+                  create an account
+                </Link>
+                . Getting started is quick and easy!
+              </p>
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <Link
+                  to="/login"
+                  state={{ from: returnPath, autoOpenMoMo: momoModal }}
+                  onClick={handleClose}
+                  className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border-2 border-brand-green text-brand-green font-bold text-xs sm:text-sm hover:bg-brand-green/5 transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Log in</span>
+                </Link>
+                <Link
+                  to="/register"
+                  state={{ from: returnPath, autoOpenMoMo: momoModal }}
+                  onClick={handleClose}
+                  className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-brand-green hover:bg-brand-green-dark text-white font-bold text-xs sm:text-sm transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create account</span>
+                </Link>
+              </div>
             </div>
+          ) : (
+            error && (
+              <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                {error}
+              </div>
+            )
           )}
 
           {/* ── STAGE: idle ── */}
@@ -249,37 +308,41 @@ export const MoMoModal = () => {
                   </p>
                 </div>
               )}
-              <div>
-                <label className="block text-xs font-semibold text-brand-ink-soft mb-1.5">
-                  <Phone className="w-3.5 h-3.5 inline mr-1" />
-                  MoMo phone number
-                </label>
-                <input
-                  type="tel"
-                  value={momoPhone}
-                  onChange={(e) => setMomoPhone(e.target.value)}
-                  placeholder="0788xxxxxx"
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green"
-                />
-                <p className="text-xs text-brand-ink-soft mt-1">
-                  We&apos;ll send a MoMo push to this number
-                </p>
-              </div>
-              <button
-                onClick={handleInitiate}
-                disabled={loading}
-                className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-bold rounded-xl disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Smartphone className="w-4 h-4" />
-                )}
-                {loading ? 'Sending...' : `Pay ${Number(momoModal.amount).toLocaleString()} RWF via MoMo`}
-              </button>
-              <p className="text-xs text-center text-brand-ink-soft">
-                Secured payment · Powered by MTN Mobile Money
-              </p>
+              {user && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-ink-soft mb-1.5">
+                      <Phone className="w-3.5 h-3.5 inline mr-1" />
+                      MoMo phone number
+                    </label>
+                    <input
+                      type="tel"
+                      value={momoPhone}
+                      onChange={(e) => setMomoPhone(e.target.value)}
+                      placeholder="0788xxxxxx"
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green"
+                    />
+                    <p className="text-xs text-brand-ink-soft mt-1">
+                      We&apos;ll send a MoMo push to this number
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleInitiate}
+                    disabled={loading}
+                    className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-bold rounded-xl disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Smartphone className="w-4 h-4" />
+                    )}
+                    {loading ? 'Sending...' : `Pay ${Number(momoModal.amount).toLocaleString()} RWF via MoMo`}
+                  </button>
+                  <p className="text-xs text-center text-brand-ink-soft">
+                    Secured payment · Powered by MTN Mobile Money
+                  </p>
+                </>
+              )}
             </div>
           )}
 
